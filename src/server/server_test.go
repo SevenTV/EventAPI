@@ -104,7 +104,7 @@ func Test_EventsSingleChannel(t *testing.T) {
 	Assert(t, readMessage(), "event: connected\ndata: 7tv-event-sub.v1", "header value")
 
 	testData := `{"channel":"troydota","emote_id":"123","name":"emote-name","action":"added","author":"troydota"}`
-	redis.Client.Publish(ctx, "users:troydota:emotes", testData)
+	redis.Client.Publish(ctx, "events-v1:channel-emotes:troydota", testData)
 
 	Assert(t, readMessage(), fmt.Sprintf("event: update\ndata: %s", testData), "data error")
 
@@ -159,10 +159,10 @@ func Test_EventsMultiChannels(t *testing.T) {
 	Assert(t, readMessage(), "event: connected\ndata: 7tv-event-sub.v1", "header value")
 
 	testData := `{"channel":"troydota","emote_id":"123","name":"emote-name","action":"added","author":"troydota"}`
-	redis.Client.Publish(ctx, "users:troydota:emotes", testData)
+	redis.Client.Publish(ctx, "events-v1:channel-emotes:troydota", testData)
 
 	testData2 := `{"channel":"anatoleam","emote_id":"123","name":"emote-name","action":"added","author":"troydota"}`
-	redis.Client.Publish(ctx, "users:anatoleam:emotes", testData2)
+	redis.Client.Publish(ctx, "events-v1:channel-emotes:anatoleam", testData2)
 
 	Assert(t, readMessage(), fmt.Sprintf("event: update\ndata: %s", testData), "data error")
 	Assert(t, readMessage(), fmt.Sprintf("event: update\ndata: %s", testData2), "data error")

@@ -49,7 +49,7 @@ func EventsV1(app fiber.Router) {
 		}()
 
 		for channel := range uniqueChannels {
-			redis.Subscribe(localCtx, subCh, fmt.Sprintf("users:%v:emotes", channel))
+			redis.Subscribe(localCtx, subCh, fmt.Sprintf("events-v1:channel-emotes:%v", channel))
 		}
 
 		ctx.SetContentType("text/event-stream")
@@ -59,6 +59,7 @@ func EventsV1(app fiber.Router) {
 		ctx.Response.Header.Set("Access-Control-Allow-Origin", "*")
 		ctx.Response.Header.Set("Access-Control-Allow-Headers", "Cache-Control")
 		ctx.Response.Header.Set("Access-Control-Allow-Credentials", "true")
+		ctx.Response.Header.Set("X-Accel-Buffering", "no")
 
 		ctx.SetBodyStreamWriter(func(w *bufio.Writer) {
 			defer func() {

@@ -44,7 +44,7 @@ source.addEventListener("error", (e) => {
 #### Redis PubSub
 
 ```redis
-PUBLISH "user:channel-name:emotes" "json-payload";
+PUBLISH "events-v1:channel-emotes:<channel-name>" "json-payload";
 ```
 Where the JSON payload is an EmoteEventUpdate.
 
