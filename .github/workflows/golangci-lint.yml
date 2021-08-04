@@ -8,6 +8,15 @@ on:
       - dev
   pull_request:
 jobs:
+  linting:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v2
+        with:
+          version: latest
   testing:
     name: testing
     runs-on: ubuntu-latest
@@ -29,15 +38,6 @@ jobs:
         uses: actions/checkout@v2
       - name: Test
         run: |
-          go test ./...
-          go test -race ./...
-  linting:
-    name: lint
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - name: golangci-lint
-        uses: golangci/golangci-lint-action@v2
-        with:
-          version: latest
+          go test ./... -timeout 30s
+          go test -race ./... -timeout 30s
       

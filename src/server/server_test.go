@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/SevenTV/EventAPI/src/redis"
 	"github.com/SevenTV/EventAPI/src/utils"
@@ -21,8 +22,7 @@ func InitRedis(t *testing.T) *miniredis.Miniredis {
 }
 
 func Test_Health(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	mr := InitRedis(t)
 
 	app, s := New(ctx, "tcp", ":3000")
@@ -42,7 +42,7 @@ func Test_Health(t *testing.T) {
 }
 
 func Test_PanicHandler(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 
 	app, s := New(ctx, "tcp", ":3000")
 
@@ -55,7 +55,7 @@ func Test_PanicHandler(t *testing.T) {
 }
 
 func Test_Events(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 
 	mr := InitRedis(t)
 
