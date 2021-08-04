@@ -22,6 +22,15 @@ func EventsV1(app fiber.Router) {
 		if err := c.QueryParser(&query); err != nil {
 			return c.SendStatus(400)
 		}
+		if len(query.Channels) == 1 {
+			query.Channels = strings.Split(query.Channels[0], ",")
+		}
+		if len(query.Channels) == 1 {
+			query.Channels = strings.Split(query.Channels[0], "+")
+		}
+		if len(query.Channels) == 1 {
+			query.Channels = strings.Split(query.Channels[0], " ")
+		}
 		if len(query.Channels) > 100 || len(query.Channels) == 0 {
 			return c.SendStatus(400)
 		}

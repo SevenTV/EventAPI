@@ -41,8 +41,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
       - name: Test
-        run: | 
-          USE_LOCAL_REDIS=1 go test ./... -timeout 30s -coverprofile=coverage.out
+        run: USE_LOCAL_REDIS=1 go test ./... -timeout 30s -coverprofile=coverage.out
       - uses: shogo82148/actions-goveralls@v1
         with:
           path-to-profile: coverage.out

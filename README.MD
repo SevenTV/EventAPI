@@ -11,6 +11,10 @@ This API is an example of [ServerSentEvents](https://developer.mozilla.org/en-US
 This Endpoint takes in query paramaters with the name `channel` as the channel name ie. `troydota` or `anatoleam`.
 
 An example url is `https://events.7tv.app/v1/channel-emotes?channel=troydota&channel=anatoleam`
+or `https://events.7tv.app/v1/channel-emotes?channel=troydota,anatoleam`
+or `https://events.7tv.app/v1/channel-emotes?channel=troydota+anatoleam`
+or `https://events.7tv.app/v1/channel-emotes?channel=troydota%20anatoleam`
+
 You can request to listen up 100 channels per connection.
 
 ##### Events
