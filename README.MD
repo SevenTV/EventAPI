@@ -3,16 +3,20 @@
 ![](https://cdn.discordapp.com/attachments/817075418640678964/871969835087704124/icon-512x512.png)
 
 ### External API Documentation
-#### GET /v1?channel=channel_name&channel=channel_name
-This API [ServerSide Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events)
 
-An example url is `https://events.7tv.app/v1?channel=troydota&channel=anatoleam`
+#### GET /v1/channel-emotes
+
+This API is an example of [ServerSide Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events)
+
+This Endpoint takes in query paramaters with the name `channel` as the channel name ie. `troydota` or `anatoleam`.
+
+An example url is `https://events.7tv.app/v1/channel-emotes?channel=troydota&channel=anatoleam`
 You can request to listen up 100 channels per connection.
 
 ##### JavaScript code
 
 ```js
-const source = new EventSource('https://events.7tv.app/v1?channel=troydota&channel=anatoleam');
+const source = new EventSource('https://events.7tv.app/v1/channel-emotes?channel=troydota&channel=anatoleam');
 
 source.addEventListener("connected", (e) => {
   // Should be "7tv-event-sub.v1" since this is the `v1` endpoint
@@ -36,12 +40,16 @@ source.addEventListener("error", (e) => {
 ```
 
 ### Internal API Documentation
+
 #### Redis PubSub
+
 ```redis
 PUBLISH "user:channel-name:emotes" "json-payload";
 ```
 Where the JSON payload is an EmoteEventUpdate.
+
 ### JSON Payloads
+
 #### EmoteEventUpdate
 
 ```json
@@ -53,6 +61,7 @@ Where the JSON payload is an EmoteEventUpdate.
 	"author": string
 }
 ```
+
 1. The `channel` is the channel this event relates to.
 2. The `emote_id` is an ObjectID as hex.
 3. The `name` is the name of the emote, respecting capitalization.

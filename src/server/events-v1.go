@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/SevenTV/EventAPI/src/redis"
 	"github.com/gofiber/fiber/v2"
@@ -14,7 +15,8 @@ type v1Query struct {
 }
 
 func EventsV1(app fiber.Router) {
-	app.Get("/v1", func(c *fiber.Ctx) error {
+	api := app.Group("/v1")
+	api.Get("/channel-emotes", func(c *fiber.Ctx) error {
 		query := v1Query{}
 		if err := c.QueryParser(&query); err != nil {
 			return c.SendStatus(400)
@@ -25,7 +27,7 @@ func EventsV1(app fiber.Router) {
 
 		uniqueChannels := map[string]bool{}
 		for _, c := range query.Channels {
-			uniqueChannels[c] = true
+			uniqueChannels[strings.ToLower(c)] = true
 		}
 
 		resp := c.Response()
