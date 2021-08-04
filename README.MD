@@ -3,7 +3,7 @@
 ![](https://cdn.discordapp.com/attachments/817075418640678964/871969835087704124/icon-512x512.png)
 
 ### External API Documentation
-#### GET /v1/:channel_name/.../:channel_name
+#### GET /v1?channel=channel_name&channel=channel_name
 This API [ServerSide Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events)
 
 An example url is `https://events.7tv.app/v1?channel=troydota&channel=anatoleam`
