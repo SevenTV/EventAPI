@@ -3,6 +3,7 @@ package redis
 import (
 	"context"
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -10,6 +11,10 @@ import (
 )
 
 func InitRedis(t *testing.T) *miniredis.Miniredis {
+	if val, ok := os.LookupEnv("USE_LOCAL_REDIS"); ok && val == "1" {
+		Init("redis://127.0.0.1:6379/0")
+		return nil
+	}
 	mr, err := miniredis.Run()
 	Assert(t, err, nil, "miniredis starts")
 	Init(fmt.Sprintf("redis://%s/0", mr.Addr()))
@@ -18,7 +23,11 @@ func InitRedis(t *testing.T) *miniredis.Miniredis {
 
 func Test_RedisPublishSubscribe(t *testing.T) {
 	mr := InitRedis(t)
-	defer mr.Close()
+	defer func() {
+		if mr != nil {
+			mr.Close()
+		}
+	}()
 
 	testData := "pog"
 
