@@ -6,7 +6,7 @@
 
 #### GET /v1/channel-emotes
 
-This API is an example of [ServerSide Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events)
+This API is an example of [ServerSentEvents](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events)
 
 This Endpoint takes in query paramaters with the name `channel` as the channel name ie. `troydota` or `anatoleam`.
 
