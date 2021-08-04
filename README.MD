@@ -57,7 +57,7 @@ Where the JSON payload is an EmoteEventUpdate.
 	"channel": string,
 	"emote_id": string,
 	"name": string,
-	"action": "removed" or "added",
+	"action": "removed" or "added" or "renamed",
 	"author": string
 }
 ```
@@ -65,7 +65,5 @@ Where the JSON payload is an EmoteEventUpdate.
 1. The `channel` is the channel this event relates to.
 2. The `emote_id` is an ObjectID as hex.
 3. The `name` is the name of the emote, respecting capitalization.
-4. The `action` is either `"removed"` or `"added"`.
+4. The `action` is either `"removed"` or `"added"` or `"renamed"`.
 5. The `author` is the person who issued the triggered this event. By either adding, removing or aliasing an emote.
-
-If an emote is `aliased` a `remove` event will be fired, removing the old emote name followed by an `added` event adding the new emote name.
