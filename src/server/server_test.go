@@ -71,7 +71,7 @@ func Test_EventsSingleChannel(t *testing.T) {
 
 	_, s := New(ctx, "tcp", ":3000")
 
-	req, err := http.NewRequest("GET", "http://localhost:3000/v1?channel=troydota", nil)
+	req, err := http.NewRequest("GET", "http://localhost:3000/public/v1/channel-emotes?channel=troydota", nil)
 	Assert(t, err, nil, "req error")
 
 	resp, err := http.DefaultClient.Do(req)
@@ -126,7 +126,7 @@ func Test_EventsMultiChannels(t *testing.T) {
 
 	_, s := New(ctx, "tcp", ":3000")
 
-	req, err := http.NewRequest("GET", "http://localhost:3000/v1?channel=troydota&channel=anatoleam", nil)
+	req, err := http.NewRequest("GET", "http://localhost:3000/public/v1/channel-emotes?channel=troydota&channel=anatoleam", nil)
 	Assert(t, err, nil, "req error")
 
 	resp, err := http.DefaultClient.Do(req)
@@ -185,7 +185,7 @@ func Test_EventsBadChannels(t *testing.T) {
 
 	_, s := New(ctx, "tcp", ":3000")
 
-	req, err := http.NewRequest("GET", "http://localhost:3000/v1", nil)
+	req, err := http.NewRequest("GET", "http://localhost:3000/public/v1/channel-emotes", nil)
 	Assert(t, err, nil, "req error")
 
 	resp, err := http.DefaultClient.Do(req)
@@ -197,7 +197,7 @@ func Test_EventsBadChannels(t *testing.T) {
 		query[i] = fmt.Sprintf("channel=%d", i)
 	}
 
-	req, err = http.NewRequest("GET", fmt.Sprintf("http://localhost:3000/v1?%s", strings.Join(query, "&")), nil)
+	req, err = http.NewRequest("GET", fmt.Sprintf("http://localhost:3000/public/v1/channel-emotes?%s", strings.Join(query, "&")), nil)
 	Assert(t, err, nil, "req error")
 
 	resp, err = http.DefaultClient.Do(req)

@@ -28,7 +28,8 @@ func New(ctx context.Context, connType, connURI string) (*fiber.App, <-chan stru
 
 	Health(app)
 	Testing(app)
-	EventsV1(app)
+	public := app.Group("/public")
+	EventsV1(public)
 
 	ln, err := net.Listen(connType, connURI)
 	if err != nil {
