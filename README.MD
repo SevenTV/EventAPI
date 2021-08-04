@@ -40,8 +40,9 @@ source.addEventListener("error", (e) => {
 PUBLISH "user:channel-name:emotes" "json-payload";
 ```
 Where the JSON payload is an EmoteEventUpdate.
-###JSON Payloads
-####EmoteEventUpdate
+### JSON Payloads
+#### EmoteEventUpdate
+
 ```json
 {
 	"emote_id": string,
