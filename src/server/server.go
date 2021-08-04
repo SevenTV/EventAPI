@@ -5,6 +5,7 @@ import (
 	"net"
 	"sync"
 
+	"github.com/SevenTV/EventAPI/src/configure"
 	"github.com/gofiber/fiber/v2"
 
 	log "github.com/sirupsen/logrus"
@@ -22,6 +23,7 @@ func New(ctx context.Context, connType, connURI string) (*fiber.App, <-chan stru
 	app.Use(func(c *fiber.Ctx) error {
 		wg.Add(1)
 		c.SetUserContext(ctx)
+		c.Set("X-Node-ID", configure.Config.GetString("node_id"))
 		defer wg.Done()
 		return c.Next()
 	})
@@ -30,6 +32,10 @@ func New(ctx context.Context, connType, connURI string) (*fiber.App, <-chan stru
 	Testing(app)
 	public := app.Group("/public")
 	EventsV1(public)
+
+	app.Use(func(c *fiber.Ctx) error {
+		return c.SendStatus(404)
+	})
 
 	ln, err := net.Listen(connType, connURI)
 	if err != nil {
