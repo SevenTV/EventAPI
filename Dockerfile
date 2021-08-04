@@ -11,7 +11,7 @@ RUN go mod download
 
 COPY . .
 
-RUN go test ./... && go test -race ./... && go build -o seventv
+RUN go test ./... && go build -o seventv
 
 FROM alpine:3.14
 RUN apk update && apk add --no-cache ca-certificates && rm -rf /var/cache/apk/*

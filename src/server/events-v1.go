@@ -9,8 +9,25 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
+type v1Query struct {
+	Channels []string `query:"channel"`
+}
+
 func EventsV1(app fiber.Router) {
-	app.Get("/v1/:channel", func(c *fiber.Ctx) error {
+	app.Get("/v1", func(c *fiber.Ctx) error {
+		query := v1Query{}
+		if err := c.QueryParser(&query); err != nil {
+			return c.SendStatus(400)
+		}
+		if len(query.Channels) > 100 || len(query.Channels) == 0 {
+			return c.SendStatus(400)
+		}
+
+		uniqueChannels := map[string]bool{}
+		for _, c := range query.Channels {
+			uniqueChannels[c] = true
+		}
+
 		resp := c.Response()
 
 		// We have 2 contexts we need to respect, so we have to make a third to combine them.
@@ -31,8 +48,9 @@ func EventsV1(app fiber.Router) {
 			}
 		}()
 
-		channel := c.Params("channel")
-		redis.Subscribe(localCtx, subCh, fmt.Sprintf("users:%v:emotes", channel))
+		for channel := range uniqueChannels {
+			redis.Subscribe(localCtx, subCh, fmt.Sprintf("users:%v:emotes", channel))
+		}
 
 		c.Set("Content-Type", "text/event-stream")
 		c.Set("Cache-Control", "no-cache")

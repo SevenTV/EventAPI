@@ -43,4 +43,3 @@ jobs:
       - name: Test
         run: | 
           USE_LOCAL_REDIS=1 go test ./... -timeout 30s
-          USE_LOCAL_REDIS=1 go test -race ./... -timeout 30s

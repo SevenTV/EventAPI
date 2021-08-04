@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -58,7 +59,7 @@ func Test_PanicHandler(t *testing.T) {
 	<-s
 }
 
-func Test_Events(t *testing.T) {
+func Test_EventsSingleChannel(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 
 	mr := InitRedis(t)
@@ -70,7 +71,7 @@ func Test_Events(t *testing.T) {
 
 	_, s := New(ctx, "tcp", ":3000")
 
-	req, err := http.NewRequest("GET", "http://localhost:3000/v1/troydota", nil)
+	req, err := http.NewRequest("GET", "http://localhost:3000/v1?channel=troydota", nil)
 	Assert(t, err, nil, "req error")
 
 	resp, err := http.DefaultClient.Do(req)
@@ -102,12 +103,106 @@ func Test_Events(t *testing.T) {
 	Assert(t, err, nil, "header error")
 	Assert(t, readMessage(), "event: connected\ndata: 7tv-event-sub.v1", "header value")
 
-	testData := "event sub works really well"
+	testData := `{"channel":"troydota","emote_id":"123","name":"emote-name","action":"added","author":"troydota"}`
 	redis.Client.Publish(ctx, "users:troydota:emotes", testData)
 
 	Assert(t, readMessage(), fmt.Sprintf("event: update\ndata: %s", testData), "data error")
 
 	Assert(t, resp.Body.Close(), nil, "close body error")
+
+	cancel()
+	<-s
+}
+
+func Test_EventsMultiChannels(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+
+	mr := InitRedis(t)
+	defer func() {
+		if mr != nil {
+			mr.Close()
+		}
+	}()
+
+	_, s := New(ctx, "tcp", ":3000")
+
+	req, err := http.NewRequest("GET", "http://localhost:3000/v1?channel=troydota&channel=anatoleam", nil)
+	Assert(t, err, nil, "req error")
+
+	resp, err := http.DefaultClient.Do(req)
+	Assert(t, err, nil, "response error")
+	Assert(t, resp.StatusCode, 200, "response status")
+
+	reader := bufio.NewReader(resp.Body)
+
+	readMessage := func() string {
+		msg := bytes.NewBufferString("")
+
+		var b byte
+		for {
+			b, err = reader.ReadByte()
+			Assert(t, err, nil, "read error")
+			nextBytes, err := reader.Peek(2)
+			Assert(t, err, nil, "read error")
+			_ = msg.WriteByte(b)
+			if nextBytes[0] == nextBytes[1] && nextBytes[0] == '\n' {
+				_, _ = reader.ReadByte()
+				_, _ = reader.ReadByte()
+				break
+			}
+		}
+
+		return msg.String()
+	}
+
+	Assert(t, err, nil, "header error")
+	Assert(t, readMessage(), "event: connected\ndata: 7tv-event-sub.v1", "header value")
+
+	testData := `{"channel":"troydota","emote_id":"123","name":"emote-name","action":"added","author":"troydota"}`
+	redis.Client.Publish(ctx, "users:troydota:emotes", testData)
+
+	testData2 := `{"channel":"anatoleam","emote_id":"123","name":"emote-name","action":"added","author":"troydota"}`
+	redis.Client.Publish(ctx, "users:anatoleam:emotes", testData2)
+
+	Assert(t, readMessage(), fmt.Sprintf("event: update\ndata: %s", testData), "data error")
+	Assert(t, readMessage(), fmt.Sprintf("event: update\ndata: %s", testData2), "data error")
+
+	Assert(t, resp.Body.Close(), nil, "close body error")
+
+	cancel()
+	<-s
+}
+
+func Test_EventsBadChannels(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+
+	mr := InitRedis(t)
+	defer func() {
+		if mr != nil {
+			mr.Close()
+		}
+	}()
+
+	_, s := New(ctx, "tcp", ":3000")
+
+	req, err := http.NewRequest("GET", "http://localhost:3000/v1", nil)
+	Assert(t, err, nil, "req error")
+
+	resp, err := http.DefaultClient.Do(req)
+	Assert(t, err, nil, "response error")
+	Assert(t, resp.StatusCode, 400, "response status")
+
+	query := make([]string, 101)
+	for i := 0; i < 101; i++ {
+		query[i] = fmt.Sprintf("channel=%d", i)
+	}
+
+	req, err = http.NewRequest("GET", fmt.Sprintf("http://localhost:3000/v1?%s", strings.Join(query, "&")), nil)
+	Assert(t, err, nil, "req error")
+
+	resp, err = http.DefaultClient.Do(req)
+	Assert(t, err, nil, "response error")
+	Assert(t, resp.StatusCode, 400, "response status")
 
 	cancel()
 	<-s
