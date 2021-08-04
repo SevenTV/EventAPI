@@ -54,6 +54,11 @@ PUBLISH "events-v1:channel-emotes:<channel-name>" "json-payload";
 ```
 Where the JSON payload is an EmoteEventUpdate.
 
+#### GET /health
+
+This endpoint is entirely internal and will return a `200` if redis responds or a `5xx` status if redis does not respond.
+The `X-Active-Connections` header will be set with the current number of active connections.
+
 ### JSON Payloads
 
 #### EmoteEventUpdate
