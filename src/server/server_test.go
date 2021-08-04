@@ -161,10 +161,6 @@ func Test_EventsMultiChannels(t *testing.T) {
 	testData := `{"channel":"troydota","emote_id":"123","name":"emote-name","action":"added","author":"troydota"}`
 	redis.Client.Publish(ctx, "events-v1:channel-emotes:troydota", testData)
 	Assert(t, readMessage(), fmt.Sprintf("event: update\ndata: %s", testData), "data error")
-
-	time.Sleep(time.Second)
-
-	testData = `{"channel":"anatoleam","emote_id":"123","name":"emote-name","action":"added","author":"troydota"}`
 	redis.Client.Publish(ctx, "events-v1:channel-emotes:anatoleam", testData)
 	Assert(t, readMessage(), fmt.Sprintf("event: update\ndata: %s", testData), "data error")
 
