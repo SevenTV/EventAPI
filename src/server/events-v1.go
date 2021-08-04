@@ -30,8 +30,6 @@ func EventsV1(app fiber.Router) {
 			uniqueChannels[strings.ToLower(c)] = true
 		}
 
-		resp := c.Response()
-
 		// We have 2 contexts we need to respect, so we have to make a third to combine them.
 		ctx := c.Context()
 		usrCtx := c.UserContext()
@@ -54,11 +52,15 @@ func EventsV1(app fiber.Router) {
 			redis.Subscribe(localCtx, subCh, fmt.Sprintf("users:%v:emotes", channel))
 		}
 
-		c.Set("Content-Type", "text/event-stream")
-		c.Set("Cache-Control", "no-cache")
-		c.Set("Connection", "keep-alive")
+		ctx.SetContentType("text/event-stream")
+		ctx.Response.Header.Set("Cache-Control", "no-cache")
+		ctx.Response.Header.Set("Connection", "keep-alive")
+		ctx.Response.Header.Set("Transfer-Encoding", "chunked")
+		ctx.Response.Header.Set("Access-Control-Allow-Origin", "*")
+		ctx.Response.Header.Set("Access-Control-Allow-Headers", "Cache-Control")
+		ctx.Response.Header.Set("Access-Control-Allow-Credentials", "true")
 
-		resp.SetBodyStreamWriter(func(w *bufio.Writer) {
+		ctx.SetBodyStreamWriter(func(w *bufio.Writer) {
 			defer func() {
 				_ = w.Flush()
 			}()
