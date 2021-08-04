@@ -4,7 +4,6 @@ import (
 	"context"
 	"sync"
 
-	"github.com/SevenTV/EventAPI/src/utils"
 	"github.com/go-redis/redis/v8"
 	log "github.com/sirupsen/logrus"
 )
@@ -25,13 +24,10 @@ func Init(uri string) {
 			}
 		}()
 		ch := sub.Channel()
-		var (
-			msg     *redis.Message
-			payload string
-		)
+		var msg *redis.Message
 		for {
 			msg = <-ch
-			payload = utils.B2S([]byte(msg.Payload)) // dont change we want to copy the memory due to concurrency.
+			payload := msg.Payload // dont change we want to copy the memory due to concurrency.
 			subsMtx.Lock()
 			for _, s := range subs[msg.Channel] {
 				go func(s *redisSub) {

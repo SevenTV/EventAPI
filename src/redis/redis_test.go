@@ -17,19 +17,18 @@ func InitRedis(t *testing.T) *miniredis.Miniredis {
 }
 
 func Test_RedisPublishSubscribe(t *testing.T) {
-	InitRedis(t)
+	mr := InitRedis(t)
+	defer mr.Close()
 
 	testData := "pog"
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	cb := make(chan string)
-	Subscribe(ctx, cb, "events:xd")
-	Subscribe(ctx, cb, "events:xd")
+	defer close(cb)
+
 	Subscribe(ctx, cb, "events:xd")
 	Assert(t, Publish(ctx, "events:xd", testData), nil, "publish test")
-	Assert(t, <-cb, testData, "test data 1")
-	Assert(t, <-cb, testData, "test data 2")
-	Assert(t, <-cb, testData, "test data 3")
+	Assert(t, <-cb, testData, "test data")
 	cancel()
 
 	time.Sleep(time.Second)
