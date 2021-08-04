@@ -24,6 +24,7 @@ func InitRedis(t *testing.T) *miniredis.Miniredis {
 func Test_Health(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	mr := InitRedis(t)
+	defer mr.Close()
 
 	app, s := New(ctx, "tcp", ":3000")
 
@@ -58,6 +59,7 @@ func Test_Events(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 
 	mr := InitRedis(t)
+	defer mr.Close()
 
 	_, s := New(ctx, "tcp", ":3000")
 
@@ -85,7 +87,6 @@ func Test_Events(t *testing.T) {
 
 	Assert(t, resp.Body.Close(), nil, "close body error")
 
-	mr.Close()
 	cancel()
 	<-s
 }
