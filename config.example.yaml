@@ -1,0 +1,5 @@
+level: info
+redis_uri: redis://127.0.0.1/0
+
+conn_uri: 127.0.0.1:3000
+conn_type: tcp
