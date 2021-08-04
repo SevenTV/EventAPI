@@ -21,8 +21,6 @@ func Test_RedisPublishSubscribe(t *testing.T) {
 
 	testData := "pog"
 
-	t.Parallel()
-
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	cb := make(chan string)
 	Subscribe(ctx, cb, "events:xd")
