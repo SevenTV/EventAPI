@@ -13,6 +13,12 @@ This Endpoint takes in query paramaters with the name `channel` as the channel n
 An example url is `https://events.7tv.app/v1/channel-emotes?channel=troydota&channel=anatoleam`
 You can request to listen up 100 channels per connection.
 
+##### Events
+
+1. `connection` this event is emitted when you first connect to show that the connection has been established successfully.
+2. `update` this event is emitted when an update happens.
+3. `heartbeat` this event is emitted to force the connection to stay open and is sent every 30 seconds.
+
 ##### JavaScript code
 
 ```js

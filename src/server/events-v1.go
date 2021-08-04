@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/SevenTV/EventAPI/src/redis"
 	"github.com/gofiber/fiber/v2"
@@ -62,8 +63,10 @@ func EventsV1(app fiber.Router) {
 		ctx.Response.Header.Set("X-Accel-Buffering", "no")
 
 		ctx.SetBodyStreamWriter(func(w *bufio.Writer) {
+			tick := time.NewTicker(time.Second * 30)
 			defer func() {
 				_ = w.Flush()
+				tick.Stop()
 			}()
 			var (
 				msg string
@@ -79,6 +82,16 @@ func EventsV1(app fiber.Router) {
 				select {
 				case <-localCtx.Done():
 					return
+				case <-tick.C:
+					if _, err = w.WriteString("event: heartbeat\n"); err != nil {
+						return
+					}
+					if _, err = w.WriteString("data: {}\n\n"); err != nil {
+						return
+					}
+					if err = w.Flush(); err != nil {
+						return
+					}
 				case msg = <-subCh:
 					if _, err = w.WriteString("event: update\n"); err != nil {
 						return
