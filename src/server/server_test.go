@@ -85,7 +85,7 @@ func Test_Events(t *testing.T) {
 	Assert(t, utils.B2S(header), utils.B2S(serverHeader), "header value")
 
 	testData := "event sub works really well"
-	mr.Publish("users:troydota:emotes", testData)
+	redis.Client.Publish(ctx, "users:troydota:emotes", testData)
 
 	msg, err := reader.ReadBytes(0)
 	Assert(t, err, nil, "read error")
