@@ -8,7 +8,7 @@ This API [ServerSide Events](https://developer.mozilla.org/en-US/docs/Web/API/Se
 
 An example url is `https://events.7tv.app/v1/troydota`
 
-#####JavaScript code
+##### JavaScript code
 
 ```js
 const source = new EventSource('https://events.7tv.app/v1/troydota');
