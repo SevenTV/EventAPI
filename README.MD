@@ -46,7 +46,7 @@ Where the JSON payload is an EmoteEventUpdate.
 
 ```json
 {
-  "channel": string,
+	"channel": string,
 	"emote_id": string,
 	"name": string,
 	"action": "removed" or "added",
