@@ -2,6 +2,7 @@ package server
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"fmt"
 	"net/http"
@@ -11,7 +12,6 @@ import (
 	"time"
 
 	"github.com/SevenTV/EventAPI/src/redis"
-	"github.com/SevenTV/EventAPI/src/utils"
 	"github.com/alicebob/miniredis/v2"
 )
 
@@ -71,26 +71,41 @@ func Test_Events(t *testing.T) {
 	_, s := New(ctx, "tcp", ":3000")
 
 	req, err := http.NewRequest("GET", "http://localhost:3000/v1/troydota", nil)
-	Assert(t, err, nil, "request error")
-	client := http.Client{}
-	resp, err := client.Do(req)
+	Assert(t, err, nil, "req error")
+
+	resp, err := http.DefaultClient.Do(req)
 	Assert(t, err, nil, "response error")
 	Assert(t, resp.StatusCode, 200, "response status")
 
 	reader := bufio.NewReader(resp.Body)
 
-	header := make([]byte, len(serverHeader))
-	_, err = reader.Read(header)
+	readMessage := func() string {
+		msg := bytes.NewBufferString("")
+
+		var b byte
+		for {
+			b, err = reader.ReadByte()
+			Assert(t, err, nil, "read error")
+			nextBytes, err := reader.Peek(2)
+			Assert(t, err, nil, "read error")
+			_ = msg.WriteByte(b)
+			if nextBytes[0] == nextBytes[1] && nextBytes[0] == '\n' {
+				_, _ = reader.ReadByte()
+				_, _ = reader.ReadByte()
+				break
+			}
+		}
+
+		return msg.String()
+	}
+
 	Assert(t, err, nil, "header error")
-	Assert(t, utils.B2S(header), utils.B2S(serverHeader), "header value")
+	Assert(t, readMessage(), "event: connected\ndata: 7tv-event-sub.v1", "header value")
 
 	testData := "event sub works really well"
 	redis.Client.Publish(ctx, "users:troydota:emotes", testData)
 
-	msg, err := reader.ReadBytes(0)
-	Assert(t, err, nil, "read error")
-	msg = msg[:len(msg)-1]
-	Assert(t, utils.B2S(msg), testData, "data error")
+	Assert(t, readMessage(), fmt.Sprintf("event: update\ndata: %s", testData), "data error")
 
 	Assert(t, resp.Body.Close(), nil, "close body error")
 
