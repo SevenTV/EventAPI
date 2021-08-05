@@ -81,7 +81,7 @@ func EventsV1(app fiber.Router) {
 				msg string
 				err error
 			)
-			if _, err = w.WriteString("event: connected\ndata: 7tv-event-sub.v1\n\n"); err != nil {
+			if _, err = w.WriteString("event: open\ndata: 7tv-event-sub.v1\n\n"); err != nil {
 				return
 			}
 			if err = w.Flush(); err != nil {
