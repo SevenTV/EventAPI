@@ -101,12 +101,12 @@ func Test_EventsSingleChannel(t *testing.T) {
 	}
 
 	Assert(t, err, nil, "header error")
-	Assert(t, readMessage(), "event: connected\ndata: 7tv-event-sub.v1", "header value")
+	Assert(t, readMessage(), "event: open\ndata: 7tv-event-sub.v1", "header value")
 
 	testData := `{"channel":"troydota","emote_id":"123","name":"emote-name","action":"added","author":"troydota"}`
 	redis.Client.Publish(ctx, "events-v1:channel-emotes:troydota", testData)
 
-	Assert(t, readMessage(), fmt.Sprintf("event: update\ndata: %s", testData), "data error")
+	Assert(t, readMessage(), fmt.Sprintf("event: message\ndata: %s", testData), "data error")
 
 	Assert(t, resp.Body.Close(), nil, "close body error")
 
@@ -156,13 +156,13 @@ func Test_EventsMultiChannels(t *testing.T) {
 	}
 
 	Assert(t, err, nil, "header error")
-	Assert(t, readMessage(), "event: connected\ndata: 7tv-event-sub.v1", "header value")
+	Assert(t, readMessage(), "event: open\ndata: 7tv-event-sub.v1", "header value")
 
 	testData := `{"channel":"troydota","emote_id":"123","name":"emote-name","action":"added","author":"troydota"}`
 	redis.Client.Publish(ctx, "events-v1:channel-emotes:troydota", testData)
-	Assert(t, readMessage(), fmt.Sprintf("event: update\ndata: %s", testData), "data error")
+	Assert(t, readMessage(), fmt.Sprintf("event: message\ndata: %s", testData), "data error")
 	redis.Client.Publish(ctx, "events-v1:channel-emotes:anatoleam", testData)
-	Assert(t, readMessage(), fmt.Sprintf("event: update\ndata: %s", testData), "data error")
+	Assert(t, readMessage(), fmt.Sprintf("event: message\ndata: %s", testData), "data error")
 
 	Assert(t, resp.Body.Close(), nil, "close body error")
 
@@ -212,13 +212,13 @@ func Test_EventsMultiChannelComma(t *testing.T) {
 	}
 
 	Assert(t, err, nil, "header error")
-	Assert(t, readMessage(), "event: connected\ndata: 7tv-event-sub.v1", "header value")
+	Assert(t, readMessage(), "event: open\ndata: 7tv-event-sub.v1", "header value")
 
 	testData := `{"channel":"troydota","emote_id":"123","name":"emote-name","action":"added","author":"troydota"}`
 	redis.Client.Publish(ctx, "events-v1:channel-emotes:troydota", testData)
-	Assert(t, readMessage(), fmt.Sprintf("event: update\ndata: %s", testData), "data error")
+	Assert(t, readMessage(), fmt.Sprintf("event: message\ndata: %s", testData), "data error")
 	redis.Client.Publish(ctx, "events-v1:channel-emotes:anatoleam", testData)
-	Assert(t, readMessage(), fmt.Sprintf("event: update\ndata: %s", testData), "data error")
+	Assert(t, readMessage(), fmt.Sprintf("event: message\ndata: %s", testData), "data error")
 
 	Assert(t, resp.Body.Close(), nil, "close body error")
 
@@ -268,13 +268,13 @@ func Test_EventsMultiChannelPlus(t *testing.T) {
 	}
 
 	Assert(t, err, nil, "header error")
-	Assert(t, readMessage(), "event: connected\ndata: 7tv-event-sub.v1", "header value")
+	Assert(t, readMessage(), "event: open\ndata: 7tv-event-sub.v1", "header value")
 
 	testData := `{"channel":"troydota","emote_id":"123","name":"emote-name","action":"added","author":"troydota"}`
 	redis.Client.Publish(ctx, "events-v1:channel-emotes:troydota", testData)
-	Assert(t, readMessage(), fmt.Sprintf("event: update\ndata: %s", testData), "data error")
+	Assert(t, readMessage(), fmt.Sprintf("event: message\ndata: %s", testData), "data error")
 	redis.Client.Publish(ctx, "events-v1:channel-emotes:anatoleam", testData)
-	Assert(t, readMessage(), fmt.Sprintf("event: update\ndata: %s", testData), "data error")
+	Assert(t, readMessage(), fmt.Sprintf("event: message\ndata: %s", testData), "data error")
 
 	Assert(t, resp.Body.Close(), nil, "close body error")
 
@@ -324,13 +324,13 @@ func Test_EventsMultiChannelSpace(t *testing.T) {
 	}
 
 	Assert(t, err, nil, "header error")
-	Assert(t, readMessage(), "event: connected\ndata: 7tv-event-sub.v1", "header value")
+	Assert(t, readMessage(), "event: open\ndata: 7tv-event-sub.v1", "header value")
 
 	testData := `{"channel":"troydota","emote_id":"123","name":"emote-name","action":"added","author":"troydota"}`
 	redis.Client.Publish(ctx, "events-v1:channel-emotes:troydota", testData)
-	Assert(t, readMessage(), fmt.Sprintf("event: update\ndata: %s", testData), "data error")
+	Assert(t, readMessage(), fmt.Sprintf("event: message\ndata: %s", testData), "data error")
 	redis.Client.Publish(ctx, "events-v1:channel-emotes:anatoleam", testData)
-	Assert(t, readMessage(), fmt.Sprintf("event: update\ndata: %s", testData), "data error")
+	Assert(t, readMessage(), fmt.Sprintf("event: message\ndata: %s", testData), "data error")
 
 	Assert(t, resp.Body.Close(), nil, "close body error")
 
