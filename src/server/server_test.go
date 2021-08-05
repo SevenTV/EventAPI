@@ -17,6 +17,7 @@ import (
 )
 
 func InitRedis(t *testing.T) *miniredis.Miniredis {
+	defer time.Sleep(time.Second)
 	if val, ok := os.LookupEnv("USE_LOCAL_REDIS"); ok && val == "1" {
 		redis.Init("redis://127.0.0.1:6379/0")
 		return nil
@@ -101,9 +102,30 @@ func Test_EventsSingleChannel(t *testing.T) {
 	}
 
 	Assert(t, err, nil, "header error")
-	Assert(t, readMessage(), "event: connected\ndata: 7tv-event-sub.v1", "header value")
+	Assert(t, readMessage(), "event: ready\ndata: 7tv-event-sub.v1", "header value")
 
-	testData := `{"channel":"troydota","emote_id":"123","name":"emote-name","action":"added","author":"troydota"}`
+	testData := `{
+  "channel": "troydota",
+  "emote_id": "60bf2b5b74461cf8fe2d187f",
+  "name": "WIDEGIGACHAD",
+  "action": "ADD",
+  "actor": "TroyDota",
+  "emote": {
+    "name": "WIDEGIGACHAD",
+    "visibility": 0,
+    "mime": "image/webp",
+    "tags": [],
+    "width": [384, 228, 144, 96],
+    "height": [128, 76, 48, 32],
+    "animated": true,
+    "owner": {
+      "id": "60af9846ebfcf7562edb10a3",
+      "display_name": "noodlemanhours",
+      "twitch_id": "84181465",
+      "login": "noodlemanhours"
+    },
+  }
+}`
 	redis.Client.Publish(ctx, "events-v1:channel-emotes:troydota", testData)
 
 	Assert(t, readMessage(), fmt.Sprintf("event: update\ndata: %s", testData), "data error")
@@ -156,11 +178,54 @@ func Test_EventsMultiChannels(t *testing.T) {
 	}
 
 	Assert(t, err, nil, "header error")
-	Assert(t, readMessage(), "event: connected\ndata: 7tv-event-sub.v1", "header value")
+	Assert(t, readMessage(), "event: ready\ndata: 7tv-event-sub.v1", "header value")
 
-	testData := `{"channel":"troydota","emote_id":"123","name":"emote-name","action":"added","author":"troydota"}`
+	testData := `{
+  "channel": "troydota",
+  "emote_id": "60bf2b5b74461cf8fe2d187f",
+  "name": "WIDEGIGACHAD",
+  "action": "ADD",
+  "actor": "TroyDota",
+  "emote": {
+    "name": "WIDEGIGACHAD",
+    "visibility": 0,
+    "mime": "image/webp",
+    "tags": [],
+    "width": [384, 228, 144, 96],
+    "height": [128, 76, 48, 32],
+    "animated": true,
+    "owner": {
+      "id": "60af9846ebfcf7562edb10a3",
+      "display_name": "noodlemanhours",
+      "twitch_id": "84181465",
+      "login": "noodlemanhours"
+    },
+  }
+}`
 	redis.Client.Publish(ctx, "events-v1:channel-emotes:troydota", testData)
 	Assert(t, readMessage(), fmt.Sprintf("event: update\ndata: %s", testData), "data error")
+	testData = `{
+  "channel": "anatoleam",
+  "emote_id": "60bf2b5b74461cf8fe2d187f",
+  "name": "WIDEGIGACHAD",
+  "action": "ADD",
+  "actor": "TroyDota",
+  "emote": {
+    "name": "WIDEGIGACHAD",
+    "visibility": 0,
+    "mime": "image/webp",
+    "tags": [],
+    "width": [384, 228, 144, 96],
+    "height": [128, 76, 48, 32],
+    "animated": true,
+    "owner": {
+      "id": "60af9846ebfcf7562edb10a3",
+      "display_name": "noodlemanhours",
+      "twitch_id": "84181465",
+      "login": "noodlemanhours"
+    },
+  }
+}`
 	redis.Client.Publish(ctx, "events-v1:channel-emotes:anatoleam", testData)
 	Assert(t, readMessage(), fmt.Sprintf("event: update\ndata: %s", testData), "data error")
 
@@ -212,7 +277,7 @@ func Test_EventsMultiChannelComma(t *testing.T) {
 	}
 
 	Assert(t, err, nil, "header error")
-	Assert(t, readMessage(), "event: connected\ndata: 7tv-event-sub.v1", "header value")
+	Assert(t, readMessage(), "event: ready\ndata: 7tv-event-sub.v1", "header value")
 
 	testData := `{"channel":"troydota","emote_id":"123","name":"emote-name","action":"added","author":"troydota"}`
 	redis.Client.Publish(ctx, "events-v1:channel-emotes:troydota", testData)
@@ -268,7 +333,7 @@ func Test_EventsMultiChannelPlus(t *testing.T) {
 	}
 
 	Assert(t, err, nil, "header error")
-	Assert(t, readMessage(), "event: connected\ndata: 7tv-event-sub.v1", "header value")
+	Assert(t, readMessage(), "event: ready\ndata: 7tv-event-sub.v1", "header value")
 
 	testData := `{"channel":"troydota","emote_id":"123","name":"emote-name","action":"added","author":"troydota"}`
 	redis.Client.Publish(ctx, "events-v1:channel-emotes:troydota", testData)
@@ -324,7 +389,7 @@ func Test_EventsMultiChannelSpace(t *testing.T) {
 	}
 
 	Assert(t, err, nil, "header error")
-	Assert(t, readMessage(), "event: connected\ndata: 7tv-event-sub.v1", "header value")
+	Assert(t, readMessage(), "event: ready\ndata: 7tv-event-sub.v1", "header value")
 
 	testData := `{"channel":"troydota","emote_id":"123","name":"emote-name","action":"added","author":"troydota"}`
 	redis.Client.Publish(ctx, "events-v1:channel-emotes:troydota", testData)

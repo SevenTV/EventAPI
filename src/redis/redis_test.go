@@ -11,6 +11,7 @@ import (
 )
 
 func InitRedis(t *testing.T) *miniredis.Miniredis {
+	defer time.Sleep(time.Second)
 	if val, ok := os.LookupEnv("USE_LOCAL_REDIS"); ok && val == "1" {
 		Init("redis://127.0.0.1:6379/0")
 		return nil
