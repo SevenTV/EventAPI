@@ -81,7 +81,7 @@ interface EmoteEventUpate {
   // The user who caused this event to trigger.
   actor: string; 
   // An emote object. Null if the action is "REMOVE".
-  extra_data?: ExtraEmoteData; 
+  emote?: ExtraEmoteData; 
 }
 
 interface ExtraEmoteData {
@@ -123,7 +123,7 @@ Example JSON
   "name": "WIDEGIGACHAD",
   "action": "ADD",
   "actor": "TroyDota",
-  "extra_data": {
+  "emote": {
     "name": "WIDEGIGACHAD",
     "visibility": 0,
     "mime": "image/webp",
@@ -140,10 +140,3 @@ Example JSON
   }
 }
 ```
-
-1. The `channel` is the channel this event relates to.
-1. The `emote_id` is an ObjectID as hex.
-1. The `emote` is an Emote object.
-1. The `name` is the name of the emote, respecting capitalization.
-1. The `action` is either `"ADD"` or `"REMOVE"` or `"UPDATE"`.
-1. The `actor` is the person who issued the triggered this event. By either adding, removing or aliasing an emote.

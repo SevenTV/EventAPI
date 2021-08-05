@@ -110,7 +110,7 @@ func Test_EventsSingleChannel(t *testing.T) {
   "name": "WIDEGIGACHAD",
   "action": "ADD",
   "actor": "TroyDota",
-  "extra_data": {
+  "emote": {
     "name": "WIDEGIGACHAD",
     "visibility": 0,
     "mime": "image/webp",
@@ -186,7 +186,7 @@ func Test_EventsMultiChannels(t *testing.T) {
   "name": "WIDEGIGACHAD",
   "action": "ADD",
   "actor": "TroyDota",
-  "extra_data": {
+  "emote": {
     "name": "WIDEGIGACHAD",
     "visibility": 0,
     "mime": "image/webp",
@@ -210,7 +210,7 @@ func Test_EventsMultiChannels(t *testing.T) {
   "name": "WIDEGIGACHAD",
   "action": "ADD",
   "actor": "TroyDota",
-  "extra_data": {
+  "emote": {
     "name": "WIDEGIGACHAD",
     "visibility": 0,
     "mime": "image/webp",
