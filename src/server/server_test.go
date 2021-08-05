@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -18,10 +17,6 @@ import (
 
 func InitRedis(t *testing.T) *miniredis.Miniredis {
 	defer time.Sleep(time.Second)
-	if val, ok := os.LookupEnv("USE_LOCAL_REDIS"); ok && val == "1" {
-		redis.Init("redis://127.0.0.1:6379/0")
-		return nil
-	}
 	mr, err := miniredis.Run()
 	Assert(t, err, nil, "miniredis starts")
 	redis.Init(fmt.Sprintf("redis://%s/0", mr.Addr()))
