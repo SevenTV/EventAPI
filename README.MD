@@ -72,18 +72,20 @@ The `X-Active-Connections` header will be set with the current number of active 
 
 #### EmoteEventUpdate
 
-```json
-{
-	"channel": string,
-	"emote_id": string,
-	"name": string,
-	"action": "removed" or "added" or "renamed",
-	"author": string
+```ts
+interface EmoteEventUpate {
+  channel: string; // The channel this update affects
+  emote_id: string; // The ID of the emote
+  emote?: Emote; // An emote object. Null if the action is "REMOVE"
+  name: string; // The name of the emote
+  action: "ADD" | "REMOVE" | "UPDATE"; // The action done
+  actor: string; // The user who caused this
 }
 ```
 
 1. The `channel` is the channel this event relates to.
-2. The `emote_id` is an ObjectID as hex.
-3. The `name` is the name of the emote, respecting capitalization.
-4. The `action` is either `"removed"` or `"added"` or `"renamed"`.
-5. The `author` is the person who issued the triggered this event. By either adding, removing or aliasing an emote.
+1. The `emote_id` is an ObjectID as hex.
+1. The `emote` is an Emote object.
+1. The `name` is the name of the emote, respecting capitalization.
+1. The `action` is either `"ADD"` or `"REMOVE"` or `"UPDATE"`.
+1. The `actor` is the person who issued the triggered this event. By either adding, removing or aliasing an emote.
