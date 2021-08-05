@@ -34,14 +34,18 @@ source.addEventListener("connected", (e) => {
   console.log(e.data); 
 }, false);
 
-source.addEventListener("update", (e) => {
-  // This is a JSON payload of the type `EmoteEventUpdate`
+source.addEventListener("message", (e) => {
+  // This is a JSON payload matching the type for the specified event channel
   console.log(e.data);
 }, false);
 
 source.addEventListener("open", (e) => {
   // Connection was opened.
 }, false);
+
+source.addEventListener("listening", (e) => {
+  // Connection is ready to receive events
+})
 
 source.addEventListener("error", (e) => {
   if (e.readyState === EventSource.CLOSED) {
