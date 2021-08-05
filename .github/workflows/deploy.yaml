@@ -1,0 +1,32 @@
+name: Build & Deploy (Production)
+
+on:
+  push:
+    branches: [master]
+
+  workflow_dispatch:
+
+env:
+  REGISTRY_REPO: seventv/servergo
+  REGISTRTY_IMAGE_NAME: seventv/servergo:${{ github.sha }}
+
+jobs:
+  build:
+    name: Build (Production)
+    runs-on: self-hosted
+
+    steps:
+      # Checkout repository
+      - uses: actions/checkout@v2
+
+      # Build image
+      - name: Build Image
+        id: build_step
+        uses: docker/build-push-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+          push: true
+          tags: ${{ github.sha }}
+          outputs: type=docker,dest=/tmp/image.tar
