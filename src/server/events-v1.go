@@ -102,7 +102,7 @@ func EventsV1(app fiber.Router) {
 						return
 					}
 				case msg = <-subCh:
-					if _, err = w.WriteString("event: message\n"); err != nil {
+					if _, err = w.WriteString("event: update\n"); err != nil {
 						return
 					}
 					if _, err = w.WriteString("data: "); err != nil {
