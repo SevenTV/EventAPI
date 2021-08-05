@@ -46,9 +46,3 @@ func Subscribe(ctx context.Context, ch chan string, subscribeTo ...string) {
 		}
 	}()
 }
-
-type PubSubPayloadUserEmotes struct {
-	Removed bool   `json:"removed"`
-	ID      string `json:"id"`
-	Actor   string `json:"actor"`
-}
