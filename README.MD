@@ -43,7 +43,7 @@ source.addEventListener("open", (e) => {
   // Connection was opened.
 }, false);
 
-source.addEventListener("listening", (e) => {
+source.addEventListener("ready", (e) => {
   // Connection is ready to receive events
 })
 
