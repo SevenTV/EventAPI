@@ -9,6 +9,7 @@ import (
 	"github.com/SevenTV/EventAPI/src/configure"
 	"github.com/SevenTV/EventAPI/src/utils"
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cors"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -35,6 +36,10 @@ func New(ctx context.Context, connType, connURI string) (*fiber.App, <-chan stru
 		}()
 		return c.Next()
 	})
+	app.Use(cors.New(cors.Config{
+		AllowOrigins: "*",
+		AllowMethods: "GET,POST,PUT,PATCH,DELETE",
+	}))
 
 	Health(app, conns)
 	Testing(app)
