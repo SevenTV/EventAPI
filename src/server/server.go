@@ -25,21 +25,23 @@ func New(ctx context.Context, connType, connURI string) (*fiber.App, <-chan stru
 
 	app.Use(Logger())
 	app.Use(func(c *fiber.Ctx) error {
-		wg.Add(1)
-		atomic.AddInt32(conns, 1)
 		c.SetUserContext(ctx)
 		c.Set("X-Node-ID", configure.Config.GetString("node_id"))
-		defer func() {
-			atomic.AddInt32(conns, -1)
-			wg.Done()
-		}()
 		return c.Next()
 	})
 
 	Health(app, conns)
 	Testing(app)
 	public := app.Group("/public")
-	EventsV1(public)
+	startCb := func() {
+		wg.Add(1)
+		atomic.AddInt32(conns, 1)
+	}
+	doneCb := func() {
+		atomic.AddInt32(conns, -1)
+		wg.Done()
+	}
+	EventsV1(public, startCb, doneCb)
 
 	app.Use(func(c *fiber.Ctx) error {
 		return c.SendStatus(404)

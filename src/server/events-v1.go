@@ -15,7 +15,7 @@ type v1Query struct {
 	Channels []string `query:"channel"`
 }
 
-func EventsV1(app fiber.Router) {
+func EventsV1(app fiber.Router, start, done func()) {
 	api := app.Group("/v1")
 	api.Get("/channel-emotes", func(c *fiber.Ctx) error {
 		query := v1Query{}
@@ -48,13 +48,16 @@ func EventsV1(app fiber.Router) {
 		subCh := make(chan string)
 
 		go func() {
+			start()
 			defer func() {
 				cancel()
+				done()
 				close(subCh)
 			}()
 			select {
 			case <-ctx.Done():
 			case <-usrCtx.Done():
+			case <-localCtx.Done():
 			}
 		}()
 
@@ -74,6 +77,7 @@ func EventsV1(app fiber.Router) {
 		ctx.SetBodyStreamWriter(func(w *bufio.Writer) {
 			tick := time.NewTicker(time.Second * 30)
 			defer func() {
+				defer cancel()
 				_ = w.Flush()
 				tick.Stop()
 			}()
