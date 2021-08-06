@@ -20,7 +20,7 @@ You can request to listen up 100 channels per connection.
 
 ##### Events
 
-1. `connection` this event is emitted when you first connect to show that the connection has been established successfully.
+1. `ready` this event is emitted when the connection is fully established and ready to receive events
 2. `update` this event is emitted when an update happens.
 3. `heartbeat` this event is emitted to force the connection to stay open and is sent every 30 seconds.
 
