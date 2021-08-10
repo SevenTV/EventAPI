@@ -109,7 +109,13 @@ interface ExtraEmoteData {
     display_name: string;
     // Twitch Login of the owner. 
     login: string;
-  }
+  };
+  // The first string in the inner array will contain the "name" of the URL, like "1" or "2" or "3" or "4"
+  // or some custom event names we haven't figured out yet such as "christmas_1" or "halloween_1" for special versions of emotes.
+  // The second string in the inner array will contain the actual CDN URL of the emote. You should use these URLs and not derive URLs
+  // based on the emote ID and size you want, since in future we might add "custom styles" and this will allow you to easily update your app, 
+  // and solve any future breaking changes you apps might receive due to us changing.
+  urls: [[string, string]];
 }
 
 ```
