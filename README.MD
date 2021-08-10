@@ -143,6 +143,12 @@ Example JSON
       "twitch_id": "84181465",
       "login": "noodlemanhours"
     },
-  }
+  },
+  "urls": [
+    ["1", "https://cdn.7tv.app/emote/60bf2b5b74461cf8fe2d187f/1x"],
+    ["2", "https://cdn.7tv.app/emote/60bf2b5b74461cf8fe2d187f/2x"],
+    ["3", "https://cdn.7tv.app/emote/60bf2b5b74461cf8fe2d187f/3x"],
+    ["4", "https://cdn.7tv.app/emote/60bf2b5b74461cf8fe2d187f/4x"],
+  ]
 }
 ```
