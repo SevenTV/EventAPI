@@ -69,7 +69,7 @@ The `X-Active-Connections` header will be set with the current number of active 
 #### EmoteEventUpdate
 
 ```ts
-interface EmoteEventUpate {
+interface EmoteEventUpdate {
   // The channel this update affects.
   channel: string; 
   // The ID of the emote.
