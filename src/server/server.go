@@ -7,6 +7,8 @@ import (
 	"sync/atomic"
 
 	"github.com/SevenTV/EventAPI/src/configure"
+	v1 "github.com/SevenTV/EventAPI/src/server/v1"
+	v2 "github.com/SevenTV/EventAPI/src/server/v2"
 	"github.com/SevenTV/EventAPI/src/utils"
 	"github.com/gofiber/fiber/v2"
 
@@ -20,8 +22,8 @@ func New(ctx context.Context, connType, connURI string) (*fiber.App, <-chan stru
 	})
 
 	wg := sync.WaitGroup{}
-
-	conns := utils.Int32Pointer(0)
+	v1conns := utils.Int32Pointer(0)
+	v2conns := utils.Int32Pointer(0)
 
 	app.Use(Logger())
 	app.Use(func(c *fiber.Ctx) error {
@@ -30,18 +32,31 @@ func New(ctx context.Context, connType, connURI string) (*fiber.App, <-chan stru
 		return c.Next()
 	})
 
-	Health(app, conns)
+	Health(app, v1conns)
 	Testing(app)
 	public := app.Group("/public")
+
+	// Start v1
 	startCb := func() {
 		wg.Add(1)
-		atomic.AddInt32(conns, 1)
+		atomic.AddInt32(v1conns, 1)
 	}
 	doneCb := func() {
-		atomic.AddInt32(conns, -1)
+		atomic.AddInt32(v1conns, -1)
 		wg.Done()
 	}
-	EventsV1(public, startCb, doneCb)
+	v1.EventsV1(public, startCb, doneCb)
+
+	// Start v2
+	startCb = func() {
+		wg.Add(1)
+		atomic.AddInt32(v2conns, 1)
+	}
+	doneCb = func() {
+		atomic.AddInt32(v2conns, -1)
+		wg.Done()
+	}
+	v2.EventsV2(public, startCb, doneCb)
 
 	app.Use(func(c *fiber.Ctx) error {
 		return c.SendStatus(404)
