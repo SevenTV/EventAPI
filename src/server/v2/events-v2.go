@@ -4,29 +4,50 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"fmt"
 	"math/rand"
+	"strconv"
 	"time"
 
+	"github.com/SevenTV/EventAPI/src/redis"
 	"github.com/gofiber/fiber/v2"
 )
+
+type Session struct {
+	ID      []rune
+	w       *bufio.Writer
+	Intents EventIntents
+}
 
 func EventsV2(app fiber.Router, start, done func()) {
 	api := app.Group("/v2")
 
 	api.Get("/", func(c *fiber.Ctx) error {
+		var session Session
+		// Retrieve initial intents, if any is specified
+		// or it will default to 0 (no intents)
+		qIntents := c.Query("intents", "0")
+		intents, err := strconv.Atoi(qIntents)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString(fmt.Sprintf("Bad Intents: %v", err.Error()))
+		}
+
 		// We have 2 contexts we need to respect, so we have to make a third to combine them.
 		ctx := c.Context()
 		usrCtx := c.UserContext()
 
 		localCtx, cancel := context.WithCancel(context.Background())
-		subCh := make(chan string)
+		eventCh := make(chan string)
+		mutateCh := make(chan string)
+		var sid []rune
 
 		go func() {
 			start()
 			defer func() {
 				cancel()
 				done()
-				close(subCh)
+				close(eventCh)
+				close(mutateCh)
 			}()
 			select {
 			case <-ctx.Done():
@@ -34,6 +55,9 @@ func EventsV2(app fiber.Router, start, done func()) {
 			case <-localCtx.Done():
 			}
 		}()
+
+		// Listen for session mutations
+		redis.Subscribe(localCtx, mutateCh, fmt.Sprintf("events-v2:mutate:%v", session.ID))
 
 		ctx.SetContentType("text/event-stream")
 		ctx.Response.Header.Set("Cache-Control", "no-cache")
@@ -56,9 +80,13 @@ func EventsV2(app fiber.Router, start, done func()) {
 				err error
 			)
 
-			// Write ready payload
+			// Ready the session
 			{
-				sid := generateSessionID()
+				// Generate and assign a session ID
+				sid = generateSessionID()
+				session = Session{sid, w, EventIntents(intents)}
+
+				// Write the payload
 				b, err := json.Marshal(&ReadyPayload{
 					Endpoint:  "7tv-event-sub.v2",
 					SessionID: string(sid),
@@ -95,7 +123,7 @@ func EventsV2(app fiber.Router, start, done func()) {
 					if err = w.Flush(); err != nil {
 						return
 					}
-				case msg = <-subCh:
+				case msg = <-eventCh:
 					if _, err = w.WriteString("event: update\n"); err != nil {
 						return
 					}
@@ -118,19 +146,23 @@ func EventsV2(app fiber.Router, start, done func()) {
 
 		return nil
 	})
+
+	MutateSession(api)
 }
 
 // generateSessionID: Create a new pseudo-random session ID
 func generateSessionID() []rune {
-	// Set seeding
-	rand.Seed(time.Now().UnixNano())
-
 	b := make([]rune, sessionIdLength)
 	for i := 0; i < sessionIdLength; i++ {
 		b[i] = sessionIdRunes[rand.Intn(len(sessionIdRunes))]
 	}
 
 	return b
+}
+
+func init() {
+	// Set seeding
+	rand.Seed(time.Now().UnixNano())
 }
 
 var sessionIdRunes = []rune("abcdefghijklmnopqrstuvwxyz123456789")
@@ -188,4 +220,17 @@ var (
 	EventNameEntitlementCreate EventName = "ENTITLEMENT_CREATE" // Entitlement Created
 	EventNameEntitlementUpdate EventName = "ENTITLEMENT_UPDATE" // Entitlement Updated
 	EventNameEntitlementDelete EventName = "ENTITLEMENT_DELETE" // Entitlement Deleted
+)
+
+type EventIntents int32
+
+const (
+	EventIntentsChannelEmote EventIntents = 1 << iota
+	EventIntentsEmote
+	EventIntentsUser
+	EventIntentsBan
+	EventIntentsApp
+	EventIntentsEntitlement
+
+	EventIntentsAll EventIntents = (1 << iota) - 1
 )
