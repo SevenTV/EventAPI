@@ -23,7 +23,7 @@ type Session struct {
 }
 
 type SessionIntent struct {
-	Name    string
+	Name    EventIntents
 	Ctx     context.Context
 	Cancel  context.CancelFunc
 	Targets []string
@@ -187,12 +187,13 @@ func EventsV2(app fiber.Router, start, done func()) {
 					}
 
 					// Find existing intent & edit it
-					intent, ok := session.Intents[EventIntents(mutationEvent.IntentName)]
+					intentName := EventIntents(mutationEvent.IntentName)
+					intent, ok := session.Intents[intentName]
 					if mutationEvent.Action != "DELETE" {
 						if !ok {
 							intentCtx, intentCancel := context.WithCancel(context.Background())
 							intent = SessionIntent{
-								Name:    mutationEvent.IntentName,
+								Name:    intentName,
 								Targets: mutationEvent.Targets,
 								Ctx:     intentCtx,
 								Cancel:  intentCancel,
@@ -207,6 +208,7 @@ func EventsV2(app fiber.Router, start, done func()) {
 
 							mutationEvent.Action = "UPDATE" // Set the action to update, as the intent was only modified not created
 							intent.Targets = mutationEvent.Targets
+							session.Intents[EventIntents(mutationEvent.IntentName)] = intent
 						}
 
 						// Subscribe
@@ -216,6 +218,9 @@ func EventsV2(app fiber.Router, start, done func()) {
 					} else {
 						if ok { // Cancel the existing subscription
 							intent.Cancel()
+							delete(session.Intents, intent.Name)
+						} else {
+							break
 						}
 					}
 
