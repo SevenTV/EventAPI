@@ -6,17 +6,25 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/rand"
-	"strconv"
 	"time"
 
 	"github.com/SevenTV/EventAPI/src/redis"
+	"github.com/SevenTV/EventAPI/src/utils"
 	"github.com/gofiber/fiber/v2"
+	log "github.com/sirupsen/logrus"
 )
 
 type Session struct {
 	ID      []rune
 	w       *bufio.Writer
-	Intents EventIntents
+	Intents map[EventIntents]SessionIntent
+}
+
+type SessionIntent struct {
+	Name    string
+	Ctx     context.Context
+	Cancel  context.CancelFunc
+	Targets []string
 }
 
 func EventsV2(app fiber.Router, start, done func()) {
@@ -24,13 +32,6 @@ func EventsV2(app fiber.Router, start, done func()) {
 
 	api.Get("/", func(c *fiber.Ctx) error {
 		var session Session
-		// Retrieve initial intents, if any is specified
-		// or it will default to 0 (no intents)
-		qIntents := c.Query("intents", "0")
-		intents, err := strconv.Atoi(qIntents)
-		if err != nil {
-			return c.Status(fiber.StatusBadRequest).SendString(fmt.Sprintf("Bad Intents: %v", err.Error()))
-		}
 
 		// We have 2 contexts we need to respect, so we have to make a third to combine them.
 		ctx := c.Context()
@@ -55,9 +56,6 @@ func EventsV2(app fiber.Router, start, done func()) {
 			case <-localCtx.Done():
 			}
 		}()
-
-		// Listen for session mutations
-		redis.Subscribe(localCtx, mutateCh, fmt.Sprintf("events-v2:mutate:%v", session.ID))
 
 		ctx.SetContentType("text/event-stream")
 		ctx.Response.Header.Set("Cache-Control", "no-cache")
@@ -84,12 +82,13 @@ func EventsV2(app fiber.Router, start, done func()) {
 			{
 				// Generate and assign a session ID
 				sid = generateSessionID()
-				session = Session{sid, w, EventIntents(intents)}
+				session = Session{sid, w, map[EventIntents]SessionIntent{}}
 
 				// Write the payload
 				b, err := json.Marshal(&ReadyPayload{
 					Endpoint:  "7tv-event-sub.v2",
 					SessionID: string(sid),
+					Intents:   []SessionIntent{},
 				})
 				if err != nil {
 					return
@@ -109,6 +108,9 @@ func EventsV2(app fiber.Router, start, done func()) {
 				}
 			}
 
+			// Listen for session mutations
+			redis.Subscribe(localCtx, mutateCh, fmt.Sprintf("events-v2:mutate:%v", string(session.ID)))
+
 			for {
 				select {
 				case <-localCtx.Done():
@@ -123,6 +125,7 @@ func EventsV2(app fiber.Router, start, done func()) {
 					if err = w.Flush(); err != nil {
 						return
 					}
+				// Handle an incoming event
 				case msg = <-eventCh:
 					if _, err = w.WriteString("event: update\n"); err != nil {
 						return
@@ -135,6 +138,69 @@ func EventsV2(app fiber.Router, start, done func()) {
 					}
 					// Write a 0 byte to signify end of a message to signify end of event.
 					if _, err = w.WriteString("\n\n"); err != nil {
+						return
+					}
+					if err = w.Flush(); err != nil {
+						return
+					}
+				// Handle a mutation on the active session
+				case msg = <-mutateCh:
+					var mutationEvent sessionMutationEvent
+					if err := json.Unmarshal(utils.S2B(msg), &mutationEvent); err != nil {
+						log.WithError(err).Error("json")
+						return
+					}
+
+					// Find existing intent & edit it
+					intent, ok := session.Intents[EventIntents(mutationEvent.IntentName)]
+					if mutationEvent.Action != "DELETE" {
+						if !ok {
+							intentCtx, intentCancel := context.WithCancel(context.Background())
+							intent = SessionIntent{
+								Name:    mutationEvent.IntentName,
+								Targets: mutationEvent.Targets,
+								Ctx:     intentCtx,
+								Cancel:  intentCancel,
+							}
+							session.Intents[EventIntents(mutationEvent.IntentName)] = intent
+						} else {
+							// Cancel the existing subscription
+							intent.Cancel()
+
+							mutationEvent.Action = "UPDATE"
+							intent.Targets = mutationEvent.Targets
+						}
+
+						// Subscribe
+						for _, target := range intent.Targets {
+							redis.Subscribe(ctx, eventCh, fmt.Sprintf("events-v2:%s:%s", intent.Name, target))
+						}
+					} else {
+						if ok { // Cancel the existing subscription
+							intent.Cancel()
+						}
+					}
+
+					// Mutation occured
+					if _, err := w.WriteString("event: mutation\n"); err != nil {
+						return
+					}
+					if _, err := w.WriteString("data: "); err != nil {
+						return
+					}
+
+					j, err := json.Marshal(map[string]interface{}{
+						"action":  mutationEvent.Action,
+						"intent":  mutationEvent.IntentName,
+						"targets": mutationEvent.Targets,
+					})
+					if err != nil {
+						log.WithError(err).Error("json")
+					}
+					if _, err := w.WriteString(string(j)); err != nil {
+						return
+					}
+					if _, err := w.WriteString("\n\n"); err != nil {
 						return
 					}
 					if err = w.Flush(); err != nil {
@@ -170,8 +236,9 @@ var sessionIdRunes = []rune("abcdefghijklmnopqrstuvwxyz123456789")
 const sessionIdLength = 16
 
 type ReadyPayload struct {
-	Endpoint  string `json:"endpoint"`
-	SessionID string `json:"session_id"`
+	Endpoint  string          `json:"endpoint"`
+	SessionID string          `json:"session_id"`
+	Intents   []SessionIntent `json:"intents"`
 }
 
 type DataPayload struct {
@@ -179,7 +246,7 @@ type DataPayload struct {
 	// recovering the events missed
 	Sequence int32 `json:"seq"`
 	// The type of the event
-	Type string `json:"t"`
+	Type EventName `json:"t"`
 	// A json payload containing the data for the event
 	Data json.RawMessage `json:"d"`
 }
@@ -222,15 +289,13 @@ var (
 	EventNameEntitlementDelete EventName = "ENTITLEMENT_DELETE" // Entitlement Deleted
 )
 
-type EventIntents int32
+type EventIntents string
 
 const (
-	EventIntentsChannelEmote EventIntents = 1 << iota
-	EventIntentsEmote
-	EventIntentsUser
-	EventIntentsBan
-	EventIntentsApp
-	EventIntentsEntitlement
-
-	EventIntentsAll EventIntents = (1 << iota) - 1
+	EventIntentsChannelEmote EventIntents = "channel-emote"
+	EventIntentsEmote        EventIntents = "emote"
+	EventIntentsUser         EventIntents = "user"
+	EventIntentsBan          EventIntents = "ban"
+	EventIntentsApp          EventIntents = "app"
+	EventIntentsEntitlement  EventIntents = "entitlement"
 )
