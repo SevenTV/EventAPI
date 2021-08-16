@@ -40,7 +40,7 @@ func main() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	_, serverDone := server.New(ctx, configure.Config.GetString("conn_type"), configure.Config.GetString("conn_uri"))
+	app, serverDone := server.New(ctx, configure.Config.GetString("conn_type"), configure.Config.GetString("conn_uri"))
 
 	go func() {
 		sig := <-c
@@ -56,6 +56,7 @@ func main() {
 
 		<-serverDone
 		log.Infoln("server shutdown")
+		app.Shutdown() // Shut down the api server
 
 		start := time.Now().UnixNano()
 
