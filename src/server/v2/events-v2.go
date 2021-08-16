@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/rand"
+	"regexp"
 	"time"
 
 	"github.com/SevenTV/EventAPI/src/redis"
@@ -27,6 +28,8 @@ type SessionIntent struct {
 	Cancel  context.CancelFunc
 	Targets []string
 }
+
+var eventSplit = regexp.MustCompile("^[^:]+.")
 
 func EventsV2(app fiber.Router, start, done func()) {
 	api := app.Group("/v2")
@@ -80,8 +83,9 @@ func EventsV2(app fiber.Router, start, done func()) {
 				tick.Stop()
 			}()
 			var (
-				msg string
-				err error
+				data     string
+				mutation string
+				err      error
 			)
 
 			// Ready the session
@@ -132,21 +136,35 @@ func EventsV2(app fiber.Router, start, done func()) {
 						return
 					}
 				// Handle an incoming event
-				case msg = <-eventCh:
+				case data = <-eventCh:
+					// Split event name | data
+					s := eventSplit.FindStringSubmatch(data)
+					if len(s) != 1 {
+						// Log an error if the API sent an invalid payload
+						log.WithFields(log.Fields{
+							"session_id": session.ID,
+							"seq":        session.Sequence,
+						}).Error("API sent an invalid event payload")
+						return
+					}
+					eventName := s[0][:len(s[0])-1]
+					payload := data[len(eventName)+1:]
+
+					session.Sequence++
+					j, err := json.Marshal(DataPayload{
+						Sequence: session.Sequence,
+						Type:     EventName(eventName),
+						Data:     json.RawMessage(payload),
+					})
+					if err != nil {
+						log.WithError(err).Error("json")
+						return
+					}
+
 					if _, err = w.WriteString("event: update\n"); err != nil {
 						return
 					}
 					if _, err = w.WriteString("data: "); err != nil {
-						return
-					}
-
-					j, err := json.Marshal(DataPayload{
-						Sequence: session.Sequence,
-						Type:     "GENERIC",
-						Data:     json.RawMessage(msg),
-					})
-					if err != nil {
-						log.WithError(err).Error("json")
 						return
 					}
 
@@ -161,9 +179,9 @@ func EventsV2(app fiber.Router, start, done func()) {
 						return
 					}
 				// Handle a mutation on the active session
-				case msg = <-mutateCh:
+				case mutation = <-mutateCh:
 					var mutationEvent sessionMutationEvent
-					if err := json.Unmarshal(utils.S2B(msg), &mutationEvent); err != nil {
+					if err := json.Unmarshal(utils.S2B(mutation), &mutationEvent); err != nil {
 						log.WithError(err).Error("json")
 						return
 					}
@@ -181,16 +199,19 @@ func EventsV2(app fiber.Router, start, done func()) {
 							}
 							session.Intents[EventIntents(mutationEvent.IntentName)] = intent
 						} else {
-							// Cancel the existing subscription
+							// Cancel the existing subscription & create a new context
 							intent.Cancel()
+							intentCtx, intentCancel := context.WithCancel(context.Background())
+							intent.Ctx = intentCtx
+							intent.Cancel = intentCancel
 
-							mutationEvent.Action = "UPDATE"
+							mutationEvent.Action = "UPDATE" // Set the action to update, as the intent was only modified not created
 							intent.Targets = mutationEvent.Targets
 						}
 
 						// Subscribe
 						for _, target := range intent.Targets {
-							redis.Subscribe(ctx, eventCh, fmt.Sprintf("events-v2:%s:%s", intent.Name, target))
+							redis.Subscribe(intent.Ctx, eventCh, fmt.Sprintf("events-v2:%s:%s", intent.Name, target))
 						}
 					} else {
 						if ok { // Cancel the existing subscription
