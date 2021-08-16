@@ -39,10 +39,33 @@ func MutateSession(app fiber.Router) {
 				return c.SendStatus(fiber.StatusInternalServerError)
 			}
 
-			if err := redis.Publish(ctx, fmt.Sprintf("events-v2:mutate:%v", sessionID), utils.B2S(j)); err != nil {
+			if err := redis.Publish(ctx, fmt.Sprintf("events-v2:intents:mutate:%s", sessionID), utils.B2S(j)); err != nil {
 				log.WithError(err).Error("redis")
 			}
 
+		}
+
+		return c.Status(fiber.StatusOK).SendString("OK")
+	})
+
+	app.Delete("/:session/intents/:intent", func(c *fiber.Ctx) error {
+		ctx := c.Context()
+		sessionID := c.Params("session")
+		intent := c.Params("intent")
+		if len(sessionID) != sessionIdLength {
+			return c.Status(fiber.StatusBadRequest).SendString("Bad Session ID")
+		}
+
+		j, err := json.Marshal(sessionMutationEvent{
+			Action:     "DELETE",
+			IntentName: string(intent),
+		})
+		if err != nil {
+			log.WithError(err).Error("json")
+			return c.SendStatus(fiber.StatusInternalServerError)
+		}
+		if err := redis.Publish(ctx, fmt.Sprintf("events-v2:intents:mutate:%s", sessionID), string(j)); err != nil {
+			log.WithError(err).Error("redis")
 		}
 
 		return c.Status(fiber.StatusOK).SendString("OK")

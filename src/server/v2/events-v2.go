@@ -119,7 +119,7 @@ func EventsV2(app fiber.Router, start, done func()) {
 			}
 
 			// Listen for session mutations
-			redis.Subscribe(localCtx, mutateCh, fmt.Sprintf("events-v2:mutate:%v", string(session.ID)))
+			redis.Subscribe(localCtx, mutateCh, fmt.Sprintf("events-v2:intents:mutate:%v", string(session.ID)))
 
 			for {
 				select {
