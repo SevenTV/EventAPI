@@ -15,9 +15,10 @@ import (
 )
 
 type Session struct {
-	ID      []rune
-	w       *bufio.Writer
-	Intents map[EventIntents]SessionIntent
+	ID       []rune
+	w        *bufio.Writer
+	Sequence int32
+	Intents  map[EventIntents]SessionIntent
 }
 
 type SessionIntent struct {
@@ -49,6 +50,11 @@ func EventsV2(app fiber.Router, start, done func()) {
 				done()
 				close(eventCh)
 				close(mutateCh)
+
+				// Cancel all active intents
+				for _, intent := range session.Intents {
+					intent.Cancel()
+				}
 			}()
 			select {
 			case <-ctx.Done():
@@ -82,7 +88,7 @@ func EventsV2(app fiber.Router, start, done func()) {
 			{
 				// Generate and assign a session ID
 				sid = generateSessionID()
-				session = Session{sid, w, map[EventIntents]SessionIntent{}}
+				session = Session{sid, w, 0, map[EventIntents]SessionIntent{}}
 
 				// Write the payload
 				b, err := json.Marshal(&ReadyPayload{
@@ -133,7 +139,18 @@ func EventsV2(app fiber.Router, start, done func()) {
 					if _, err = w.WriteString("data: "); err != nil {
 						return
 					}
-					if _, err = w.WriteString(msg); err != nil {
+
+					j, err := json.Marshal(DataPayload{
+						Sequence: session.Sequence,
+						Type:     "GENERIC",
+						Data:     json.RawMessage(msg),
+					})
+					if err != nil {
+						log.WithError(err).Error("json")
+						return
+					}
+
+					if _, err = w.WriteString(string(j)); err != nil {
 						return
 					}
 					// Write a 0 byte to signify end of a message to signify end of event.
