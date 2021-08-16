@@ -32,7 +32,7 @@ func New(ctx context.Context, connType, connURI string) (*fiber.App, <-chan stru
 		return c.Next()
 	})
 
-	Health(app, v1conns)
+	Health(app, v1conns, v2conns)
 	Testing(app)
 	public := app.Group("/public")
 

@@ -13,14 +13,15 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func Health(app fiber.Router, connPtr *int32) {
+func Health(app fiber.Router, connPtr *int32, connPtrv2 *int32) {
 	mtx := sync.Mutex{}
 
 	app.Get("/health", func(c *fiber.Ctx) error {
 		mtx.Lock()
 		defer mtx.Unlock()
 
-		c.Set("X-Active-Connections", fmt.Sprint(atomic.LoadInt32(connPtr)))
+		c.Set("X-Active-Connections-V1", fmt.Sprint(atomic.LoadInt32(connPtr)))
+		c.Set("X-Active-Connections-V2", fmt.Sprint(atomic.LoadInt32(connPtrv2)))
 
 		redisCtx, cancel := context.WithTimeout(c.Context(), time.Second*10)
 		defer cancel()
