@@ -6,27 +6,48 @@ on:
 
   workflow_dispatch:
 
-env:
-  REGISTRY_REPO: seventv/servergo
-  REGISTRTY_IMAGE_NAME: seventv/servergo:${{ github.sha }}
-
 jobs:
   build:
     name: Build (Production)
     runs-on: self-hosted
 
     steps:
-      # Checkout repository
       - uses: actions/checkout@v2
 
+<<<<<<< Updated upstream
       # Build image
       - name: Build Image
         id: build_step
         uses: docker/build-push-action@v2.7.0
+=======
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v1 
+>>>>>>> Stashed changes
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build Image
+        id: build_step
+        uses: docker/build-push-action@v2
+        with:
           push: true
-          tags: ${{ github.sha }}
-          outputs: type=docker,dest=/tmp/image.tar
+          tags: |
+            ghcr.io/seventv/eventapi:${{ github.sha }}
+            ghcr.io/seventv/eventapi:latest
+
+  deploy:
+    name: Deploy (Production)
+    runs-on: self-hosted
+    needs: 
+      - build
+
+    steps:
+      - name: Deploy Production Server
+        uses: fifsky/ssh-action@master
+        with:
+          command: docker pull ghcr.io/seventv/autodeploy:latest && docker run --net=host -v /opt/autodeploy/config.yaml:/app/config.yaml -v /opt/autodeploy/private.key:/app/private.key ghcr.io/seventv/autodeploy:latest --service events --tag ${{ github.sha }}
+          host: ${{ secrets.DEPLOY_HOST }}
+          user: root
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
