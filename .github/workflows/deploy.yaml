@@ -14,15 +14,8 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-<<<<<<< Updated upstream
-      # Build image
-      - name: Build Image
-        id: build_step
-        uses: docker/build-push-action@v2.7.0
-=======
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v1 
->>>>>>> Stashed changes
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
