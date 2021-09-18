@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/fsnotify/fsnotify"
@@ -35,11 +34,6 @@ var defaultConf = ServerCfg{
 
 var Config = viper.New()
 
-// Capture environment variables
-var NodeName string = os.Getenv("NODE_NAME")
-var PodName string = os.Getenv("POD_NAME")
-var PodIP string = os.Getenv("POD_IP")
-
 func initLog() {
 	if l, err := log.ParseLevel(Config.GetString("level")); err == nil {
 		log.SetLevel(l)
@@ -54,13 +48,6 @@ func checkErr(err error) {
 }
 
 func init() {
-	if NodeName == "" {
-		NodeName = "STANDALONE"
-	}
-	if PodName == "" {
-		PodName = "STANDALONE"
-	}
-
 	log.SetFormatter(&log.JSONFormatter{})
 	// Default config
 	b, _ := json.Marshal(defaultConf)
@@ -78,6 +65,7 @@ func init() {
 	pflag.String("conn_type", "", "Connection type, udp/tcp/unix")
 
 	pflag.String("node_id", "", "Used in the response header of a requset X-Node-ID")
+	pflag.String("node_name", "", "Used in the response header of a requset X-Node-Name")
 
 	pflag.Bool("disable_redis_cache", false, "Disable the redis cache for mongodb")
 
