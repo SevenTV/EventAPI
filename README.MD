@@ -109,7 +109,13 @@ interface ExtraEmoteData {
     display_name: string;
     // Twitch Login of the owner. 
     login: string;
-  }
+  };
+  // The first string in the inner array will contain the "name" of the URL, like "1" or "2" or "3" or "4"
+  // or some custom event names we haven't figured out yet such as "christmas_1" or "halloween_1" for special versions of emotes.
+  // The second string in the inner array will contain the actual CDN URL of the emote. You should use these URLs and not derive URLs
+  // based on the emote ID and size you want, since in future we might add "custom styles" and this will allow you to easily update your app, 
+  // and solve any future breaking changes you apps might receive due to us changing.
+  urls: [[string, string]];
 }
 
 ```
@@ -137,6 +143,12 @@ Example JSON
       "twitch_id": "84181465",
       "login": "noodlemanhours"
     },
-  }
+  },
+  "urls": [
+    ["1", "https://cdn.7tv.app/emote/60bf2b5b74461cf8fe2d187f/1x"],
+    ["2", "https://cdn.7tv.app/emote/60bf2b5b74461cf8fe2d187f/2x"],
+    ["3", "https://cdn.7tv.app/emote/60bf2b5b74461cf8fe2d187f/3x"],
+    ["4", "https://cdn.7tv.app/emote/60bf2b5b74461cf8fe2d187f/4x"],
+  ]
 }
 ```
