@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/fsnotify/fsnotify"
@@ -46,6 +47,11 @@ func checkErr(err error) {
 		log.WithError(err).Fatal("config")
 	}
 }
+
+// Capture environment variables
+var NodeName string = os.Getenv("NODE_NAME")
+var PodName string = os.Getenv("POD_NAME")
+var PodIP string = os.Getenv("POD_IP")
 
 func init() {
 	log.SetFormatter(&log.JSONFormatter{})

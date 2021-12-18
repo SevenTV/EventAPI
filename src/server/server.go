@@ -27,8 +27,9 @@ func New(ctx context.Context, connType, connURI string) (*fiber.App, <-chan stru
 	app.Use(func(c *fiber.Ctx) error {
 		c.SetUserContext(ctx)
 
-		c.Set("X-Node-ID", configure.Config.GetString("node_id"))
-		c.Set("X-Node-Name", configure.Config.GetString("node_name"))
+		c.Set("X-Node-Name", configure.NodeName)
+		c.Set("X-Pod-Name", configure.PodName)
+		c.Set("X-Pod-Internal-Address", configure.PodIP)
 
 		return c.Next()
 	})

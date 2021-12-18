@@ -1,7 +1,4 @@
-FROM golang:1.16.5-alpine3.13 AS build_base
-
-RUN apk add --no-cache git
-ENV CGO_ENABLED 0
+FROM golang:1.17.2 AS build_base
 
 WORKDIR /tmp/app
 
