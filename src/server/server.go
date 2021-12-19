@@ -17,7 +17,6 @@ func New(ctx context.Context, connType, connURI string) (*fiber.App, <-chan stru
 	app := fiber.New(fiber.Config{
 		DisableStartupMessage: true,
 		StreamRequestBody:     true,
-		StrictRouting:         false,
 	})
 
 	wg := sync.WaitGroup{}

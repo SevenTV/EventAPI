@@ -4,11 +4,16 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"io"
+	"net"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/SevenTV/EventAPI/src/redis"
+	"github.com/SevenTV/EventAPI/src/utils"
 	"github.com/gofiber/fiber/v2"
+	"github.com/sirupsen/logrus"
 )
 
 type v1Query struct {
@@ -66,61 +71,57 @@ func EventsV1(app fiber.Router, start, done func()) {
 			redis.Subscribe(localCtx, subCh, fmt.Sprintf("events-v1:channel-emotes:%v", channel))
 		}
 
-		ctx.SetContentType("text/event-stream")
+		ctx.Response.Header.Set("Content-Type", "text/event-stream")
 		ctx.Response.Header.Set("Cache-Control", "no-cache")
-		ctx.Response.Header.Set("Connection", "keep-alive")
 		ctx.Response.Header.Set("Transfer-Encoding", "chunked")
 		ctx.Response.Header.Set("Access-Control-Allow-Origin", "*")
 		ctx.Response.Header.Set("Access-Control-Allow-Headers", "Cache-Control")
 		ctx.Response.Header.Set("Access-Control-Allow-Credentials", "true")
 		ctx.Response.Header.Set("X-Accel-Buffering", "no")
 
+		ctx.Response.ImmediateHeaderFlush = true
+		ctx.Response.SetConnectionClose()
+
 		ctx.SetBodyStreamWriter(func(w *bufio.Writer) {
+			conn := ctx.Conn().(*net.TCPConn)
+
 			tick := time.NewTicker(time.Second * 30)
 			defer func() {
 				defer cancel()
-				_ = w.Flush()
 				tick.Stop()
 			}()
 			var (
 				msg string
 				err error
 			)
-			if _, err = w.WriteString("event: ready\ndata: 7tv-event-sub.v1\n\n"); err != nil {
+
+			if _, err = w.Write(utils.S2B("event: ready\ndata: 7tv-event-sub.v1\n\n")); err != nil {
+				logrus.Error(err)
 				return
 			}
-			if err = w.Flush(); err != nil {
+			if err := w.Flush(); err != nil {
 				return
 			}
+
 			for {
+				if err := connCheck(conn); err != nil {
+					return
+				}
 				select {
 				case <-localCtx.Done():
 					return
 				case <-tick.C:
-					if _, err = w.WriteString("event: heartbeat\n"); err != nil {
+					if _, err = w.Write(utils.S2B("event: heartbeat\ndata: {}\n\n")); err != nil {
 						return
 					}
-					if _, err = w.WriteString("data: {}\n\n"); err != nil {
-						return
-					}
-					if err = w.Flush(); err != nil {
+					if err := w.Flush(); err != nil {
 						return
 					}
 				case msg = <-subCh:
-					if _, err = w.WriteString("event: update\n"); err != nil {
+					if _, err = w.Write(utils.S2B(fmt.Sprintf("event: update\ndata: %s\n\n", msg))); err != nil {
 						return
 					}
-					if _, err = w.WriteString("data: "); err != nil {
-						return
-					}
-					if _, err = w.WriteString(msg); err != nil {
-						return
-					}
-					// Write a 0 byte to signify end of a message to signify end of event.
-					if _, err = w.WriteString("\n\n"); err != nil {
-						return
-					}
-					if err = w.Flush(); err != nil {
+					if err := w.Flush(); err != nil {
 						return
 					}
 				}
@@ -129,4 +130,30 @@ func EventsV1(app fiber.Router, start, done func()) {
 
 		return nil
 	})
+}
+
+func connCheck(conn net.Conn) error {
+	var sysErr error = nil
+	rc, err := conn.(syscall.Conn).SyscallConn()
+	if err != nil {
+		return err
+	}
+	err = rc.Read(func(fd uintptr) bool {
+		var buf []byte = []byte{0}
+		n, _, err := syscall.Recvfrom(int(fd), buf, syscall.MSG_PEEK|syscall.MSG_DONTWAIT)
+		switch {
+		case n == 0 && err == nil:
+			sysErr = io.EOF
+		case err == syscall.EAGAIN || err == syscall.EWOULDBLOCK:
+			sysErr = nil
+		default:
+			sysErr = err
+		}
+		return true
+	})
+	if err != nil {
+		return err
+	}
+
+	return sysErr
 }
