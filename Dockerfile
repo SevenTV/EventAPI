@@ -1,4 +1,4 @@
-FROM golang:1.17.2 AS build_base
+FROM golang:1.17.5-alpine3.15 AS build_base
 
 WORKDIR /tmp/app
 
@@ -9,9 +9,9 @@ RUN go mod download
 
 COPY . .
 
-RUN go test ./... && go build -o seventv
+RUN CGO_ENABLED=0 go test ./... && go build -o seventv
 
-FROM alpine:3.14
+FROM alpine:3.15
 RUN apk update && apk add --no-cache ca-certificates && rm -rf /var/cache/apk/*
 
 WORKDIR /app
