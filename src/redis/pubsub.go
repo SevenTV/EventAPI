@@ -3,7 +3,7 @@ package redis
 import (
 	"context"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 )
 
 // Publish to a redis channel
@@ -37,7 +37,7 @@ func Subscribe(ctx context.Context, ch chan string, subscribeTo ...string) {
 					if len(subs[e]) == 0 {
 						delete(subs, e)
 						if err := sub.Unsubscribe(context.Background(), e); err != nil {
-							log.WithError(err).Error("failed to unsubscribe")
+							logrus.WithError(err).Error("failed to unsubscribe")
 						}
 					}
 					break

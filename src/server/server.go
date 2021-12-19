@@ -10,13 +10,14 @@ import (
 	"github.com/SevenTV/EventAPI/src/utils"
 	"github.com/gofiber/fiber/v2"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 )
 
 func New(ctx context.Context, connType, connURI string) (*fiber.App, <-chan struct{}) {
 	app := fiber.New(fiber.Config{
 		DisableStartupMessage: true,
 		StreamRequestBody:     true,
+		StrictRouting:         false,
 	})
 
 	wg := sync.WaitGroup{}
@@ -24,12 +25,18 @@ func New(ctx context.Context, connType, connURI string) (*fiber.App, <-chan stru
 	conns := utils.Int32Pointer(0)
 
 	app.Use(Logger())
+
 	app.Use(func(c *fiber.Ctx) error {
 		c.SetUserContext(ctx)
 
 		c.Set("X-Node-Name", configure.NodeName)
 		c.Set("X-Pod-Name", configure.PodName)
 		c.Set("X-Pod-Internal-Address", configure.PodIP)
+
+		// FFZ AP fix for bad url
+		if c.Path() == "/public/v1//channel-emotes" {
+			c.Path("/public/v1/channel-emotes")
+		}
 
 		return c.Next()
 	})
@@ -51,12 +58,12 @@ func New(ctx context.Context, connType, connURI string) (*fiber.App, <-chan stru
 
 	ln, err := net.Listen(connType, connURI)
 	if err != nil {
-		log.WithError(err).Fatal("failed to make listener")
+		logrus.WithError(err).Fatal("failed to make listener")
 	}
 
 	go func() {
 		if err := app.Listener(ln); err != nil {
-			log.WithError(err).Fatal("failed to start server")
+			logrus.WithError(err).Fatal("failed to start server")
 		}
 	}()
 

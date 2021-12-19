@@ -6,7 +6,7 @@ import (
 	"github.com/SevenTV/EventAPI/src/configure"
 	"github.com/SevenTV/EventAPI/src/utils"
 	"github.com/gofiber/fiber/v2"
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 )
 
 func Logger() func(c *fiber.Ctx) error {
@@ -24,7 +24,7 @@ func Logger() func(c *fiber.Ctx) error {
 		if err != nil {
 			_ = c.SendStatus(500)
 		}
-		l := log.WithFields(log.Fields{
+		l := logrus.WithFields(logrus.Fields{
 			"status":    c.Response().StatusCode(),
 			"path":      utils.B2S(c.Request().RequestURI()),
 			"duration":  time.Since(start) / time.Millisecond,

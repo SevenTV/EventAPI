@@ -9,8 +9,7 @@ import (
 
 	"github.com/SevenTV/EventAPI/src/redis"
 	"github.com/gofiber/fiber/v2"
-
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 )
 
 func Health(app fiber.Router, connPtr *int32) {
@@ -25,7 +24,7 @@ func Health(app fiber.Router, connPtr *int32) {
 		redisCtx, cancel := context.WithTimeout(c.Context(), time.Second*10)
 		defer cancel()
 		if err := redis.Client.Ping(redisCtx).Err(); err != nil {
-			log.WithError(err).Error("health, REDIS IS DOWN")
+			logrus.WithError(err).Error("health, REDIS IS DOWN")
 			return c.SendStatus(503)
 		}
 

@@ -5,13 +5,13 @@ import (
 	"sync"
 
 	"github.com/go-redis/redis/v8"
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 )
 
 func Init(uri string) {
 	options, err := redis.ParseURL(uri)
 	if err != nil {
-		log.WithError(err).Fatal("redis failed")
+		logrus.WithError(err).Fatal("redis failed")
 	}
 
 	Client = redis.NewClient(options)
@@ -20,7 +20,7 @@ func Init(uri string) {
 	go func() {
 		defer func() {
 			if err := recover(); err != nil {
-				log.WithField("err", err).Fatal("panic in subs")
+				logrus.WithField("err", err).Fatal("panic in subs")
 			}
 		}()
 		ch := sub.Channel()
@@ -33,7 +33,7 @@ func Init(uri string) {
 				go func(s *redisSub) {
 					defer func() {
 						if err := recover(); err != nil {
-							log.WithField("err", err).Error("panic in subs")
+							logrus.WithField("err", err).Error("panic in subs")
 						}
 					}()
 					s.ch <- payload

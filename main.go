@@ -10,26 +10,26 @@ import (
 	"github.com/SevenTV/EventAPI/src/configure"
 	"github.com/SevenTV/EventAPI/src/redis"
 	"github.com/SevenTV/EventAPI/src/server"
+	"github.com/sirupsen/logrus"
 
 	"github.com/mitchellh/panicwrap"
-	log "github.com/sirupsen/logrus"
 )
 
 func main() {
 	// Catch panics - send alert to discord channel optionally
 	exitStatus, err := panicwrap.BasicWrap(panicHandler)
 	if err != nil {
-		log.WithError(err).Fatal("panic handler failed")
+		logrus.WithError(err).Fatal("panic handler failed")
 	}
 	if exitStatus >= 0 {
 		os.Exit(exitStatus)
 	}
 
-	log.Info("starting")
+	logrus.Info("starting")
 
 	configCode := configure.Config.GetInt("exit_code")
 	if configCode > 125 || configCode < 0 {
-		log.WithField("requested_exit_code", configCode).Warn("invalid exit code specified in config using 0 as new exit code")
+		logrus.WithField("requested_exit_code", configCode).Warn("invalid exit code specified in config using 0 as new exit code")
 		configCode = 0
 	}
 
@@ -49,27 +49,27 @@ func main() {
 			case <-c:
 			case <-time.After(time.Minute):
 			}
-			log.Fatal("force shutting down")
+			logrus.Fatal("force shutting down")
 		}()
-		log.WithField("sig", sig).Info("stop issued")
+		logrus.WithField("sig", sig).Info("stop issued")
 		cancel()
 
 		<-serverDone
-		log.Infoln("server shutdown")
+		logrus.Infoln("server shutdown")
 
 		start := time.Now().UnixNano()
 
-		log.WithField("duration", float64(time.Now().UnixNano()-start)/10e5).Infof("shutdown")
+		logrus.WithField("duration", float64(time.Now().UnixNano()-start)/10e5).Infof("shutdown")
 		os.Exit(configCode)
 	}()
 
-	log.Info("started")
+	logrus.Info("started")
 
 	select {}
 }
 
 func panicHandler(output string) {
-	log.Errorf("PANIC OCCURED:\n\n%s\n", output)
+	logrus.Errorf("PANIC OCCURED:\n\n%s\n", output)
 	// Try to send a message to discord
 	// discord.SendPanic(output)
 
