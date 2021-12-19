@@ -36,16 +36,14 @@ func New(ctx context.Context, connType, connURI string) (*fiber.App, <-chan stru
 
 	Health(app, conns)
 	Testing(app)
-	public := app.Group("/public")
-	startCb := func() {
+
+	EventsV1(app.Group("/public"), func() {
 		wg.Add(1)
 		atomic.AddInt32(conns, 1)
-	}
-	doneCb := func() {
+	}, func() {
 		atomic.AddInt32(conns, -1)
 		wg.Done()
-	}
-	EventsV1(public, startCb, doneCb)
+	})
 
 	app.Use(func(c *fiber.Ctx) error {
 		return c.SendStatus(404)

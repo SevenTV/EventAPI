@@ -17,6 +17,7 @@ type v1Query struct {
 
 func EventsV1(app fiber.Router, start, done func()) {
 	api := app.Group("/v1")
+
 	api.Get("/channel-emotes", func(c *fiber.Ctx) error {
 		query := v1Query{}
 		if err := c.QueryParser(&query); err != nil {
