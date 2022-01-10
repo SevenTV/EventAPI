@@ -56,7 +56,7 @@ jobs:
 
         # Deploy to k8s
         - name: Install kubectl&
-          uses: azure/setup-kubectl@v1
+          uses: azure/setup-kubectl@v2.0
 
         - name: Apply Deployment & Rollout
           env:
