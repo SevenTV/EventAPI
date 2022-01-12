@@ -1,4 +1,4 @@
-FROM golang:1.17.3-alpine as builder
+FROM golang:1.17.6-alpine as builder
 
 WORKDIR /tmp/events
 
