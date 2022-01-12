@@ -6,12 +6,20 @@ import (
 	"github.com/SevenTV/Common/utils"
 	v1 "github.com/SevenTV/EventAPI/src/app/v1"
 	"github.com/SevenTV/EventAPI/src/global"
+	"github.com/fasthttp/websocket"
 	"github.com/valyala/fasthttp"
 
 	"github.com/sirupsen/logrus"
 )
 
 func New(gCtx global.Context) <-chan struct{} {
+	upgrader := websocket.FastHTTPUpgrader{
+		CheckOrigin: func(ctx *fasthttp.RequestCtx) bool {
+			return true
+		},
+		EnableCompression: true,
+	}
+
 	server := fasthttp.Server{
 		Handler: func(ctx *fasthttp.RequestCtx) {
 			start := time.Now()
@@ -35,7 +43,16 @@ func New(gCtx global.Context) <-chan struct{} {
 
 			switch utils.B2S(ctx.Path()) {
 			case "/v1//channel-emotes", "/v1/channel-emotes":
-				v1.ChannelEmotes(gCtx, ctx)
+				if utils.B2S(ctx.Request.Header.Peek("upgrade")) == "websocket" {
+					if err := upgrader.Upgrade(ctx, func(c *websocket.Conn) {
+						v1.ChannelEmotesWS(gCtx, c)
+					}); err != nil {
+						ctx.SetStatusCode(400)
+						ctx.SetBody([]byte(err.Error()))
+					}
+				} else {
+					v1.ChannelEmotesSSE(gCtx, ctx)
+				}
 			default:
 				ctx.SetStatusCode(404)
 			}
