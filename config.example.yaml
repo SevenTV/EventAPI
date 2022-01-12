@@ -1,5 +1,27 @@
 level: info
-redis_uri: redis://127.0.0.1/0
 
-conn_uri: 127.0.0.1:3000
-conn_type: tcp
+redis:
+  username: ""
+  password: ""
+  addresses:
+    - ""
+  database: 0
+  sentinel: false
+
+api:
+  enabled: true
+  bind: :3000
+
+monitoring:
+  enabled: true
+  bind: :9100
+  labels:
+    - key: key
+      value: value
+
+health:
+  enabled: true
+  bind: :9101
+
+pod:
+  name: ""

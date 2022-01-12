@@ -5,10 +5,8 @@ updates:
     target-branch: dev
     schedule:
       interval: weekly
-    ignore:
-      # ignore forked linters because of their versioning issues. TODO: fix it.
-      - dependency-name: "github.com/golangci/*"
     reviewers:
+      - anatoleam
       - troydota
   - package-ecosystem: github-actions
     directory: "/"
@@ -16,6 +14,7 @@ updates:
     schedule:
       interval: weekly
     reviewers:
+      - anatoleam
       - troydota
   - package-ecosystem: docker
     directory: "/build"
@@ -23,6 +22,7 @@ updates:
     schedule:
       interval: weekly
     reviewers:
+      - anatoleam
       - troydota
   - package-ecosystem: gomod
     directory: "/scripts/gen_github_action_config"
@@ -37,4 +37,5 @@ updates:
     schedule:
       interval: monthly
     reviewers:
+      - anatoleam
       - troydota
