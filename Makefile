@@ -22,6 +22,7 @@ lint:
 	staticcheck ./...
 	go vet ./...
 	golangci-lint run
+	prettier --write .
 
 deps:
 	go mod download
