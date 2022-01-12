@@ -1,19 +1,23 @@
 # SevenTV EventAPI
 
-![](https://cdn.discordapp.com/attachments/817075418640678964/871969835087704124/icon-512x512.png)
+![7tv logo](https://cdn.discordapp.com/attachments/817075418640678964/871969835087704124/icon-512x512.png)
 
-### External API Documentation
+## External API Documentation
 
-#### GET /v1/channel-emotes
+### GET /v1/channel-emotes
 
 This API is an example of [ServerSentEvents](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events)
 
 This Endpoint takes in query paramaters with the name `channel` as the channel name ie. `troydota` or `anatoleam`.
 
 An example urls are:
+
 1. `https://events.7tv.app/v1/channel-emotes?channel=troydota&channel=anatoleam`
+
 2. `https://events.7tv.app/v1/channel-emotes?channel=troydota,anatoleam`
+
 3. `https://events.7tv.app/v1/channel-emotes?channel=troydota+anatoleam`
+
 4. `https://events.7tv.app/v1/channel-emotes?channel=troydota%20anatoleam`
 
 There is also a websocket API on this same endpoint.
@@ -21,14 +25,45 @@ There is also a websocket API on this same endpoint.
 If you connect to `wss://events.7tv.app/v1/channel-emotes` your connection will be handled as a websocket.
 
 To join a channel,
-`{"action":"join","payload":"troydota"}`
+
+```json
+{
+  "action": "join",
+  "payload": "troydota"
+}
+```
 
 To part a channel,
-`{"action":"part","payload":"troydota"}`
+
+```json
+{
+  "action": "part",
+  "payload": "troydota"
+}
+```
+
+Upon doing either a join or a part this you will receive an event:
+
+```json
+{
+  "action": "success",
+  "payload": "join"
+}
+```
+
+or an error
+
+```json
+{
+  "action": "error",
+  "payload": "<reason>"
+}
+```
 
 You can also specify multiple channels, the same ways you would in the query string.
 
 When an event is fired you will receive this:
+
 ```json
 {
   "action": "update",
@@ -37,6 +72,7 @@ When an event is fired you will receive this:
 ```
 
 Every 30 seconds you will receive a ping, you do not need to respond to it.
+
 ```json
 {
   "action": "ping"
@@ -45,16 +81,15 @@ Every 30 seconds you will receive a ping, you do not need to respond to it.
 
 The payload is a stringified json payload.
 
-
 You can request to listen up 100 channels per connection.
 
-##### Events
+#### Events
 
 1. `ready` this event is emitted when the connection is fully established and ready to receive events
 2. `update` this event is emitted when an update happens.
 3. `heartbeat` this event is emitted to force the connection to stay open and is sent every 30 seconds.
 
-##### JavaScript code
+#### JavaScript code
 
 ```js
 const source = new EventSource('https://events.7tv.app/v1/channel-emotes?channel=troydota&channel=anatoleam');
@@ -80,18 +115,19 @@ source.addEventListener("error", (e) => {
 }, false);
 ```
 
-### Internal API Documentation
+## Internal API Documentation
 
-#### Redis PubSub
+### Redis PubSub
 
 ```redis
 PUBLISH "events-v1:channel-emotes:<channel-name>" "json-payload";
 ```
+
 Where the JSON payload is an EmoteEventUpdate.
 
-### JSON Payloads
+## JSON Payloads
 
-#### EmoteEventUpdate
+### EmoteEventUpdate
 
 ```ts
 interface EmoteEventUpdate {
