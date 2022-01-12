@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/SevenTV/Common/utils"
+	"github.com/SevenTV/EventAPI/src/events"
 	"github.com/SevenTV/EventAPI/src/global"
 	"github.com/fasthttp/websocket"
 	jsoniter "github.com/json-iterator/go"
@@ -68,20 +69,7 @@ func ChannelEmotesSSE(gCtx global.Context, ctx *fasthttp.RequestCtx) {
 		gCtx.Inst().Redis.Subscribe(localCtx, subCh, fmt.Sprintf("events-v1:channel-emotes:%v", channel))
 	}
 
-	ctx.Response.Header.Set("Content-Type", "text/event-stream")
-	ctx.Response.Header.Set("Cache-Control", "no-cache")
-	ctx.Response.Header.Set("Transfer-Encoding", "chunked")
-	ctx.Response.Header.Set("Access-Control-Allow-Origin", "*")
-	ctx.Response.Header.Set("Access-Control-Allow-Headers", "Cache-Control")
-	ctx.Response.Header.Set("Access-Control-Allow-Credentials", "true")
-	ctx.Response.Header.Set("X-Accel-Buffering", "no")
-
-	ctx.SetStatusCode(200)
-
-	ctx.Response.ImmediateHeaderFlush = true
-	ctx.Response.SetConnectionClose()
-
-	ctx.SetBodyStreamWriter(func(w *bufio.Writer) {
+	events.NewEventStream(ctx, func(w *bufio.Writer) {
 		conn := ctx.Conn().(*net.TCPConn)
 
 		tick := time.NewTicker(time.Second * 30)
