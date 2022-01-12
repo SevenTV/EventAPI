@@ -42,24 +42,24 @@ jobs:
       - build
 
     steps:
-        # Checkout repository
-        - uses: actions/checkout@v2
+      # Checkout repository
+      - uses: actions/checkout@v2
 
-        # Deploy to k8s
-        - name: Install kubectl&
-          uses: azure/setup-kubectl@v1
+      # Deploy to k8s
+      - name: Install kubectl&
+        uses: azure/setup-kubectl@v1
 
-        - name: Apply Deployment & Rollout
-          env:
-            KUBE_CONFIG_DATA: ${{ secrets.KUBECONFIG }}
-            KUBE_RESOURCE: deploy
-            KUBE_IMAGE_PATCH: >-
-              [
-                { "op": "replace", "path": "/spec/template/spec/containers/0/image", "value": "harbor.disembark.dev/7tv/event-api:${{ github.sha }}" }
-              ]
-          run: |
-            mkdir -p ~/.kube
-            (echo $KUBE_CONFIG_DATA | base64 -d) >> ~/.kube/config
-            kubectl config use-context autodeploy@SevenTV
+      - name: Apply Deployment & Rollout
+        env:
+          KUBE_CONFIG_DATA: ${{ secrets.KUBECONFIG }}
+          KUBE_RESOURCE: deploy
+          KUBE_IMAGE_PATCH: >-
+            [
+              { "op": "replace", "path": "/spec/template/spec/containers/0/image", "value": "harbor.disembark.dev/7tv/event-api:${{ github.sha }}" }
+            ]
+        run: |
+          mkdir -p ~/.kube
+          (echo $KUBE_CONFIG_DATA | base64 -d) >> ~/.kube/config
+          kubectl config use-context autodeploy@SevenTV
 
-            kubectl patch -n app $KUBE_RESOURCE seventv-events --type="json" -p="$KUBE_IMAGE_PATCH"
+          kubectl patch -n app $KUBE_RESOURCE seventv-events --type="json" -p="$KUBE_IMAGE_PATCH"
