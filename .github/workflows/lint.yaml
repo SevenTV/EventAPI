@@ -52,9 +52,6 @@ jobs:
       - name: install deps
         run: make deps
 
-      - name: generate gql structures
-        run: make gql
-
       - uses: actionsx/prettier@v2
         with:
           args: --check .
