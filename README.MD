@@ -16,6 +16,36 @@ An example urls are:
 3. `https://events.7tv.app/v1/channel-emotes?channel=troydota+anatoleam`
 4. `https://events.7tv.app/v1/channel-emotes?channel=troydota%20anatoleam`
 
+There is also a websocket API on this same endpoint.
+
+If you connect to `wss://events.7tv.app/v1/channel-emotes` your connection will be handled as a websocket.
+
+To join a channel,
+`{"action":"join","payload":"troydota"}`
+
+To part a channel,
+`{"action":"part","payload":"troydota"}`
+
+You can also specify multiple channels, the same ways you would in the query string.
+
+When an event is fired you will receive this:
+```json
+{
+  "action": "update",
+  "payload": "{\"channel\":\"troydota\",...}",
+}
+```
+
+Every 30 seconds you will receive a ping, you do not need to respond to it.
+```json
+{
+  "action": "ping"
+}
+```
+
+The payload is a stringified json payload.
+
+
 You can request to listen up 100 channels per connection.
 
 ##### Events
@@ -58,11 +88,6 @@ source.addEventListener("error", (e) => {
 PUBLISH "events-v1:channel-emotes:<channel-name>" "json-payload";
 ```
 Where the JSON payload is an EmoteEventUpdate.
-
-#### GET /health
-
-This endpoint is entirely internal and will return a `200` if redis responds or a `5xx` status if redis does not respond.
-The `X-Active-Connections` header will be set with the current number of active connections.
 
 ### JSON Payloads
 
