@@ -1,21 +1,27 @@
-FROM golang:1.17.5-alpine3.15 AS build_base
+FROM golang:1.17.3-alpine as builder
 
-WORKDIR /tmp/app
+WORKDIR /tmp/events
 
-COPY go.mod .
-COPY go.sum .
+ARG BUILDER
+ARG VERSION
+
+ENV EVENTS_BUILDER=${BUILDER}
+ENV EVENTS_VERSION=${VERSION}
+
+RUN apk add --no-cache make git
+
+COPY go.mod go.sum Makefile ./
 
 RUN go mod download
 
 COPY . .
 
-RUN CGO_ENABLED=0 go test ./... && go build -o seventv
+RUN make
 
-FROM alpine:3.15
-RUN apk update && apk add --no-cache ca-certificates && rm -rf /var/cache/apk/*
+FROM alpine:latest
 
 WORKDIR /app
 
-COPY --from=build_base /tmp/app/seventv /app/seventv
+COPY --from=builder /tmp/events/bin/events .
 
-ENTRYPOINT ["/app/seventv"]
+ENTRYPOINT ["./events"]

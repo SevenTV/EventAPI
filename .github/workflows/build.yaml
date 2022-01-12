@@ -1,0 +1,36 @@
+name: Build EventAPI
+
+on:
+  push:
+    branches: [master]
+
+  workflow_dispatch:
+
+jobs:
+  gql:
+    name: Build EventAPI
+    runs-on: self-hosted
+
+    steps:
+      - uses: actions/checkout@v2.4.0
+        with:
+          submodules: recursive
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build Image
+        id: build_step
+        uses: docker/build-push-action@v2
+        with:
+          push: true
+          build-args: |
+            "BUILDER=${{ github.actor }}"
+            "VERSION=${{ github.sha }}"
+          tags: |
+            harbor.disembark.dev/7tv/event-api:${{ github.sha }}
+            harbor.disembark.dev/7tv/event-api:latest

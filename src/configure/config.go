@@ -3,43 +3,51 @@ package configure
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
-	"os"
+	"reflect"
 	"strings"
 
-	"github.com/fsnotify/fsnotify"
-	"github.com/kr/pretty"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 )
 
-type ServerCfg struct {
+type Config struct {
 	Level      string `mapstructure:"level" json:"level"`
 	ConfigFile string `mapstructure:"config_file" json:"config_file"`
+	NoHeader   bool   `mapstructure:"noheader" json:"noheader"`
 
-	RedisURI string `mapstructure:"redis_uri" json:"redis_uri"`
+	Redis struct {
+		Username  string   `mapstructure:"username" json:"username"`
+		Password  string   `mapstructure:"password" json:"password"`
+		Addresses []string `mapstructure:"addresses" json:"addresses"`
+		Database  int      `mapstructure:"database" json:"database"`
+		Sentinel  bool     `mapstructure:"sentinel" json:"sentinel"`
+	} `mapstructure:"redis" json:"redis"`
 
-	ConnURI  string `mapstructure:"conn_uri" json:"conn_uri"`
-	ConnType string `mapstructure:"conn_type" json:"conn_type"`
+	API struct {
+		Enabled bool   `mapstructure:"enabled" json:"enabled"`
+		Bind    string `mapstructure:"bind" json:"bind"`
+	} `mapstructure:"api" json:"api"`
 
-	NodeID string `mapstructure:"node_id" json:"node_id"`
+	Monitoring struct {
+		Enabled bool       `mapstructure:"enabled" json:"enabled"`
+		Bind    string     `mapstructure:"bind" json:"bind"`
+		Labels  []KeyValue `mapstructure:"labels" json:"labels"`
+	} `mapstructure:"monitoring" json:"monitoring"`
 
-	ExitCode int `mapstructure:"exit_code" json:"exit_code"`
+	Health struct {
+		Enabled bool   `mapstructure:"enabled" json:"enabled"`
+		Bind    string `mapstructure:"bind" json:"bind"`
+	} `mapstructure:"health" json:"health"`
+
+	Pod struct {
+		Name string `mapstructure:"name" json:"name"`
+	} `mapstructure:"pod" json:"pod"`
 }
 
-// default config
-var defaultConf = ServerCfg{
-	ConfigFile: "config.yaml",
-}
-
-var Config = viper.New()
-
-func initLog() {
-	if l, err := logrus.ParseLevel(Config.GetString("level")); err == nil {
-		logrus.SetLevel(l)
-		logrus.SetReportCaller(true)
-	}
+type KeyValue struct {
+	Key   string `mapstructure:"key" json:"key"`
+	Value string `mapstructure:"value" json:"value"`
 }
 
 func checkErr(err error) {
@@ -48,65 +56,66 @@ func checkErr(err error) {
 	}
 }
 
-// Capture environment variables
-var NodeName string = os.Getenv("NODE_NAME")
-var PodName string = os.Getenv("POD_NAME")
-var PodIP string = os.Getenv("POD_IP")
+func New() *Config {
+	initLogging("fatal")
 
-func init() {
-	logrus.SetFormatter(&logrus.JSONFormatter{})
+	config := viper.New()
+
 	// Default config
-	b, _ := json.Marshal(defaultConf)
+	b, _ := json.Marshal(Config{
+		ConfigFile: "config.yaml",
+	})
+
+	tmp := viper.New()
 	defaultConfig := bytes.NewReader(b)
-	viper.SetConfigType("json")
-	checkErr(viper.ReadConfig(defaultConfig))
-	checkErr(Config.MergeConfigMap(viper.AllSettings()))
+	tmp.SetConfigType("json")
+	checkErr(tmp.ReadConfig(defaultConfig))
+	checkErr(config.MergeConfigMap(viper.AllSettings()))
 
 	// Flags
-	pflag.String("config_file", "config.yaml", "configure filename")
-	pflag.String("level", "info", "Log level")
-	pflag.String("redis_uri", "", "Address for the redis server.")
-
-	pflag.String("conn_uri", "", "Connection url:port or path")
-	pflag.String("conn_type", "", "Connection type, udp/tcp/unix")
-
-	pflag.String("node_id", "", "Used in the response header of a requset X-Node-ID")
-	pflag.String("node_name", "", "Used in the response header of a requset X-Node-Name")
-
-	pflag.Bool("disable_redis_cache", false, "Disable the redis cache for mongodb")
-
-	pflag.String("version", "1.0", "Version of the system.")
-	pflag.Int("exit_code", 0, "Status code for successful and graceful shutdown, [0-125].")
+	pflag.String("config", "config.yaml", "Config file location")
+	pflag.Bool("noheader", false, "Disable the startup header")
 	pflag.Parse()
-	checkErr(Config.BindPFlags(pflag.CommandLine))
+	checkErr(config.BindPFlags(pflag.CommandLine))
 
 	// File
-	Config.SetConfigFile(Config.GetString("config_file"))
-	Config.AddConfigPath(".")
-	err := Config.ReadInConfig()
-	if err != nil {
-		logrus.Warning(err)
-		logrus.Info("Using default config")
-	} else {
-		checkErr(Config.MergeInConfig())
-	}
+	config.SetConfigFile(config.GetString("config"))
+	config.AddConfigPath(".")
+	checkErr(config.ReadInConfig())
+	checkErr(config.MergeInConfig())
+
+	BindEnvs(config, Config{})
 
 	// Environment
-	replacer := strings.NewReplacer(".", "_")
-	Config.SetEnvKeyReplacer(replacer)
-	Config.AllowEmptyEnv(true)
-	Config.AutomaticEnv()
-
-	// Log
-	initLog()
+	config.AutomaticEnv()
+	config.SetEnvPrefix("EVENTS")
+	config.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	config.AllowEmptyEnv(true)
 
 	// Print final config
-	c := ServerCfg{}
-	checkErr(Config.Unmarshal(&c))
-	logrus.Debugf("Current configurations: \n%# v", pretty.Formatter(c))
+	c := &Config{}
+	checkErr(config.Unmarshal(&c))
 
-	Config.WatchConfig()
-	Config.OnConfigChange(func(_ fsnotify.Event) {
-		fmt.Println("Config has changed")
-	})
+	initLogging(c.Level)
+
+	return c
+}
+
+func BindEnvs(config *viper.Viper, iface interface{}, parts ...string) {
+	ifv := reflect.ValueOf(iface)
+	ift := reflect.TypeOf(iface)
+	for i := 0; i < ift.NumField(); i++ {
+		v := ifv.Field(i)
+		t := ift.Field(i)
+		tv, ok := t.Tag.Lookup("mapstructure")
+		if !ok {
+			continue
+		}
+		switch v.Kind() {
+		case reflect.Struct:
+			BindEnvs(config, v.Interface(), append(parts, tv)...)
+		default:
+			_ = config.BindEnv(strings.Join(append(parts, tv), "."))
+		}
+	}
 }
