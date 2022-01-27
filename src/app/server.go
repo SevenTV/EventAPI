@@ -53,6 +53,14 @@ func New(gCtx global.Context) <-chan struct{} {
 				} else {
 					v1.ChannelEmotesSSE(gCtx, ctx)
 				}
+			case "/health":
+				if err := gCtx.Inst().Redis.Ping(ctx); err != nil {
+					ctx.SetBodyString("redis down")
+					ctx.SetStatusCode(500)
+				} else {
+					ctx.SetBodyString("OK")
+					ctx.SetStatusCode(200)
+				}
 			default:
 				ctx.SetStatusCode(404)
 			}
