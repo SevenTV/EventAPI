@@ -12,7 +12,7 @@ jobs:
     runs-on: self-hosted
 
     steps:
-      - uses: actions/checkout@v2.4.0
+      - uses: actions/checkout@v3
         with:
           submodules: recursive
 
@@ -54,7 +54,7 @@ jobs:
 
     steps:
       # Checkout repository
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       # Deploy to k8s
       - name: Install kubectl&
