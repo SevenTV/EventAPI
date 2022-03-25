@@ -6,7 +6,7 @@ require (
 	github.com/SevenTV/Common v0.0.0-20220112153937-b2577b36be1e
 	github.com/bugsnag/panicwrap v1.3.4
 	github.com/fasthttp/websocket v1.5.0
-	github.com/go-redis/redis/v8 v8.11.4
+	github.com/go-redis/redis/v8 v8.11.5
 	github.com/json-iterator/go v1.1.12
 	github.com/prometheus/client_golang v1.12.1
 	github.com/sirupsen/logrus v1.8.1
