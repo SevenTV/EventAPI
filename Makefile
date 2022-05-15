@@ -21,13 +21,20 @@ linux:
 lint:
 	staticcheck ./...
 	go vet ./...
-	golangci-lint run
+	golangci-lint run --go=1.18
 	prettier --write .
 
 deps:
 	go mod download
-	go install honnef.co/go/tools/cmd/staticcheck@latest
+	go install honnef.co/go/tools/cmd/staticcheck@2022.1
 	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 
 test:
 	go test -count=1 -cover ./...
+
+work:
+	echo "go 1.18\n\nuse (\n\t.\n\t../Common\n)" > go.work
+	go mod tidy
+
+dev:
+	go run cmd/main.go

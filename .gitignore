@@ -17,3 +17,6 @@
 node_modules/
 bin/
 config.yaml
+
+go.work
+go.work.sum

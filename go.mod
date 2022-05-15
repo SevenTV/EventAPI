@@ -1,6 +1,6 @@
 module github.com/SevenTV/EventAPI
 
-go 1.17
+go 1.18
 
 require (
 	github.com/SevenTV/Common v0.0.0-20220112153937-b2577b36be1e
