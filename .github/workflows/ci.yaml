@@ -69,12 +69,6 @@ jobs:
       - name: install deps
         run: make deps
 
-      - name: install dev_deps
-        run: make dev_deps
-
-      - name: Generate structures
-        run: make generate
-
       - name: Run Lint
         run: make lint
 
