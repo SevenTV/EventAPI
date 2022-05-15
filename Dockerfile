@@ -1,27 +1,55 @@
-FROM golang:1.17.6-alpine as builder
+# The base image used to build all other images
+ARG BASE_IMG=ubuntu:22.04
+# The tag to use for golang image
+ARG GOLANG_TAG=1.18.2
 
-WORKDIR /tmp/events
+#
+# Download and install all deps required to run tests and build the go application
+#
+FROM golang:$GOLANG_TAG as go
 
-ARG BUILDER
-ARG VERSION
+FROM $BASE_IMG as go-builder
+    WORKDIR /tmp/build
 
-ENV EVENTS_BUILDER=${BUILDER}
-ENV EVENTS_VERSION=${VERSION}
+    # update the apt repo and install any deps we might need.
+    RUN apt-get update && \
+        apt-get install -y \
+            build-essential \
+            make \
+            git && \
+        apt-get autoremove -y && \
+        apt-get clean -y && \
+        rm -rf /var/cache/apt/archives /var/lib/apt/lists/*
 
-RUN apk add --no-cache make git
+    ENV PATH /usr/local/go/bin:$PATH
+    ENV GOPATH /go
+    ENV PATH $GOPATH/bin:$PATH
+    COPY --from=go /usr/local /usr/local
+    COPY --from=go /go /go
 
-COPY go.mod go.sum Makefile ./
+    COPY go.mod .
+    COPY go.sum .
+    COPY Makefile .
+    RUN mkdir -p "$GOPATH/src" "$GOPATH/bin" && chmod -R 777 "$GOPATH" && \
+        make deps
 
-RUN go mod download
+    COPY . .
 
-COPY . .
+    ARG BUILDER
+    ARG VERSION
 
-RUN make
+    ENV EVENTS_BUILDER=${BUILDER}
+    ENV EVENTS_VERSION=${VERSION}
 
-FROM alpine:latest
+    RUN make
 
-WORKDIR /app
+#
+# final squashed image
+#
+FROM $BASE_IMG as final
+    WORKDIR /app
 
-COPY --from=builder /tmp/events/bin/events .
+    COPY --from=go-builder /tmp/build/out .
 
-ENTRYPOINT ["./events"]
+    CMD ./api
+
