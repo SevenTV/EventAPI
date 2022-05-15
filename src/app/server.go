@@ -5,6 +5,7 @@ import (
 
 	"github.com/SevenTV/Common/utils"
 	v1 "github.com/SevenTV/EventAPI/src/app/v1"
+	v3 "github.com/SevenTV/EventAPI/src/app/v3"
 	"github.com/SevenTV/EventAPI/src/global"
 	"github.com/fasthttp/websocket"
 	"github.com/valyala/fasthttp"
@@ -42,6 +43,15 @@ func New(gCtx global.Context) <-chan struct{} {
 			ctx.Response.Header.Set("X-Pod-Name", gCtx.Config().Pod.Name)
 
 			switch utils.B2S(ctx.Path()) {
+			case "/v3":
+				if utils.B2S(ctx.Request.Header.Peek("upgrade")) == "websocket" {
+					if err := upgrader.Upgrade(ctx, func(c *websocket.Conn) {
+						v3.WebSocket(gCtx, c)
+					}); err != nil {
+						ctx.SetStatusCode(400)
+						ctx.SetBody(utils.S2B(err.Error()))
+					}
+				}
 			case "/v1//channel-emotes", "/v1/channel-emotes":
 				if utils.B2S(ctx.Request.Header.Peek("upgrade")) == "websocket" {
 					if err := upgrader.Upgrade(ctx, func(c *websocket.Conn) {

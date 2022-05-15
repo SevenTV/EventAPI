@@ -12,7 +12,7 @@ import (
 
 type Redis interface {
 	redis.Instance
-	Subscribe(ctx context.Context, ch chan string, subscribeTo ...string)
+	EventsSubscribe(ctx context.Context, ch chan string, subscribeTo ...string)
 }
 
 type RedisInst struct {
@@ -59,7 +59,7 @@ type redisSub struct {
 }
 
 // Subscribe to a channel on Redis
-func (r *RedisInst) Subscribe(ctx context.Context, ch chan string, subscribeTo ...string) {
+func (r *RedisInst) EventsSubscribe(ctx context.Context, ch chan string, subscribeTo ...string) {
 	r.subsMtx.Lock()
 	defer r.subsMtx.Unlock()
 	localSub := &redisSub{ch}

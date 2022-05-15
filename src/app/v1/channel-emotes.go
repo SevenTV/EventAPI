@@ -66,7 +66,7 @@ func ChannelEmotesSSE(gCtx global.Context, ctx *fasthttp.RequestCtx) {
 	}()
 
 	for channel := range uniqueChannels {
-		gCtx.Inst().Redis.Subscribe(localCtx, subCh, fmt.Sprintf("events-v1:channel-emotes:%v", channel))
+		gCtx.Inst().Redis.EventsSubscribe(localCtx, subCh, fmt.Sprintf("events-v1:channel-emotes:%v", channel))
 	}
 
 	events.NewEventStream(ctx, func(w *bufio.Writer) {
@@ -206,7 +206,7 @@ func ChannelEmotesWS(gCtx global.Context, conn *websocket.Conn) {
 				for v := range uniqueChannels {
 					if _, ok := joinedChannels[v]; !ok {
 						ctx, cancel := context.WithCancel(localCtx)
-						gCtx.Inst().Redis.Subscribe(ctx, subCh, fmt.Sprintf("events-v1:channel-emotes:%v", v))
+						gCtx.Inst().Redis.EventsSubscribe(ctx, subCh, fmt.Sprintf("events-v1:channel-emotes:%v", v))
 						joinedChannels[v] = cancel
 					}
 				}
