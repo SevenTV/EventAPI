@@ -1,6 +1,7 @@
 package client
 
 import (
+	"bufio"
 	"fmt"
 
 	"github.com/SevenTV/Common/structures/v3"
@@ -20,13 +21,15 @@ type Connection interface {
 	// Dispatch sends a Dispatch event message to the client
 	Dispatch(t events.EventType, data []byte) error
 	// SendError publishes an error message to the client
-	SendError(txt string, fields map[string]any) error
+	SendError(txt string, fields map[string]any)
 	// Close sends a close frame with the specified code and ends the connection
 	Close(code events.CloseCode)
 	// Actor returns the authenticated user for this connection
 	Actor() *structures.User
 	// Subscriptions returns an instance of Events
 	Events() EventMap
+	// SetWriter defines the connection's writable stream (SSE only)
+	SetWriter(w *bufio.Writer)
 }
 
 func IsClientSentOp(op events.Opcode) bool {

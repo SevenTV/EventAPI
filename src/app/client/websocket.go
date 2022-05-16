@@ -1,6 +1,7 @@
 package client
 
 import (
+	"bufio"
 	"sync"
 
 	"github.com/SevenTV/Common/structures/v3"
@@ -101,7 +102,7 @@ func (*WebSocket) Actor() *structures.User {
 }
 
 // SendError implements Connection
-func (w *WebSocket) SendError(txt string, fields map[string]any) error {
+func (w *WebSocket) SendError(txt string, fields map[string]any) {
 	w.writeMtx.Lock()
 	defer w.writeMtx.Unlock()
 
@@ -113,7 +114,14 @@ func (w *WebSocket) SendError(txt string, fields map[string]any) error {
 		Fields:  fields,
 	})
 	if err != nil {
-		return err
+		zap.S().Errorw("failed to set up an error message", "error", err)
+		return
 	}
-	return w.c.WriteJSON(msg)
+	if err := w.c.WriteJSON(msg); err != nil {
+		zap.S().Errorw("failed to write an error message to the socket", "error", err)
+	}
+}
+
+func (*WebSocket) SetWriter(w *bufio.Writer) {
+	zap.S().Fatalw("called SetWriter() on a WebSocket connection")
 }

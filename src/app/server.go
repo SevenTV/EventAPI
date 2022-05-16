@@ -51,6 +51,8 @@ func New(gCtx global.Context) <-chan struct{} {
 						ctx.SetStatusCode(400)
 						ctx.SetBody(utils.S2B(err.Error()))
 					}
+				} else {
+					v3.SSE(gCtx, ctx)
 				}
 			case "/v1//channel-emotes", "/v1/channel-emotes":
 				if utils.B2S(ctx.Request.Header.Peek("upgrade")) == "websocket" {
