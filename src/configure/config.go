@@ -25,8 +25,9 @@ type Config struct {
 	} `mapstructure:"redis" json:"redis"`
 
 	API struct {
-		Enabled bool   `mapstructure:"enabled" json:"enabled"`
-		Bind    string `mapstructure:"bind" json:"bind"`
+		Enabled           bool   `mapstructure:"enabled" json:"enabled"`
+		Bind              string `mapstructure:"bind" json:"bind"`
+		HeartbeatInterval int64  `mapstructure:"heartbeat_interval" json:"heartbeat_interval"`
 	} `mapstructure:"api" json:"api"`
 
 	Monitoring struct {

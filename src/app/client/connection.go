@@ -10,6 +10,8 @@ type Connection interface {
 	Greet() error
 	// Listen for incoming and outgoing events
 	Read(gctx global.Context)
+	// Send an heartbeat to the client
+	Heartbeat() error
 	// Dispatch sends a standard message
 	Dispatch(t events.MessageType, data []byte) error
 	// Close the connection with the specified code
@@ -22,7 +24,7 @@ func IsClientSentOp(op events.Opcode) bool {
 		events.OpcodeIdentify,
 		events.OpcodeResume,
 		events.OpcodeSubscribe,
-		events.OpcodeSignalPresence:
+		events.OpcodeSignal:
 		return true
 	default:
 		return false
