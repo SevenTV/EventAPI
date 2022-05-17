@@ -30,12 +30,16 @@ func (es *EventStream) Read(gctx global.Context) {
 		heartbeat.Stop()
 	}()
 
-	es.Greet()
+	if err := es.Greet(); err != nil {
+		return
+	}
 	for {
 		if err := es.checkConn(conn); err != nil {
 			return
 		}
 		select {
+		case <-gctx.Done():
+			return
 		case <-lctx.Done():
 			return
 		case <-heartbeat.C:

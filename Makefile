@@ -22,12 +22,17 @@ lint:
 	staticcheck ./...
 	go vet ./...
 	golangci-lint run --go=1.18
-	prettier --write .
+	yarn prettier --check .
+
+format:
+	gofmt -s -w .
+	yarn prettier --write .
 
 deps:
 	go mod download
 	go install honnef.co/go/tools/cmd/staticcheck@2022.1
 	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+	yarn
 
 test:
 	go test -count=1 -cover ./...

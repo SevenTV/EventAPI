@@ -2,10 +2,12 @@ package client
 
 import (
 	"bufio"
+	"context"
+	"crypto/rand"
 	"fmt"
 
+	"github.com/SevenTV/Common/events"
 	"github.com/SevenTV/Common/structures/v3"
-	"github.com/SevenTV/Common/structures/v3/events"
 	"github.com/SevenTV/Common/sync_map"
 	"github.com/SevenTV/EventAPI/src/global"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -45,30 +47,62 @@ func IsClientSentOp(op events.Opcode) bool {
 	}
 }
 
-func NewEventMap() EventMap {
+func GenerateSessionID(n int) ([]byte, error) {
+	b := make([]byte, n)
+	_, err := rand.Read(b)
+	if err != nil {
+		return nil, err
+	}
+
+	return b, nil
+}
+
+func NewEventMap(ch chan string) EventMap {
 	return EventMap{
-		m: &sync_map.Map[events.EventType, []primitive.ObjectID]{},
+		ch: ch,
+		m:  &sync_map.Map[events.EventType, *EventChannel]{},
 	}
 }
 
 type EventMap struct {
-	m *sync_map.Map[events.EventType, []primitive.ObjectID]
+	ch chan string
+	m  *sync_map.Map[events.EventType, *EventChannel]
 }
 
-func (e EventMap) Subscribe(t events.EventType, targets []primitive.ObjectID) error {
-	_, exists := e.m.LoadOrStore(t, targets)
+// Subscribe sets up a subscription to dispatch events with the specified type
+func (e EventMap) Subscribe(gctx global.Context, ctx context.Context, t events.EventType, targets []primitive.ObjectID) (*EventChannel, error) {
+	_, exists := e.m.Load(t)
 	if exists {
-		return ErrAlreadySubscribed
+		return nil, ErrAlreadySubscribed
 	}
+
+	// Create channel
+	ec := &EventChannel{
+		targets: targets,
+	}
+	e.m.Store(t, ec)
+	return ec, nil
+}
+
+func (e EventMap) Unsubscribe(t events.EventType) error {
+	_, exists := e.m.LoadAndDelete(t)
+	if !exists {
+		return ErrNotSubscribed
+	}
+
 	return nil
 }
 
-func (e EventMap) Unsubscribe(t events.EventType) (int, error) {
-	a, exists := e.m.LoadAndDelete(t)
-	if !exists {
-		return 0, ErrNotSubscribed
-	}
-	return len(a), nil
+func (e EventMap) Channel() chan string {
+	return e.ch
+}
+
+type EventChannel struct {
+	targets []primitive.ObjectID
+}
+
+func (ec *EventChannel) Targets() []primitive.ObjectID {
+	return ec.targets
 }
 
 var (

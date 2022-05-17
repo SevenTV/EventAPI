@@ -2,10 +2,12 @@ package client
 
 import (
 	"bufio"
+	"context"
+	"encoding/hex"
 	"sync"
 
+	"github.com/SevenTV/Common/events"
 	"github.com/SevenTV/Common/structures/v3"
-	"github.com/SevenTV/Common/structures/v3/events"
 	"github.com/SevenTV/EventAPI/src/global"
 	websocket "github.com/fasthttp/websocket"
 	"github.com/hashicorp/go-multierror"
@@ -14,29 +16,42 @@ import (
 
 type WebSocket struct {
 	c                 *websocket.Conn
+	ctx               context.Context
+	cancel            context.CancelFunc
 	seq               int64
 	evm               EventMap
 	writeMtx          sync.Mutex
+	sessionID         []byte
 	heartbeatInterval int64
 	heartbeatCount    int64
 }
 
-func NewWebSocket(gctx global.Context, conn *websocket.Conn) Connection {
+func NewWebSocket(gctx global.Context, conn *websocket.Conn) (Connection, error) {
 	hbi := gctx.Config().API.HeartbeatInterval
 	if hbi == 0 {
 		hbi = 45000
 	}
 
+	sessionID, err := GenerateSessionID(64)
+	if err != nil {
+		return nil, err
+	}
+
+	lctx, cancel := context.WithCancel(gctx)
 	ws := WebSocket{
 		conn,
+		lctx,
+		cancel,
 		0,
-		NewEventMap(),
+		NewEventMap(make(chan string, 10)),
 		sync.Mutex{},
+		sessionID,
 		hbi,
 		0,
 	}
 
-	return &ws
+	gctx.Inst().Redis.EventsSubscribe(lctx, ws.evm.ch, events.OpcodeDispatch.PublishKey())
+	return &ws, nil
 }
 
 func (w *WebSocket) Greet() error {
@@ -44,6 +59,7 @@ func (w *WebSocket) Greet() error {
 	defer w.writeMtx.Unlock()
 	msg, err := events.NewMessage(events.OpcodeHello, events.HelloPayload{
 		HeartbeatInterval: int64(w.heartbeatInterval),
+		SessionID:         hex.EncodeToString(w.sessionID),
 	})
 	if err != nil {
 		return err
@@ -70,9 +86,9 @@ func (w *WebSocket) Dispatch(t events.EventType, data []byte) error {
 	w.writeMtx.Lock()
 	defer w.writeMtx.Unlock()
 	w.seq++
-	msg, err := events.NewMessage(events.OpcodeDispatch, events.DispatchPayload[structures.User]{
+	msg, err := events.NewMessage(events.OpcodeDispatch, events.DispatchPayload{
 		Type: t,
-		Body: events.ChangeMap[structures.User]{},
+		Body: events.ChangeMap{},
 	})
 	if err != nil {
 		return err
@@ -88,7 +104,7 @@ func (w *WebSocket) Close(code events.CloseCode) {
 	err := w.c.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(int(code), code.String()))
 	err = multierror.Append(err, w.c.Close()).ErrorOrNil()
 	if err != nil {
-		zap.S().Errorw("failed to close connection")
+		zap.S().Errorw("failed to close connection", "error", err)
 	}
 }
 

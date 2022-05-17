@@ -2,13 +2,14 @@ package client
 
 import (
 	"bufio"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"strings"
 	"sync"
 
+	"github.com/SevenTV/Common/events"
 	"github.com/SevenTV/Common/structures/v3"
-	"github.com/SevenTV/Common/structures/v3/events"
 	"github.com/SevenTV/Common/utils"
 	"github.com/SevenTV/EventAPI/src/global"
 	"github.com/hashicorp/go-multierror"
@@ -22,27 +23,34 @@ type EventStream struct {
 	evm               EventMap
 	writeMtx          sync.Mutex
 	writer            *bufio.Writer
+	sessionID         []byte
 	heartbeatInterval int64
 	heartbeatCount    int64
 }
 
-func NewSSE(gctx global.Context, ctx *fasthttp.RequestCtx) Connection {
+func NewSSE(gctx global.Context, ctx *fasthttp.RequestCtx) (Connection, error) {
 	hbi := gctx.Config().API.HeartbeatInterval
 	if hbi == 0 {
 		hbi = 45000
 	}
 
+	sessionID, err := GenerateSessionID(64)
+	if err != nil {
+		return nil, err
+	}
+
 	es := EventStream{
 		ctx,
 		0,
-		NewEventMap(),
+		NewEventMap(make(chan string, 10)),
 		sync.Mutex{},
 		nil,
+		sessionID,
 		hbi,
 		0,
 	}
 
-	return &es
+	return &es, nil
 }
 
 func (*EventStream) Actor() *structures.User {
@@ -64,6 +72,7 @@ func (*EventStream) Events() EventMap {
 func (es *EventStream) Greet() error {
 	msg, err := events.NewMessage(events.OpcodeHello, events.HelloPayload{
 		HeartbeatInterval: int64(es.heartbeatInterval),
+		SessionID:         hex.EncodeToString(es.sessionID),
 	})
 	if err != nil {
 		return err

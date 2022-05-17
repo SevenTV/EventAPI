@@ -3,7 +3,7 @@ module github.com/SevenTV/EventAPI
 go 1.18
 
 require (
-	github.com/SevenTV/Common v0.0.0-20220516114952-4bc0cc3e4868
+	github.com/SevenTV/Common v0.0.0-20220517105432-01d094a8919a
 	github.com/bugsnag/panicwrap v1.3.4
 	github.com/fasthttp/websocket v1.4.5
 	github.com/go-redis/redis/v8 v8.11.5

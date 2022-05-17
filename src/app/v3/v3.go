@@ -3,7 +3,7 @@ package v3
 import (
 	"bufio"
 
-	"github.com/SevenTV/Common/structures/v3/events"
+	"github.com/SevenTV/Common/events"
 	"github.com/SevenTV/EventAPI/src/app/client"
 	"github.com/SevenTV/EventAPI/src/global"
 	"github.com/fasthttp/websocket"
@@ -11,7 +11,10 @@ import (
 )
 
 func WebSocket(gctx global.Context, conn *websocket.Conn) {
-	w := client.NewWebSocket(gctx, conn)
+	w, err := client.NewWebSocket(gctx, conn)
+	if err != nil {
+		return
+	}
 
 	if err := w.Greet(); err != nil {
 		w.Close(events.CloseCodeServerError)
@@ -21,7 +24,10 @@ func WebSocket(gctx global.Context, conn *websocket.Conn) {
 }
 
 func SSE(gctx global.Context, ctx *fasthttp.RequestCtx) {
-	es := client.NewSSE(gctx, ctx)
+	es, err := client.NewSSE(gctx, ctx)
+	if err != nil {
+		return
+	}
 
 	client.SetupEventStream(ctx, func(w *bufio.Writer) {
 		es.SetWriter(w)
