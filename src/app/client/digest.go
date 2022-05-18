@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"encoding/hex"
 	"encoding/json"
 
 	"github.com/SevenTV/Common/events"
@@ -16,7 +17,7 @@ type Digest[P events.AnyPayload] struct {
 	gctx global.Context
 	op   events.Opcode
 	ch   chan string
-	subs sync_map.Map[events.Opcode, digestSub[P]]
+	subs sync_map.Map[string, digestSub[P]]
 }
 
 func NewDigest[P events.AnyPayload](gctx global.Context, op events.Opcode) *Digest[P] {
@@ -25,7 +26,7 @@ func NewDigest[P events.AnyPayload](gctx global.Context, op events.Opcode) *Dige
 		gctx,
 		op,
 		ch,
-		sync_map.Map[events.Opcode, digestSub[P]]{},
+		sync_map.Map[string, digestSub[P]]{},
 	}
 
 	go gctx.Inst().Redis.Subscribe(gctx, ch, redis.Key(op.PublishKey()))
@@ -48,7 +49,7 @@ func NewDigest[P events.AnyPayload](gctx global.Context, op events.Opcode) *Dige
 					)
 				}
 
-				d.subs.Range(func(key events.Opcode, value digestSub[P]) bool {
+				d.subs.Range(func(key string, value digestSub[P]) bool {
 					value.ch <- o
 					return true
 				})
@@ -60,8 +61,8 @@ func NewDigest[P events.AnyPayload](gctx global.Context, op events.Opcode) *Dige
 }
 
 // Dispatch implements Digest
-func (d *Digest[P]) Subscribe(ctx context.Context, ch chan events.Message[P]) {
-	d.subs.Store(d.op, digestSub[P]{ch})
+func (d *Digest[P]) Subscribe(ctx context.Context, sessionID []byte, ch chan events.Message[P]) {
+	d.subs.Store(hex.EncodeToString(sessionID), digestSub[P]{ch})
 }
 
 type EventDigest struct {

@@ -8,6 +8,7 @@ import (
 	"github.com/SevenTV/Common/events"
 	"github.com/SevenTV/EventAPI/src/app/client"
 	"github.com/SevenTV/EventAPI/src/global"
+	"go.uber.org/zap"
 )
 
 func (w *WebSocket) Read(gctx global.Context) {
@@ -75,7 +76,7 @@ func (w *WebSocket) Read(gctx global.Context) {
 
 	heartbeat := time.NewTicker(time.Duration(w.heartbeatInterval) * time.Millisecond)
 	dispatch := make(chan events.Message[events.DispatchPayload])
-	w.Digest().Dispatch.Subscribe(w.ctx, dispatch)
+	w.Digest().Dispatch.Subscribe(w.ctx, w.sessionID, dispatch)
 
 	for {
 		select {
@@ -94,7 +95,12 @@ func (w *WebSocket) Read(gctx global.Context) {
 				continue // skip if not subscribed to this
 			}
 
-			w.c.WriteJSON(msg)
+			if err := w.c.WriteJSON(msg); err != nil {
+				zap.S().Errorw("failed to write dispatch to connection",
+					"error", err,
+				)
+				continue
+			}
 		}
 	}
 }
