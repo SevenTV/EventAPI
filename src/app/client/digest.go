@@ -50,7 +50,13 @@ func NewDigest[P events.AnyPayload](gctx global.Context, op events.Opcode) *Dige
 				}
 
 				d.subs.Range(func(key string, value digestSub[P]) bool {
-					value.ch <- o
+					select {
+					case value.ch <- o:
+					default:
+						zap.S().Warnw("channel blocked",
+							"channel", key,
+						)
+					}
 					return true
 				})
 			}
@@ -62,7 +68,10 @@ func NewDigest[P events.AnyPayload](gctx global.Context, op events.Opcode) *Dige
 
 // Dispatch implements Digest
 func (d *Digest[P]) Subscribe(ctx context.Context, sessionID []byte, ch chan events.Message[P]) {
-	d.subs.Store(hex.EncodeToString(sessionID), digestSub[P]{ch})
+	sid := hex.EncodeToString(sessionID)
+	d.subs.Store(sid, digestSub[P]{ch})
+	<-ctx.Done()
+	d.subs.Delete(sid)
 }
 
 type EventDigest struct {

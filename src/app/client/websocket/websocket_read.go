@@ -76,7 +76,7 @@ func (w *WebSocket) Read(gctx global.Context) {
 
 	heartbeat := time.NewTicker(time.Duration(w.heartbeatInterval) * time.Millisecond)
 	dispatch := make(chan events.Message[events.DispatchPayload])
-	w.Digest().Dispatch.Subscribe(w.ctx, w.sessionID, dispatch)
+	go w.Digest().Dispatch.Subscribe(w.ctx, w.sessionID, dispatch)
 
 	for {
 		select {
