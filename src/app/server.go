@@ -3,7 +3,9 @@ package app
 import (
 	"time"
 
+	"github.com/SevenTV/Common/events"
 	"github.com/SevenTV/Common/utils"
+	"github.com/SevenTV/EventAPI/src/app/client"
 	v1 "github.com/SevenTV/EventAPI/src/app/v1"
 	v3 "github.com/SevenTV/EventAPI/src/app/v3"
 	"github.com/SevenTV/EventAPI/src/global"
@@ -13,12 +15,16 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func New(gCtx global.Context) <-chan struct{} {
+func New(gctx global.Context) <-chan struct{} {
 	upgrader := websocket.FastHTTPUpgrader{
 		CheckOrigin: func(ctx *fasthttp.RequestCtx) bool {
 			return true
 		},
 		EnableCompression: true,
+	}
+
+	dig := client.EventDigest{
+		Dispatch: client.NewDigest[events.DispatchPayload](gctx, events.OpcodeDispatch),
 	}
 
 	server := fasthttp.Server{
@@ -40,33 +46,33 @@ func New(gCtx global.Context) <-chan struct{} {
 				}
 			}()
 
-			ctx.Response.Header.Set("X-Pod-Name", gCtx.Config().Pod.Name)
+			ctx.Response.Header.Set("X-Pod-Name", gctx.Config().Pod.Name)
 
 			switch utils.B2S(ctx.Path()) {
 			case "/v3":
 				if utils.B2S(ctx.Request.Header.Peek("upgrade")) == "websocket" {
 					if err := upgrader.Upgrade(ctx, func(c *websocket.Conn) {
-						v3.WebSocket(gCtx, c)
+						v3.WebSocket(gctx, c, dig)
 					}); err != nil {
 						ctx.SetStatusCode(400)
 						ctx.SetBody(utils.S2B(err.Error()))
 					}
 				} else {
-					v3.SSE(gCtx, ctx)
+					v3.SSE(gctx, ctx)
 				}
 			case "/v1//channel-emotes", "/v1/channel-emotes":
 				if utils.B2S(ctx.Request.Header.Peek("upgrade")) == "websocket" {
 					if err := upgrader.Upgrade(ctx, func(c *websocket.Conn) {
-						v1.ChannelEmotesWS(gCtx, c)
+						v1.ChannelEmotesWS(gctx, c)
 					}); err != nil {
 						ctx.SetStatusCode(400)
 						ctx.SetBody([]byte(err.Error()))
 					}
 				} else {
-					v1.ChannelEmotesSSE(gCtx, ctx)
+					v1.ChannelEmotesSSE(gctx, ctx)
 				}
 			case "/health":
-				if err := gCtx.Inst().Redis.Ping(ctx); err != nil {
+				if err := gctx.Inst().Redis.Ping(ctx); err != nil {
 					ctx.SetBodyString("redis down")
 					ctx.SetStatusCode(500)
 				} else {
@@ -80,14 +86,14 @@ func New(gCtx global.Context) <-chan struct{} {
 	}
 
 	go func() {
-		if err := server.ListenAndServe(gCtx.Config().API.Bind); err != nil {
+		if err := server.ListenAndServe(gctx.Config().API.Bind); err != nil {
 			logrus.Fatal("failed to start server: ", err)
 		}
 	}()
 
 	done := make(chan struct{})
 	go func() {
-		<-gCtx.Done()
+		<-gctx.Done()
 		_ = server.Shutdown()
 		close(done)
 	}()

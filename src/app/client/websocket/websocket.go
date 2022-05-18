@@ -1,4 +1,4 @@
-package client
+package websocket
 
 import (
 	"bufio"
@@ -8,6 +8,7 @@ import (
 
 	"github.com/SevenTV/Common/events"
 	"github.com/SevenTV/Common/structures/v3"
+	"github.com/SevenTV/EventAPI/src/app/client"
 	"github.com/SevenTV/EventAPI/src/global"
 	websocket "github.com/fasthttp/websocket"
 	"github.com/hashicorp/go-multierror"
@@ -19,20 +20,21 @@ type WebSocket struct {
 	ctx               context.Context
 	cancel            context.CancelFunc
 	seq               int64
-	evm               EventMap
+	evm               client.EventMap
+	dig               client.EventDigest
 	writeMtx          sync.Mutex
 	sessionID         []byte
 	heartbeatInterval int64
 	heartbeatCount    int64
 }
 
-func NewWebSocket(gctx global.Context, conn *websocket.Conn) (Connection, error) {
+func NewWebSocket(gctx global.Context, conn *websocket.Conn, dig client.EventDigest) (client.Connection, error) {
 	hbi := gctx.Config().API.HeartbeatInterval
 	if hbi == 0 {
 		hbi = 45000
 	}
 
-	sessionID, err := GenerateSessionID(64)
+	sessionID, err := client.GenerateSessionID(64)
 	if err != nil {
 		return nil, err
 	}
@@ -43,15 +45,20 @@ func NewWebSocket(gctx global.Context, conn *websocket.Conn) (Connection, error)
 		lctx,
 		cancel,
 		0,
-		NewEventMap(make(chan string, 10)),
+		client.NewEventMap(make(chan string, 10)),
+		dig,
 		sync.Mutex{},
 		sessionID,
 		hbi,
 		0,
 	}
 
-	gctx.Inst().Redis.EventsSubscribe(lctx, ws.evm.ch, events.OpcodeDispatch.PublishKey())
 	return &ws, nil
+}
+
+// Context implements Connection
+func (w *WebSocket) Context() context.Context {
+	return w.ctx
 }
 
 func (w *WebSocket) Greet() error {
@@ -108,8 +115,12 @@ func (w *WebSocket) Close(code events.CloseCode) {
 	}
 }
 
-func (w *WebSocket) Events() EventMap {
+func (w *WebSocket) Events() client.EventMap {
 	return w.evm
+}
+
+func (w *WebSocket) Digest() client.EventDigest {
+	return w.dig
 }
 
 func (*WebSocket) Actor() *structures.User {

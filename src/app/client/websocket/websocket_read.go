@@ -1,16 +1,13 @@
-package client
+package websocket
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
-	"strings"
 	"time"
 
 	"github.com/SevenTV/Common/events"
-	"github.com/SevenTV/Common/utils"
+	"github.com/SevenTV/EventAPI/src/app/client"
 	"github.com/SevenTV/EventAPI/src/global"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func (w *WebSocket) Read(gctx global.Context) {
@@ -34,64 +31,22 @@ func (w *WebSocket) Read(gctx global.Context) {
 
 			// Decode the payload
 			if err := json.Unmarshal(data, &msg); err != nil {
+				w.SendError(err.Error(), nil)
 				w.Close(events.CloseCodeInvalidPayload)
 				return
 			}
 
 			// Verify the opcode
-			if !IsClientSentOp(msg.Op) {
+			if !client.IsClientSentOp(msg.Op) {
 				w.Close(events.CloseCodeUnknownOperation)
 				return
 			}
 
+			handler := client.NewHandler(w)
 			switch msg.Op {
 			// Handle command - SUBSCRIBE
 			case events.OpcodeSubscribe:
-				var m events.Message[events.SubscribePayload]
-				m, err = events.ConvertMessage[events.SubscribePayload](msg)
-				if err != nil {
-					goto decodeFailure
-				}
-				t := m.Data.Type
-				path := strings.Split(string(t), ".")
-				targets := make([]primitive.ObjectID, len(m.Data.Targets))
-				targetCount := 0
-
-				// Parse target IDs
-				for _, s := range m.Data.Targets {
-					id, err := primitive.ObjectIDFromHex(s)
-					if err == nil {
-						targets[targetCount] = id
-						targetCount++
-					}
-				}
-				if len(targets) != targetCount {
-					targets = targets[:targetCount]
-				}
-
-				// Empty subscription event type
-				if t == "" {
-					w.SendError("Missing event type", nil)
-					w.Close(events.CloseCodeInvalidPayload)
-					return
-				}
-				if len(path) < 2 {
-					w.SendError("Bad event type path", nil)
-					w.Close(events.CloseCodeInvalidPayload)
-					return
-				}
-
-				// No targets: this requires authentication
-				if len(targets) == 0 && w.Actor() == nil {
-					w.SendError("Wildcard event target subscription requires authentication", nil)
-					w.Close(events.CloseCodeInsufficientPrivilege)
-					return
-				}
-
-				// Add the event subscription
-				_, err = w.Events().Subscribe(gctx, w.ctx, t, targets)
-				if err != nil {
-					w.Close(events.CloseCodeAlreadySubscribed)
+				if err = handler.Subscribe(gctx, msg); err != nil {
 					return
 				}
 			case events.OpcodeUnsubscribe:
@@ -118,12 +73,10 @@ func (w *WebSocket) Read(gctx global.Context) {
 		}
 	}()
 
-	var (
-		d   string
-		msg events.Message[json.RawMessage]
-		err error
-	)
 	heartbeat := time.NewTicker(time.Duration(w.heartbeatInterval) * time.Millisecond)
+	dispatch := make(chan events.Message[events.DispatchPayload])
+	w.Digest().Dispatch.Subscribe(w.ctx, dispatch)
+
 	for {
 		select {
 		case <-w.ctx.Done(): // App is shutting down
@@ -135,12 +88,13 @@ func (w *WebSocket) Read(gctx global.Context) {
 				return
 			}
 		// Listen for incoming dispatches
-		case d = <-w.Events().Channel():
-			fmt.Println(d)
-			err = json.Unmarshal(utils.S2B(d), &msg)
-			if err != nil {
-				continue
+		case msg := <-dispatch:
+			// Filter by the connection's subscribed events
+			if !w.Events().Has(msg.Data.Type) {
+				continue // skip if not subscribed to this
 			}
+
+			w.c.WriteJSON(msg)
 		}
 	}
 }

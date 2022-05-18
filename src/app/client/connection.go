@@ -14,6 +14,7 @@ import (
 )
 
 type Connection interface {
+	Context() context.Context
 	// Greet sends an Hello message to the client
 	Greet() error
 	// Listen for incoming and outgoing events
@@ -30,6 +31,8 @@ type Connection interface {
 	Actor() *structures.User
 	// Subscriptions returns an instance of Events
 	Events() EventMap
+	// Digest returns the message decoder channel utility
+	Digest() EventDigest
 	// SetWriter defines the connection's writable stream (SSE only)
 	SetWriter(w *bufio.Writer)
 }
@@ -93,7 +96,18 @@ func (e EventMap) Unsubscribe(t events.EventType) error {
 	return nil
 }
 
-func (e EventMap) Channel() chan string {
+func (e EventMap) Has(t events.EventType) bool {
+	tWilcard := events.EventType(fmt.Sprintf("%s.*", t.ObjectName()))
+	if _, ok := e.m.Load(t); ok {
+		return true
+	}
+	if _, ok := e.m.Load(tWilcard); ok {
+		return true
+	}
+	return false
+}
+
+func (e EventMap) DispatchChannel() chan string {
 	return e.ch
 }
 

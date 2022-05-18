@@ -1,7 +1,8 @@
-package client
+package eventstream
 
 import (
 	"bufio"
+	"context"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -11,6 +12,7 @@ import (
 	"github.com/SevenTV/Common/events"
 	"github.com/SevenTV/Common/structures/v3"
 	"github.com/SevenTV/Common/utils"
+	"github.com/SevenTV/EventAPI/src/app/client"
 	"github.com/SevenTV/EventAPI/src/global"
 	"github.com/hashicorp/go-multierror"
 	"github.com/valyala/fasthttp"
@@ -20,7 +22,7 @@ import (
 type EventStream struct {
 	ctx               *fasthttp.RequestCtx
 	seq               int64
-	evm               EventMap
+	evm               client.EventMap
 	writeMtx          sync.Mutex
 	writer            *bufio.Writer
 	sessionID         []byte
@@ -28,13 +30,13 @@ type EventStream struct {
 	heartbeatCount    int64
 }
 
-func NewSSE(gctx global.Context, ctx *fasthttp.RequestCtx) (Connection, error) {
+func NewSSE(gctx global.Context, ctx *fasthttp.RequestCtx) (client.Connection, error) {
 	hbi := gctx.Config().API.HeartbeatInterval
 	if hbi == 0 {
 		hbi = 45000
 	}
 
-	sessionID, err := GenerateSessionID(64)
+	sessionID, err := client.GenerateSessionID(64)
 	if err != nil {
 		return nil, err
 	}
@@ -42,7 +44,7 @@ func NewSSE(gctx global.Context, ctx *fasthttp.RequestCtx) (Connection, error) {
 	es := EventStream{
 		ctx,
 		0,
-		NewEventMap(make(chan string, 10)),
+		client.NewEventMap(make(chan string, 10)),
 		sync.Mutex{},
 		nil,
 		sessionID,
@@ -51,6 +53,11 @@ func NewSSE(gctx global.Context, ctx *fasthttp.RequestCtx) (Connection, error) {
 	}
 
 	return &es, nil
+}
+
+// Context implements Connection
+func (es *EventStream) Context() context.Context {
+	return es.ctx
 }
 
 func (*EventStream) Actor() *structures.User {
@@ -65,7 +72,11 @@ func (*EventStream) Dispatch(t events.EventType, data []byte) error {
 	panic("unimplemented")
 }
 
-func (*EventStream) Events() EventMap {
+func (*EventStream) Events() client.EventMap {
+	panic("unimplemented")
+}
+
+func (*EventStream) Digest() client.EventDigest {
 	panic("unimplemented")
 }
 
