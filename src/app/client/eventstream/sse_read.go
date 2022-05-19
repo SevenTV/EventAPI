@@ -25,6 +25,7 @@ func (es *EventStream) Read(gctx global.Context) {
 			heartbeat.Stop()
 		}()
 		select {
+		case <-gctx.Done():
 		case <-es.c.Done():
 		case <-gctx.Done():
 		case <-es.ctx.Done():
@@ -36,10 +37,12 @@ func (es *EventStream) Read(gctx global.Context) {
 	}
 
 	for {
-		if err := es.checkConn(conn); err != nil {
+		if err := checkConn(conn); err != nil {
 			return
 		}
 		select {
+		case <-gctx.Done():
+			return
 		case <-es.ctx.Done():
 			return
 		case <-es.c.Done():
@@ -52,7 +55,7 @@ func (es *EventStream) Read(gctx global.Context) {
 	}
 }
 
-func (es *EventStream) checkConn(conn net.Conn) error {
+func checkConn(conn net.Conn) error {
 	var sysErr error = nil
 	rc, err := conn.(syscall.Conn).SyscallConn()
 	if err != nil {
