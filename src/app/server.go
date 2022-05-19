@@ -86,17 +86,17 @@ func New(gctx global.Context) <-chan struct{} {
 		},
 	}
 
+	done := make(chan struct{})
 	go func() {
+		defer close(done)
 		if err := server.ListenAndServe(gctx.Config().API.Bind); err != nil {
 			logrus.Fatal("failed to start server: ", err)
 		}
 	}()
 
-	done := make(chan struct{})
 	go func() {
 		<-gctx.Done()
 		_ = server.Shutdown()
-		close(done)
 	}()
 
 	return done

@@ -110,11 +110,12 @@ func main() {
 			logrus.Fatal("force shutdown")
 		}()
 
+		logrus.Info("shutting down")
+
 		for _, ch := range dones {
 			<-ch
 		}
 
-		logrus.Info("shutting down")
 		close(done)
 	}()
 
