@@ -2,7 +2,6 @@ package websocket
 
 import (
 	"encoding/json"
-	"io"
 	"time"
 
 	"github.com/SevenTV/Common/events"
@@ -51,24 +50,9 @@ func (w *WebSocket) Read(gctx global.Context) {
 					return
 				}
 			case events.OpcodeUnsubscribe:
-				_, err := events.ConvertMessage[events.UnsubscribePayload](msg)
-				if err != nil {
-					goto decodeFailure
+				if err = handler.Unsubscribe(gctx, msg); err != nil {
+					return
 				}
-
-			}
-		decodeFailure:
-			if err != nil {
-				if err == io.EOF {
-					w.SendError("Received an empty payload", nil)
-					w.Close(events.CloseCodeInvalidPayload)
-				} else {
-					w.SendError("decode failure", map[string]any{
-						"ERROR": err.Error(),
-					})
-					w.Close(events.CloseCodeInvalidPayload)
-				}
-				return
 			}
 
 		}

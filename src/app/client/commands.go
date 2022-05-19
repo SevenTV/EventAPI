@@ -70,3 +70,21 @@ func (h Handler) Subscribe(gctx global.Context, m events.Message[json.RawMessage
 	}
 	return nil
 }
+
+func (h Handler) Unsubscribe(gctx global.Context, m events.Message[json.RawMessage]) error {
+	msg, err := events.ConvertMessage[events.UnsubscribePayload](m)
+	if err != nil {
+		return err
+	}
+
+	t := msg.Data.Type
+	if err = h.conn.Events().Unsubscribe(t); err != nil {
+		if err == ErrNotSubscribed {
+			h.conn.Close(events.CloseCodeNotSubscribed)
+			return nil
+		}
+		return err
+	}
+
+	return nil
+}
