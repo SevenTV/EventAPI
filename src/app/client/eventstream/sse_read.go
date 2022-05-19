@@ -1,46 +1,48 @@
 package eventstream
 
 import (
-	"context"
 	"io"
 	"net"
 	"syscall"
 	"time"
 
+	"github.com/SevenTV/Common/events"
 	"github.com/SevenTV/EventAPI/src/global"
 )
 
 func (es *EventStream) Read(gctx global.Context) {
-	lctx, cancel := context.WithCancel(gctx)
+	conn := es.c.Conn().(*net.TCPConn)
+	heartbeat := time.NewTicker(time.Duration(es.heartbeatInterval) * time.Millisecond)
+	dispatch := make(chan events.Message[events.DispatchPayload])
 	go func() {
-		defer func() {
-			cancel()
-		}()
-		select {
-		case <-es.ctx.Done():
-		case <-gctx.Done():
-		case <-lctx.Done():
-		}
+		es.Digest().Dispatch.Subscribe(es.ctx, es.sessionID, dispatch)
 	}()
 
-	conn := es.ctx.Conn().(*net.TCPConn)
-	heartbeat := time.NewTicker(time.Duration(es.heartbeatInterval) * time.Millisecond)
-	defer func() {
-		defer cancel()
-		heartbeat.Stop()
+	go func() {
+		defer func() {
+			es.cancel()
+			close(dispatch)
+			heartbeat.Stop()
+		}()
+		select {
+		case <-es.c.Done():
+		case <-gctx.Done():
+		case <-es.ctx.Done():
+		}
 	}()
 
 	if err := es.Greet(); err != nil {
 		return
 	}
+
 	for {
 		if err := es.checkConn(conn); err != nil {
 			return
 		}
 		select {
-		case <-gctx.Done():
+		case <-es.ctx.Done():
 			return
-		case <-lctx.Done():
+		case <-es.c.Done():
 			return
 		case <-heartbeat.C:
 			if err := es.Heartbeat(); err != nil {

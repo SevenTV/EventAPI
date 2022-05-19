@@ -28,6 +28,7 @@ func New(gctx global.Context) <-chan struct{} {
 	}
 
 	server := fasthttp.Server{
+		CloseOnShutdown: true,
 		Handler: func(ctx *fasthttp.RequestCtx) {
 			start := time.Now()
 			defer func() {
@@ -58,9 +59,9 @@ func New(gctx global.Context) <-chan struct{} {
 						ctx.SetBody(utils.S2B(err.Error()))
 					}
 				} else {
-					v3.SSE(gctx, ctx)
+					v3.SSE(gctx, ctx, dig)
 				}
-			case "/v1//channel-emotes", "/v1/channel-emotes":
+			case "/v1/channel-emotes":
 				if utils.B2S(ctx.Request.Header.Peek("upgrade")) == "websocket" {
 					if err := upgrader.Upgrade(ctx, func(c *websocket.Conn) {
 						v1.ChannelEmotesWS(gctx, c)

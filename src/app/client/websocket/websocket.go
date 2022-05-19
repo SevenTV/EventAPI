@@ -41,16 +41,16 @@ func NewWebSocket(gctx global.Context, conn *websocket.Conn, dig client.EventDig
 
 	lctx, cancel := context.WithCancel(gctx)
 	ws := WebSocket{
-		conn,
-		lctx,
-		cancel,
-		0,
-		client.NewEventMap(make(chan string, 10)),
-		dig,
-		sync.Mutex{},
-		sessionID,
-		hbi,
-		0,
+		c:                 conn,
+		ctx:               lctx,
+		cancel:            cancel,
+		seq:               0,
+		evm:               client.NewEventMap(make(chan string, 10)),
+		dig:               dig,
+		writeMtx:          sync.Mutex{},
+		sessionID:         sessionID,
+		heartbeatInterval: hbi,
+		heartbeatCount:    0,
 	}
 
 	return &ws, nil

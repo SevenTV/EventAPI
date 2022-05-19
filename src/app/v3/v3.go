@@ -25,8 +25,8 @@ func WebSocket(gctx global.Context, conn *websocket.Conn, dig client.EventDigest
 	w.Read(gctx)
 }
 
-func SSE(gctx global.Context, ctx *fasthttp.RequestCtx) {
-	es, err := client_eventstream.NewSSE(gctx, ctx)
+func SSE(gctx global.Context, ctx *fasthttp.RequestCtx, dig client.EventDigest) {
+	es, err := client_eventstream.NewSSE(gctx, ctx, dig)
 	if err != nil {
 		return
 	}

@@ -11,6 +11,12 @@ import (
 )
 
 func (w *WebSocket) Read(gctx global.Context) {
+	heartbeat := time.NewTicker(time.Duration(w.heartbeatInterval) * time.Millisecond)
+	dispatch := make(chan events.Message[events.DispatchPayload])
+	go func() {
+		w.Digest().Dispatch.Subscribe(w.ctx, w.sessionID, dispatch)
+	}()
+
 	go func() {
 		var (
 			data []byte
@@ -19,6 +25,7 @@ func (w *WebSocket) Read(gctx global.Context) {
 		)
 		defer func() {
 			w.cancel()
+			close(dispatch)
 		}()
 
 		// Listen for incoming messages sent by the client
@@ -49,6 +56,7 @@ func (w *WebSocket) Read(gctx global.Context) {
 				if err = handler.Subscribe(gctx, msg); err != nil {
 					return
 				}
+			// Handle command - UNSUBSCRIBE
 			case events.OpcodeUnsubscribe:
 				if err = handler.Unsubscribe(gctx, msg); err != nil {
 					return
@@ -57,10 +65,6 @@ func (w *WebSocket) Read(gctx global.Context) {
 
 		}
 	}()
-
-	heartbeat := time.NewTicker(time.Duration(w.heartbeatInterval) * time.Millisecond)
-	dispatch := make(chan events.Message[events.DispatchPayload])
-	go w.Digest().Dispatch.Subscribe(w.ctx, w.sessionID, dispatch)
 
 	for {
 		select {

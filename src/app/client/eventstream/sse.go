@@ -20,9 +20,12 @@ import (
 )
 
 type EventStream struct {
-	ctx               *fasthttp.RequestCtx
+	c                 *fasthttp.RequestCtx
+	ctx               context.Context
+	cancel            context.CancelFunc
 	seq               int64
 	evm               client.EventMap
+	dig               client.EventDigest
 	writeMtx          sync.Mutex
 	writer            *bufio.Writer
 	sessionID         []byte
@@ -30,7 +33,7 @@ type EventStream struct {
 	heartbeatCount    int64
 }
 
-func NewSSE(gctx global.Context, ctx *fasthttp.RequestCtx) (client.Connection, error) {
+func NewSSE(gctx global.Context, c *fasthttp.RequestCtx, dig client.EventDigest) (client.Connection, error) {
 	hbi := gctx.Config().API.HeartbeatInterval
 	if hbi == 0 {
 		hbi = 45000
@@ -41,15 +44,19 @@ func NewSSE(gctx global.Context, ctx *fasthttp.RequestCtx) (client.Connection, e
 		return nil, err
 	}
 
+	lctx, cancel := context.WithCancel(gctx)
 	es := EventStream{
-		ctx,
-		0,
-		client.NewEventMap(make(chan string, 10)),
-		sync.Mutex{},
-		nil,
-		sessionID,
-		hbi,
-		0,
+		c:                 c,
+		ctx:               lctx,
+		cancel:            cancel,
+		seq:               0,
+		evm:               client.NewEventMap(make(chan string, 10)),
+		dig:               dig,
+		writeMtx:          sync.Mutex{},
+		writer:            nil,
+		sessionID:         sessionID,
+		heartbeatInterval: hbi,
+		heartbeatCount:    0,
 	}
 
 	return &es, nil
@@ -65,7 +72,7 @@ func (*EventStream) Actor() *structures.User {
 }
 
 func (es *EventStream) Close(code events.CloseCode) {
-	_ = es.ctx.Conn().Close()
+	_ = es.c.Conn().Close()
 }
 
 func (*EventStream) Dispatch(t events.EventType, data []byte) error {
@@ -76,8 +83,8 @@ func (*EventStream) Events() client.EventMap {
 	panic("unimplemented")
 }
 
-func (*EventStream) Digest() client.EventDigest {
-	panic("unimplemented")
+func (es *EventStream) Digest() client.EventDigest {
+	return es.dig
 }
 
 func (es *EventStream) Greet() error {
