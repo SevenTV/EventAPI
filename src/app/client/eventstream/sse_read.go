@@ -8,15 +8,14 @@ import (
 
 	"github.com/SevenTV/Common/events"
 	"github.com/SevenTV/EventAPI/src/global"
+	"go.uber.org/zap"
 )
 
 func (es *EventStream) Read(gctx global.Context) {
 	conn := es.c.Conn().(*net.TCPConn)
 	heartbeat := time.NewTicker(time.Duration(es.heartbeatInterval) * time.Millisecond)
 	dispatch := make(chan events.Message[events.DispatchPayload])
-	go func() {
-		es.Digest().Dispatch.Subscribe(es.ctx, es.sessionID, dispatch)
-	}()
+	go es.Digest().Dispatch.Subscribe(es.ctx, es.sessionID, dispatch)
 
 	go func() {
 		defer func() {
@@ -42,14 +41,24 @@ func (es *EventStream) Read(gctx global.Context) {
 		}
 		select {
 		case <-gctx.Done():
+			es.Close(events.CloseCodeRestart)
 			return
 		case <-es.ctx.Done():
+			es.Close(events.CloseCodeRestart)
 			return
 		case <-es.c.Done():
 			return
 		case <-heartbeat.C:
 			if err := es.Heartbeat(); err != nil {
 				return
+			}
+
+		case msg := <-dispatch:
+			if err := es.write(msg.ToRaw()); err != nil {
+				zap.S().Errorw("failed to write dispatch to connection",
+					"error", err,
+				)
+				continue
 			}
 		}
 	}

@@ -35,6 +35,8 @@ github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03
 github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym/WlBOVXweHU+Q+/VP0lqqI8lqeDx9IjBqo=
 github.com/SevenTV/Common v0.0.0-20220517105432-01d094a8919a h1:DVNIx6/KBbvIHXoVITDl6/tFMQkAmhr0m664O8CR3yY=
 github.com/SevenTV/Common v0.0.0-20220517105432-01d094a8919a/go.mod h1:k1+/uNULz0uSb6IPHI6G8HJutERV3IzF6i3gVk5hYT0=
+github.com/SevenTV/Common v0.0.0-20220528125634-ac29596986eb h1:gcQQ9F2ccvDkz7frrz4QmPD29XZByjsQ4kV7qZRV8nA=
+github.com/SevenTV/Common v0.0.0-20220528125634-ac29596986eb/go.mod h1:k1+/uNULz0uSb6IPHI6G8HJutERV3IzF6i3gVk5hYT0=
 github.com/alecthomas/template v0.0.0-20160405071501-a0175ee3bccc/go.mod h1:LOuyumcjzFXgccqObfd/Ljyb9UuFJ6TxHnclSeseNhc=
 github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751/go.mod h1:LOuyumcjzFXgccqObfd/Ljyb9UuFJ6TxHnclSeseNhc=
 github.com/alecthomas/units v0.0.0-20151022065526-2efee857e7cf/go.mod h1:ybxpYRFXyAe+OPACYpWeL0wqObRcbAqCMya13uyzqw0=

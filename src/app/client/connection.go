@@ -21,8 +21,6 @@ type Connection interface {
 	Read(gctx global.Context)
 	// Heartbeat lets the client know that the connection is healthy
 	Heartbeat() error
-	// Dispatch sends a Dispatch event message to the client
-	Dispatch(t events.EventType, data []byte) error
 	// SendError publishes an error message to the client
 	SendError(txt string, fields map[string]any)
 	// Close sends a close frame with the specified code and ends the connection

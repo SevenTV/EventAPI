@@ -24,7 +24,7 @@ func New(gctx global.Context) <-chan struct{} {
 	}
 
 	dig := client.EventDigest{
-		Dispatch: client.NewDigest[events.DispatchPayload](gctx, events.OpcodeDispatch),
+		Dispatch: client.NewDigest[events.DispatchPayload](gctx, events.OpcodeDispatch, true),
 	}
 
 	server := fasthttp.Server{

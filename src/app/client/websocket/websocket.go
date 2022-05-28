@@ -89,26 +89,24 @@ func (w *WebSocket) Heartbeat() error {
 	return w.c.WriteJSON(msg)
 }
 
-func (w *WebSocket) Dispatch(t events.EventType, data []byte) error {
-	w.writeMtx.Lock()
-	defer w.writeMtx.Unlock()
-	w.seq++
-	msg, err := events.NewMessage(events.OpcodeDispatch, events.DispatchPayload{
-		Type: t,
-		Body: events.ChangeMap{},
-	})
-	if err != nil {
-		return err
-	}
-
-	return w.c.WriteJSON(msg)
-}
-
 func (w *WebSocket) Close(code events.CloseCode) {
 	w.writeMtx.Lock()
 	defer w.writeMtx.Unlock()
 
-	err := w.c.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(int(code), code.String()))
+	// Send "end of stream" message
+	msg, err := events.NewMessage(events.OpcodeEndOfStream, events.EndOfStreamPayload{
+		Code:    code,
+		Message: code.String(),
+	})
+	if err != nil {
+		zap.S().Errorw("failed to close connection", "error", err)
+	}
+	if err = multierror.Append(w.c.WriteJSON(msg)).ErrorOrNil(); err != nil {
+		zap.S().Errorw("failed to close connection", "error", err)
+	}
+
+	// Write close frame
+	err = w.c.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(int(code), code.String()))
 	err = multierror.Append(err, w.c.Close()).ErrorOrNil()
 	if err != nil {
 		zap.S().Errorw("failed to close connection", "error", err)

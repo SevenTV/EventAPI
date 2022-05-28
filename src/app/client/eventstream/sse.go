@@ -72,11 +72,18 @@ func (*EventStream) Actor() *structures.User {
 }
 
 func (es *EventStream) Close(code events.CloseCode) {
-	_ = es.c.Conn().Close()
-}
+	msg, err := events.NewMessage(events.OpcodeEndOfStream, events.EndOfStreamPayload{
+		Code:    code,
+		Message: code.String(),
+	})
+	if err != nil {
+		zap.S().Errorw("failed to close connection", "error", err)
+	}
 
-func (*EventStream) Dispatch(t events.EventType, data []byte) error {
-	panic("unimplemented")
+	if err = es.write(msg.ToRaw()); err != nil {
+		zap.S().Errorw("failed to write end of stream event to closing connection", "error", err)
+	}
+	es.cancel()
 }
 
 func (*EventStream) Events() client.EventMap {
@@ -111,11 +118,28 @@ func (es *EventStream) Heartbeat() error {
 	return es.write(msg.ToRaw())
 }
 
-func (*EventStream) SendError(txt string, fields map[string]any) {
-	panic("unimplemented")
+func (es *EventStream) SendError(txt string, fields map[string]any) {
+	if fields == nil {
+		fields = make(map[string]any)
+	}
+	msg, err := events.NewMessage(events.OpcodeError, events.ErrorPayload{
+		Message: txt,
+		Fields:  fields,
+	})
+	if err != nil {
+		zap.S().Errorw("failed to set up an error message", "error", err)
+		return
+	}
+
+	if err := es.write(msg.ToRaw()); err != nil {
+		zap.S().Errorw("failed to write an error message to the socket", "error", err)
+	}
 }
 
 func (es *EventStream) write(msg events.Message[json.RawMessage]) error {
+	es.writeMtx.Lock()
+	defer es.writeMtx.Unlock()
+
 	if es.writer == nil {
 		return fmt.Errorf("connection not writable")
 	}
