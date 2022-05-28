@@ -87,7 +87,8 @@ func main() {
 	dones := []<-chan struct{}{}
 
 	if gCtx.Config().API.Enabled {
-		dones = append(dones, app.New(gCtx))
+		_, done := app.New(gCtx)
+		dones = append(dones, done)
 	}
 	if gCtx.Config().Health.Enabled {
 		dones = append(dones, health.New(gCtx))

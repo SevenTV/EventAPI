@@ -14,6 +14,7 @@ import (
 	"github.com/SevenTV/Common/utils"
 	"github.com/SevenTV/EventAPI/src/app/client"
 	"github.com/SevenTV/EventAPI/src/global"
+	"github.com/fasthttp/router"
 	"github.com/hashicorp/go-multierror"
 	"github.com/valyala/fasthttp"
 	"go.uber.org/zap"
@@ -29,11 +30,12 @@ type EventStream struct {
 	writeMtx          sync.Mutex
 	writer            *bufio.Writer
 	sessionID         []byte
+	router            *router.Router
 	heartbeatInterval int64
 	heartbeatCount    int64
 }
 
-func NewSSE(gctx global.Context, c *fasthttp.RequestCtx, dig client.EventDigest) (client.Connection, error) {
+func NewSSE(gctx global.Context, c *fasthttp.RequestCtx, dig client.EventDigest, r *router.Router) (client.Connection, error) {
 	hbi := gctx.Config().API.HeartbeatInterval
 	if hbi == 0 {
 		hbi = 45000
@@ -65,6 +67,10 @@ func NewSSE(gctx global.Context, c *fasthttp.RequestCtx, dig client.EventDigest)
 // Context implements Connection
 func (es *EventStream) Context() context.Context {
 	return es.ctx
+}
+
+func (es *EventStream) SessionID() []byte {
+	return es.sessionID
 }
 
 func (*EventStream) Actor() *structures.User {

@@ -15,6 +15,8 @@ import (
 
 type Connection interface {
 	Context() context.Context
+	// Retrieve the ID of this session
+	SessionID() []byte
 	// Greet sends an Hello message to the client
 	Greet() error
 	// Listen for incoming and outgoing events

@@ -61,6 +61,10 @@ func (w *WebSocket) Context() context.Context {
 	return w.ctx
 }
 
+func (w *WebSocket) SessionID() []byte {
+	return w.sessionID
+}
+
 func (w *WebSocket) Greet() error {
 	w.writeMtx.Lock()
 	defer w.writeMtx.Unlock()

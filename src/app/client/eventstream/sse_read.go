@@ -17,18 +17,11 @@ func (es *EventStream) Read(gctx global.Context) {
 	dispatch := make(chan events.Message[events.DispatchPayload])
 	go es.Digest().Dispatch.Subscribe(es.ctx, es.sessionID, dispatch)
 
-	go func() {
-		defer func() {
-			es.cancel()
-			close(dispatch)
-			heartbeat.Stop()
-		}()
-		select {
-		case <-gctx.Done():
-		case <-es.c.Done():
-		case <-gctx.Done():
-		case <-es.ctx.Done():
-		}
+	defer func() {
+		heartbeat.Stop()
+		es.cancel()
+		close(dispatch)
+		es.Close(events.CloseCodeRestart)
 	}()
 
 	if err := es.Greet(); err != nil {
@@ -40,13 +33,11 @@ func (es *EventStream) Read(gctx global.Context) {
 			return
 		}
 		select {
+		case <-es.c.Done():
+			return
 		case <-gctx.Done():
-			es.Close(events.CloseCodeRestart)
 			return
 		case <-es.ctx.Done():
-			es.Close(events.CloseCodeRestart)
-			return
-		case <-es.c.Done():
 			return
 		case <-heartbeat.C:
 			if err := es.Heartbeat(); err != nil {
