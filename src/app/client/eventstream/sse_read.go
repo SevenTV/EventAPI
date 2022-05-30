@@ -15,7 +15,9 @@ func (es *EventStream) Read(gctx global.Context) {
 	conn := es.c.Conn().(*net.TCPConn)
 	heartbeat := time.NewTicker(time.Duration(es.heartbeatInterval) * time.Millisecond)
 	dispatch := make(chan events.Message[events.DispatchPayload])
+	ack := make(chan events.Message[events.AckPayload])
 	go es.Digest().Dispatch.Subscribe(es.ctx, es.sessionID, dispatch)
+	go es.Digest().Ack.Subscribe(es.ctx, es.sessionID, ack)
 
 	defer func() {
 		heartbeat.Stop()
@@ -45,8 +47,20 @@ func (es *EventStream) Read(gctx global.Context) {
 			}
 
 		case msg := <-dispatch:
+			// Filter by subscribed event types
+			if !es.Events().Has(msg.Data.Type) {
+				continue // skip if not subscribed to this
+			}
 			if err := es.write(msg.ToRaw()); err != nil {
 				zap.S().Errorw("failed to write dispatch to connection",
+					"error", err,
+				)
+				continue
+			}
+		// Listen for acks (i.e in response to a session mutation)
+		case msg := <-ack:
+			if err := es.write(msg.ToRaw()); err != nil {
+				zap.S().Errorw("failed to write ack to connection",
 					"error", err,
 				)
 				continue

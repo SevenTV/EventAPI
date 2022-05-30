@@ -30,18 +30,17 @@ type EventStream struct {
 	writeMtx          sync.Mutex
 	writer            *bufio.Writer
 	sessionID         []byte
-	router            *router.Router
 	heartbeatInterval int64
 	heartbeatCount    int64
 }
 
-func NewSSE(gctx global.Context, c *fasthttp.RequestCtx, dig client.EventDigest, r *router.Router) (client.Connection, error) {
+func NewEventStream(gctx global.Context, c *fasthttp.RequestCtx, dig client.EventDigest, r *router.Router) (client.Connection, error) {
 	hbi := gctx.Config().API.HeartbeatInterval
 	if hbi == 0 {
 		hbi = 45000
 	}
 
-	sessionID, err := client.GenerateSessionID(64)
+	sessionID, err := client.GenerateSessionID(32)
 	if err != nil {
 		return nil, err
 	}
@@ -69,8 +68,8 @@ func (es *EventStream) Context() context.Context {
 	return es.ctx
 }
 
-func (es *EventStream) SessionID() []byte {
-	return es.sessionID
+func (es *EventStream) SessionID() string {
+	return hex.EncodeToString(es.sessionID)
 }
 
 func (*EventStream) Actor() *structures.User {
@@ -92,8 +91,8 @@ func (es *EventStream) Close(code events.CloseCode) {
 	es.cancel()
 }
 
-func (*EventStream) Events() client.EventMap {
-	panic("unimplemented")
+func (es *EventStream) Events() client.EventMap {
+	return es.evm
 }
 
 func (es *EventStream) Digest() client.EventDigest {

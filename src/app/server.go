@@ -1,9 +1,13 @@
 package app
 
 import (
+	"encoding/json"
 	"time"
 
+	"github.com/SevenTV/Common/errors"
 	"github.com/SevenTV/Common/events"
+	"github.com/SevenTV/Common/redis"
+	"github.com/SevenTV/Common/sync_map"
 	"github.com/SevenTV/Common/utils"
 	"github.com/SevenTV/EventAPI/src/app/client"
 	"github.com/SevenTV/EventAPI/src/global"
@@ -18,6 +22,7 @@ type Server struct {
 	digest   client.EventDigest
 	upgrader websocket.FastHTTPUpgrader
 	router   *router.Router
+	conns    *sync_map.Map[string, client.Connection]
 }
 
 func New(gctx global.Context) (Server, <-chan struct{}) {
@@ -30,7 +35,8 @@ func New(gctx global.Context) (Server, <-chan struct{}) {
 
 	// Connection map (v3 only)
 	dig := client.EventDigest{
-		Dispatch: client.NewDigest[events.DispatchPayload](gctx, events.OpcodeDispatch, true),
+		Dispatch: client.NewDigest[events.DispatchPayload](gctx, redis.Key(events.OpcodeDispatch.PublishKey())),
+		Ack:      client.NewDigest[events.AckPayload](gctx, redis.Key(events.OpcodeAck.PublishKey())),
 	}
 
 	r := router.New()
@@ -38,9 +44,11 @@ func New(gctx global.Context) (Server, <-chan struct{}) {
 		upgrader: upgrader,
 		digest:   dig,
 		router:   r,
+		conns:    &sync_map.Map[string, client.Connection]{},
 	}
 	srv.HandleConnect(gctx)
 	srv.HandleHealth(gctx)
+	srv.HandleSessionMutation(gctx)
 
 	server := fasthttp.Server{
 		CloseOnShutdown: true,
@@ -81,4 +89,29 @@ func New(gctx global.Context) (Server, <-chan struct{}) {
 	}()
 
 	return srv, done
+}
+
+type ErrorResponse struct {
+	Status     string         `json:"status"`
+	StatusCode int            `json:"status_code"`
+	Error      string         `json:"error"`
+	ErrorCode  int            `json:"error_code"`
+	Details    map[string]any `json:"details"`
+}
+
+func DoErrorResponse(ctx *fasthttp.RequestCtx, e errors.APIError) {
+	b, err := json.Marshal(&ErrorResponse{
+		Status:     fasthttp.StatusMessage(e.ExpectedHTTPStatus()),
+		StatusCode: e.ExpectedHTTPStatus(),
+		Error:      e.Message(),
+		ErrorCode:  e.Code(),
+		Details:    e.GetFields(),
+	})
+	if err != nil {
+		ctx.SetStatusCode(fasthttp.StatusInternalServerError)
+		return
+	}
+	ctx.SetContentType("application/json")
+	ctx.SetStatusCode(e.ExpectedHTTPStatus())
+	ctx.SetBody(b)
 }

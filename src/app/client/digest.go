@@ -15,22 +15,20 @@ import (
 
 type Digest[P events.AnyPayload] struct {
 	gctx global.Context
-	op   events.Opcode
 	ch   chan string
-	subs sync_map.Map[string, digestSub[P]]
+	subs *sync_map.Map[string, digestSub[P]]
 }
 
-func NewDigest[P events.AnyPayload](gctx global.Context, op events.Opcode, useRedis bool) *Digest[P] {
+func NewDigest[P events.AnyPayload](gctx global.Context, key redis.Key) *Digest[P] {
 	ch := make(chan string, 10)
 	d := &Digest[P]{
-		gctx,
-		op,
-		ch,
-		sync_map.Map[string, digestSub[P]]{},
+		gctx: gctx,
+		ch:   ch,
+		subs: &sync_map.Map[string, digestSub[P]]{},
 	}
 
-	if useRedis {
-		go gctx.Inst().Redis.Subscribe(gctx, ch, redis.Key(op.PublishKey()))
+	if key != "" {
+		go gctx.Inst().Redis.Subscribe(gctx, ch, key)
 		go func() {
 			defer close(ch)
 
@@ -87,6 +85,7 @@ func (d *Digest[P]) Subscribe(ctx context.Context, sessionID []byte, ch chan eve
 
 type EventDigest struct {
 	Dispatch *Digest[events.DispatchPayload]
+	Ack      *Digest[events.AckPayload]
 }
 
 type digestSub[P events.AnyPayload] struct {

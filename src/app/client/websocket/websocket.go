@@ -34,7 +34,7 @@ func NewWebSocket(gctx global.Context, conn *websocket.Conn, dig client.EventDig
 		hbi = 45000
 	}
 
-	sessionID, err := client.GenerateSessionID(64)
+	sessionID, err := client.GenerateSessionID(32)
 	if err != nil {
 		return nil, err
 	}
@@ -61,8 +61,8 @@ func (w *WebSocket) Context() context.Context {
 	return w.ctx
 }
 
-func (w *WebSocket) SessionID() []byte {
-	return w.sessionID
+func (w *WebSocket) SessionID() string {
+	return hex.EncodeToString(w.sessionID)
 }
 
 func (w *WebSocket) Greet() error {

@@ -15,8 +15,8 @@ import (
 
 type Connection interface {
 	Context() context.Context
-	// Retrieve the ID of this session
-	SessionID() []byte
+	// Retrieve the hex-encoded ID of this session
+	SessionID() string
 	// Greet sends an Hello message to the client
 	Greet() error
 	// Listen for incoming and outgoing events
@@ -73,15 +73,29 @@ type EventMap struct {
 }
 
 // Subscribe sets up a subscription to dispatch events with the specified type
-func (e EventMap) Subscribe(gctx global.Context, ctx context.Context, t events.EventType, targets []primitive.ObjectID) (*EventChannel, error) {
+func (e EventMap) Subscribe(gctx global.Context, t events.EventType, targets []string) (*EventChannel, error) {
 	_, exists := e.m.Load(t)
 	if exists {
 		return nil, ErrAlreadySubscribed
 	}
 
+	// Parse targets
+	targetIDs := make([]primitive.ObjectID, len(targets))
+	targetCount := 0
+	for _, s := range targets {
+		id, err := primitive.ObjectIDFromHex(s)
+		if err == nil {
+			targetIDs[targetCount] = id
+			targetCount++
+		}
+	}
+	if len(targets) != targetCount {
+		targetIDs = targetIDs[:targetCount]
+	}
+
 	// Create channel
 	ec := &EventChannel{
-		targets: targets,
+		targets: targetIDs,
 	}
 	e.m.Store(t, ec)
 	return ec, nil
