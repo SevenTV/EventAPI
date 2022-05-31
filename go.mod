@@ -7,6 +7,7 @@ require (
 	github.com/bugsnag/panicwrap v1.3.4
 	github.com/fasthttp/websocket v1.4.5
 	github.com/go-redis/redis/v8 v8.11.5
+	github.com/google/uuid v1.3.0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/json-iterator/go v1.1.12
 	github.com/prometheus/client_golang v1.12.0

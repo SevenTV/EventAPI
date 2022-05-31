@@ -68,13 +68,10 @@ func (w *WebSocket) SessionID() string {
 func (w *WebSocket) Greet() error {
 	w.writeMtx.Lock()
 	defer w.writeMtx.Unlock()
-	msg, err := events.NewMessage(events.OpcodeHello, events.HelloPayload{
+	msg := events.NewMessage(events.OpcodeHello, events.HelloPayload{
 		HeartbeatInterval: int64(w.heartbeatInterval),
 		SessionID:         hex.EncodeToString(w.sessionID),
 	})
-	if err != nil {
-		return err
-	}
 
 	return w.c.WriteJSON(msg)
 }
@@ -83,12 +80,9 @@ func (w *WebSocket) Heartbeat() error {
 	w.writeMtx.Lock()
 	defer w.writeMtx.Unlock()
 	w.heartbeatCount++
-	msg, err := events.NewMessage(events.OpcodeHeartbeat, events.HeartbeatPayload{
+	msg := events.NewMessage(events.OpcodeHeartbeat, events.HeartbeatPayload{
 		Count: w.heartbeatCount,
 	})
-	if err != nil {
-		return err
-	}
 
 	return w.c.WriteJSON(msg)
 }
@@ -98,19 +92,16 @@ func (w *WebSocket) Close(code events.CloseCode) {
 	defer w.writeMtx.Unlock()
 
 	// Send "end of stream" message
-	msg, err := events.NewMessage(events.OpcodeEndOfStream, events.EndOfStreamPayload{
+	msg := events.NewMessage(events.OpcodeEndOfStream, events.EndOfStreamPayload{
 		Code:    code,
 		Message: code.String(),
 	})
-	if err != nil {
-		zap.S().Errorw("failed to close connection", "error", err)
-	}
-	if err = multierror.Append(w.c.WriteJSON(msg)).ErrorOrNil(); err != nil {
+	if err := w.c.WriteJSON(msg); err != nil {
 		zap.S().Errorw("failed to close connection", "error", err)
 	}
 
 	// Write close frame
-	err = w.c.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(int(code), code.String()))
+	err := w.c.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(int(code), code.String()))
 	err = multierror.Append(err, w.c.Close()).ErrorOrNil()
 	if err != nil {
 		zap.S().Errorw("failed to close connection", "error", err)
@@ -138,14 +129,10 @@ func (w *WebSocket) SendError(txt string, fields map[string]any) {
 	if fields == nil {
 		fields = map[string]any{}
 	}
-	msg, err := events.NewMessage(events.OpcodeError, events.ErrorPayload{
+	msg := events.NewMessage(events.OpcodeError, events.ErrorPayload{
 		Message: txt,
 		Fields:  fields,
 	})
-	if err != nil {
-		zap.S().Errorw("failed to set up an error message", "error", err)
-		return
-	}
 	if err := w.c.WriteJSON(msg); err != nil {
 		zap.S().Errorw("failed to write an error message to the socket", "error", err)
 	}

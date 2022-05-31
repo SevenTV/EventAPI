@@ -8,6 +8,7 @@ import (
 	"github.com/SevenTV/Common/structures/v3"
 	"github.com/SevenTV/Common/utils"
 	"github.com/SevenTV/EventAPI/src/global"
+	"github.com/google/uuid"
 	"github.com/valyala/fasthttp"
 	"go.uber.org/zap"
 )
@@ -24,8 +25,9 @@ func (s Server) HandleSessionMutation(gctx global.Context) {
 			return
 		}
 
+		reqID := uuid.New().String()
 		b, _ := json.Marshal(&events.SessionMutation{
-			Ref:       "",
+			RequestID: reqID,
 			SessionID: sid,
 			Events: []events.SessionMutationEvent{{
 				Action:  structures.ListItemActionAdd,
@@ -36,7 +38,7 @@ func (s Server) HandleSessionMutation(gctx global.Context) {
 		gctx.Inst().Redis.RawClient().Publish(ctx, "events:session_mutation", utils.B2S(b))
 
 		j, _ := json.Marshal(SessionMutationResponse{
-			RequestID: "",
+			RequestID: reqID,
 		})
 		ctx.SetBody(j)
 		ctx.SetContentType("application/json")
@@ -70,8 +72,8 @@ func (s Server) HandleSessionMutation(gctx global.Context) {
 					_, _ = conn.Events().Subscribe(gctx, ev.Type, ev.Targets)
 
 					// Publish update
-					ackMsg, _ := events.NewMessage(events.OpcodeAck, events.AckPayload{
-						RequestID: "",
+					ackMsg := events.NewMessage(events.OpcodeAck, events.AckPayload{
+						RequestID: m.RequestID,
 						Data: map[string]any{
 							"action":     ev.Action,
 							"event_type": ev.Type,

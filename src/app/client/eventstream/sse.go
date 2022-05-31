@@ -77,15 +77,12 @@ func (*EventStream) Actor() *structures.User {
 }
 
 func (es *EventStream) Close(code events.CloseCode) {
-	msg, err := events.NewMessage(events.OpcodeEndOfStream, events.EndOfStreamPayload{
+	msg := events.NewMessage(events.OpcodeEndOfStream, events.EndOfStreamPayload{
 		Code:    code,
 		Message: code.String(),
 	})
-	if err != nil {
-		zap.S().Errorw("failed to close connection", "error", err)
-	}
 
-	if err = es.write(msg.ToRaw()); err != nil {
+	if err := es.write(msg.ToRaw()); err != nil {
 		zap.S().Errorw("failed to write end of stream event to closing connection", "error", err)
 	}
 	es.cancel()
@@ -100,25 +97,19 @@ func (es *EventStream) Digest() client.EventDigest {
 }
 
 func (es *EventStream) Greet() error {
-	msg, err := events.NewMessage(events.OpcodeHello, events.HelloPayload{
+	msg := events.NewMessage(events.OpcodeHello, events.HelloPayload{
 		HeartbeatInterval: int64(es.heartbeatInterval),
 		SessionID:         hex.EncodeToString(es.sessionID),
 	})
-	if err != nil {
-		return err
-	}
 
 	return es.write(msg.ToRaw())
 }
 
 func (es *EventStream) Heartbeat() error {
 	es.heartbeatCount++
-	msg, err := events.NewMessage(events.OpcodeHeartbeat, events.HeartbeatPayload{
+	msg := events.NewMessage(events.OpcodeHeartbeat, events.HeartbeatPayload{
 		Count: es.heartbeatCount,
 	})
-	if err != nil {
-		return err
-	}
 
 	return es.write(msg.ToRaw())
 }
@@ -127,14 +118,10 @@ func (es *EventStream) SendError(txt string, fields map[string]any) {
 	if fields == nil {
 		fields = make(map[string]any)
 	}
-	msg, err := events.NewMessage(events.OpcodeError, events.ErrorPayload{
+	msg := events.NewMessage(events.OpcodeError, events.ErrorPayload{
 		Message: txt,
 		Fields:  fields,
 	})
-	if err != nil {
-		zap.S().Errorw("failed to set up an error message", "error", err)
-		return
-	}
 
 	if err := es.write(msg.ToRaw()); err != nil {
 		zap.S().Errorw("failed to write an error message to the socket", "error", err)
@@ -148,16 +135,17 @@ func (es *EventStream) write(msg events.Message[json.RawMessage]) error {
 	if es.writer == nil {
 		return fmt.Errorf("connection not writable")
 	}
-	b, err := json.Marshal(msg)
+	b, err := json.Marshal(msg.Data)
 	if err != nil {
 		return err
 	}
 
 	sb := strings.Builder{}
-	_, er1 := sb.WriteString(fmt.Sprintf("event: %s\ndata: ", strings.ToLower(msg.Op.String())))
+	_, er1 := sb.WriteString(fmt.Sprintf("type: %s\ndata: ", strings.ToLower(msg.Op.String())))
 	_, er2 := sb.Write(b)
-	_, er3 := sb.WriteString("\n\n")
-	if err = multierror.Append(er1, er2, er3).ErrorOrNil(); err != nil {
+	_, er3 := sb.WriteString(fmt.Sprintf("\nid: %d", es.seq))
+	_, er4 := sb.WriteString("\n\n")
+	if err = multierror.Append(er1, er2, er3, er4).ErrorOrNil(); err != nil {
 		return err
 	}
 
@@ -168,6 +156,7 @@ func (es *EventStream) write(msg events.Message[json.RawMessage]) error {
 		return err
 	}
 
+	es.seq++
 	return nil
 }
 
