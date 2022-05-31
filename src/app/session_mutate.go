@@ -45,6 +45,29 @@ func (s Server) HandleSessionMutation(gctx global.Context) {
 		ctx.SetStatusCode(fasthttp.StatusOK)
 	})
 
+	s.router.DELETE("/v3/sessions/{sid}/events/{event}", func(ctx *fasthttp.RequestCtx) {
+		sid := ctx.UserValue("sid").(string)
+		evt := ctx.UserValue("event").(string)
+
+		reqID := uuid.New().String()
+		b, _ := json.Marshal(&events.SessionMutation{
+			RequestID: reqID,
+			SessionID: sid,
+			Events: []events.SessionMutationEvent{{
+				Action: structures.ListItemActionRemove,
+				Type:   events.EventType(evt),
+			}},
+		})
+		gctx.Inst().Redis.RawClient().Publish(ctx, "events:session_mutation", utils.B2S(b))
+
+		j, _ := json.Marshal(SessionMutationResponse{
+			RequestID: reqID,
+		})
+		ctx.SetBody(j)
+		ctx.SetContentType("application/json")
+		ctx.SetStatusCode(fasthttp.StatusOK)
+	})
+
 	ch := make(chan string, 10)
 	go gctx.Inst().Redis.Subscribe(gctx, ch, "events:session_mutation")
 	go func() {
@@ -69,7 +92,13 @@ func (s Server) HandleSessionMutation(gctx global.Context) {
 
 				// Handle event changes
 				for _, ev := range m.Events {
-					_, _ = conn.Events().Subscribe(gctx, ev.Type, ev.Targets)
+					switch ev.Action {
+					case structures.ListItemActionAdd:
+						_, _ = conn.Events().Subscribe(gctx, ev.Type, ev.Targets)
+					case structures.ListItemActionRemove:
+						_ = conn.Events().Unsubscribe(ev.Type)
+
+					}
 
 					// Publish update
 					ackMsg := events.NewMessage(events.OpcodeAck, events.AckPayload{
