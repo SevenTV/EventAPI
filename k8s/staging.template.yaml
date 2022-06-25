@@ -106,8 +106,16 @@ data:
 
     api:
       enabled: true
-      bind: 127.0.0.1:3000
+      bind: 0.0.0.0:3000
       heartbeat_interval: 25000
+
+    health:
+      enabled: true
+      bind: 0.0.0.0:9200
+
+    monitoring:
+      enabled: true
+      bind: 0.0.0.0:9100
 
 ---
 apiVersion: networking.k8s.io/v1
