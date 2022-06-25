@@ -10,6 +10,6 @@ FROM $BASE_IMG
         apt-get clean -y && \
         rm -rf /var/cache/apt/archives /var/lib/apt/lists/*
         
-    COPY out/api api
+    COPY out/eventapi eventapi
 
-    CMD ./api
+    CMD ./eventapi
