@@ -88,9 +88,6 @@ jobs:
       - name: Install Developer Dependencies
         run: make dev_deps
 
-      - name: Generate structures
-        run: make generate
-
       - name: Run Linter
         run: make lint
 
