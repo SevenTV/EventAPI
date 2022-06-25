@@ -15,7 +15,7 @@ else
 	VERSION = ${EVENTS_VERSION};
 endif
 
-linux:
+build:
 	GOOS=linux GOARCH=amd64 go build -v -ldflags "-X 'main.Version=${VERSION}' -X 'main.Unix=$(shell date +%s)' -X 'main.User=${BUILDER}'" -o out/events cmd/*.go
 
 lint:
@@ -40,7 +40,7 @@ test:
 	go test -count=1 -cover ./...
 
 work:
-	echo "go 1.18\n\nuse (\n\t.\n\t../Common\n)" > go.work
+	echo -e "go 1.18\n\nuse (\n\t.\n\t../Common\n)" > go.work
 	go mod tidy
 
 dev:
