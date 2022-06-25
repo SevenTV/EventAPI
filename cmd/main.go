@@ -69,11 +69,12 @@ func main() {
 	{
 		ctx, cancel := context.WithTimeout(gCtx, time.Second*15)
 		redisInst, err := redis.Setup(ctx, redis.SetupOptions{
-			Username:  gCtx.Config().Redis.Username,
-			Password:  gCtx.Config().Redis.Password,
-			Database:  gCtx.Config().Redis.Database,
-			Addresses: gCtx.Config().Redis.Addresses,
-			Sentinel:  gCtx.Config().Redis.Sentinel,
+			Username:   gCtx.Config().Redis.Username,
+			Password:   gCtx.Config().Redis.Password,
+			Database:   gCtx.Config().Redis.Database,
+			Addresses:  gCtx.Config().Redis.Addresses,
+			Sentinel:   gCtx.Config().Redis.Sentinel,
+			MasterName: gCtx.Config().Redis.MasterName,
 		})
 		cancel()
 		if err != nil {

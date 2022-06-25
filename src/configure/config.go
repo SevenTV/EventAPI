@@ -17,11 +17,12 @@ type Config struct {
 	NoHeader   bool   `mapstructure:"noheader" json:"noheader"`
 
 	Redis struct {
-		Username  string   `mapstructure:"username" json:"username"`
-		Password  string   `mapstructure:"password" json:"password"`
-		Addresses []string `mapstructure:"addresses" json:"addresses"`
-		Database  int      `mapstructure:"database" json:"database"`
-		Sentinel  bool     `mapstructure:"sentinel" json:"sentinel"`
+		Username   string   `mapstructure:"username" json:"username"`
+		Password   string   `mapstructure:"password" json:"password"`
+		Addresses  []string `mapstructure:"addresses" json:"addresses"`
+		Database   int      `mapstructure:"database" json:"database"`
+		Sentinel   bool     `mapstructure:"sentinel" json:"sentinel"`
+		MasterName string   `mapstructure:"master_name" json:"master_name"`
 	} `mapstructure:"redis" json:"redis"`
 
 	API struct {
