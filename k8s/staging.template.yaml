@@ -130,7 +130,7 @@ metadata:
     external-dns.alpha.kubernetes.io/cloudflare-proxied: "true"
 spec:
   rules:
-    - host: stage.events.7tv.io
+    - host: events.stage.7tv.io
       http:
         paths:
           - pathType: Prefix
