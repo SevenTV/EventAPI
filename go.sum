@@ -261,6 +261,8 @@ github.com/savsgio/gotils v0.0.0-20220530130905-52f3993e8d6d h1:Q+gqLBOPkFGHyCJx
 github.com/savsgio/gotils v0.0.0-20220530130905-52f3993e8d6d/go.mod h1:Gy+0tqhJvgGlqnTF8CVGP0AaGRjwBtXs/a5PA0Y3+A4=
 github.com/seventv/common v0.0.0-20220626005011-3aca948a744c h1:RAYIuS8F3WGhBtXxNryxbKPdbaUy8JREOWhJM97SPjE=
 github.com/seventv/common v0.0.0-20220626005011-3aca948a744c/go.mod h1:OkdKTP7KfHIveCqdDkD9CmMVn6pysV0qn6azfY8BiP0=
+github.com/seventv/common v0.0.0-20220626183530-8da661b2ef37 h1:qLUfQkppazKjBMAGNFMCXEk3zJV8fCiUsEXJqUps7PU=
+github.com/seventv/common v0.0.0-20220626183530-8da661b2ef37/go.mod h1:OkdKTP7KfHIveCqdDkD9CmMVn6pysV0qn6azfY8BiP0=
 github.com/sirupsen/logrus v1.2.0/go.mod h1:LxeOpSwHxABJmUn/MG1IvRgCAasNZTLOkJPxbbu5VWo=
 github.com/sirupsen/logrus v1.4.2/go.mod h1:tLMulIdttU9McNUspp0xgXVQah82FyeX6MwdIuYE2rE=
 github.com/sirupsen/logrus v1.6.0/go.mod h1:7uNnSEd1DgxDLC74fIahvMZmmYsHGZGEOFrfsX/uA88=
