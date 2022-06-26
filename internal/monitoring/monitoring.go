@@ -3,9 +3,9 @@ package monitoring
 import (
 	"time"
 
-	"github.com/SevenTV/EventAPI/src/global"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/seventv/eventapi/internal/global"
 	"github.com/sirupsen/logrus"
 	"github.com/valyala/fasthttp"
 	"github.com/valyala/fasthttp/fasthttpadaptor"

@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/SevenTV/EventAPI/src/app/client"
-	"github.com/SevenTV/EventAPI/src/global"
 	"github.com/fasthttp/router"
 	"github.com/fasthttp/websocket"
 	"github.com/seventv/common/errors"
@@ -13,6 +11,8 @@ import (
 	"github.com/seventv/common/redis"
 	"github.com/seventv/common/sync_map"
 	"github.com/seventv/common/utils"
+	"github.com/seventv/eventapi/internal/app/client"
+	"github.com/seventv/eventapi/internal/global"
 	"github.com/valyala/fasthttp"
 
 	"github.com/sirupsen/logrus"
@@ -85,6 +85,9 @@ func New(gctx global.Context) (Server, <-chan struct{}) {
 
 	go func() {
 		<-gctx.Done()
+		// wait a quarter-second, this should be enough to send end of stream events to clients
+		// todo: find a better solution for this
+		time.Sleep(time.Millisecond * 250)
 		_ = server.Shutdown()
 	}()
 

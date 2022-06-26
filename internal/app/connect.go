@@ -1,11 +1,11 @@
 package app
 
 import (
-	v1 "github.com/SevenTV/EventAPI/src/app/v1"
-	v3 "github.com/SevenTV/EventAPI/src/app/v3"
-	"github.com/SevenTV/EventAPI/src/global"
 	"github.com/fasthttp/websocket"
 	"github.com/seventv/common/utils"
+	v1 "github.com/seventv/eventapi/internal/app/v1"
+	v3 "github.com/seventv/eventapi/internal/app/v3"
+	"github.com/seventv/eventapi/internal/global"
 	"github.com/valyala/fasthttp"
 )
 

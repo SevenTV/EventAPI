@@ -1,6 +1,6 @@
 package global
 
-import "github.com/SevenTV/EventAPI/src/instance"
+import "github.com/seventv/eventapi/internal/instance"
 
 type Instances struct {
 	Redis      instance.Redis

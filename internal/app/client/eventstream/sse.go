@@ -9,13 +9,13 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/SevenTV/EventAPI/src/app/client"
-	"github.com/SevenTV/EventAPI/src/global"
 	"github.com/fasthttp/router"
 	"github.com/hashicorp/go-multierror"
 	"github.com/seventv/common/events"
 	"github.com/seventv/common/structures/v3"
 	"github.com/seventv/common/utils"
+	"github.com/seventv/eventapi/internal/app/client"
+	"github.com/seventv/eventapi/internal/global"
 	"github.com/valyala/fasthttp"
 	"go.uber.org/zap"
 )

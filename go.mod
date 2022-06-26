@@ -1,4 +1,4 @@
-module github.com/SevenTV/EventAPI
+module github.com/seventv/eventapi
 
 go 1.18
 

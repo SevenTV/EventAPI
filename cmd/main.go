@@ -10,14 +10,14 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/SevenTV/EventAPI/src/app"
-	"github.com/SevenTV/EventAPI/src/configure"
-	"github.com/SevenTV/EventAPI/src/global"
-	"github.com/SevenTV/EventAPI/src/health"
-	"github.com/SevenTV/EventAPI/src/instance"
-	"github.com/SevenTV/EventAPI/src/monitoring"
 	"github.com/bugsnag/panicwrap"
 	"github.com/seventv/common/redis"
+	"github.com/seventv/eventapi/internal/app"
+	"github.com/seventv/eventapi/internal/configure"
+	"github.com/seventv/eventapi/internal/global"
+	"github.com/seventv/eventapi/internal/health"
+	"github.com/seventv/eventapi/internal/instance"
+	"github.com/seventv/eventapi/internal/monitoring"
 	"github.com/sirupsen/logrus"
 )
 

@@ -1,7 +1,7 @@
 package app
 
 import (
-	"github.com/SevenTV/EventAPI/src/global"
+	"github.com/seventv/eventapi/internal/global"
 	"github.com/valyala/fasthttp"
 )
 

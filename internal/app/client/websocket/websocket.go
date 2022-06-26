@@ -6,12 +6,12 @@ import (
 	"encoding/hex"
 	"sync"
 
-	"github.com/SevenTV/EventAPI/src/app/client"
-	"github.com/SevenTV/EventAPI/src/global"
 	websocket "github.com/fasthttp/websocket"
 	"github.com/hashicorp/go-multierror"
 	"github.com/seventv/common/events"
 	"github.com/seventv/common/structures/v3"
+	"github.com/seventv/eventapi/internal/app/client"
+	"github.com/seventv/eventapi/internal/global"
 	"go.uber.org/zap"
 )
 

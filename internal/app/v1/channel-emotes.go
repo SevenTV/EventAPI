@@ -12,11 +12,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/SevenTV/EventAPI/src/events"
-	"github.com/SevenTV/EventAPI/src/global"
 	"github.com/fasthttp/websocket"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/seventv/common/utils"
+	"github.com/seventv/eventapi/internal/events"
+	"github.com/seventv/eventapi/internal/global"
 	"github.com/sirupsen/logrus"
 	"github.com/valyala/fasthttp"
 )
