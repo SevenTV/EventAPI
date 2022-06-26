@@ -6,10 +6,10 @@ import (
 	"crypto/rand"
 	"fmt"
 
-	"github.com/SevenTV/Common/events"
-	"github.com/SevenTV/Common/structures/v3"
-	"github.com/SevenTV/Common/sync_map"
 	"github.com/SevenTV/EventAPI/src/global"
+	"github.com/seventv/common/events"
+	"github.com/seventv/common/structures/v3"
+	"github.com/seventv/common/sync_map"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 

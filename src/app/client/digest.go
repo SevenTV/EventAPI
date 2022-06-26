@@ -5,11 +5,11 @@ import (
 	"encoding/hex"
 	"encoding/json"
 
-	"github.com/SevenTV/Common/events"
-	"github.com/SevenTV/Common/redis"
-	"github.com/SevenTV/Common/sync_map"
-	"github.com/SevenTV/Common/utils"
 	"github.com/SevenTV/EventAPI/src/global"
+	"github.com/seventv/common/events"
+	"github.com/seventv/common/redis"
+	"github.com/seventv/common/sync_map"
+	"github.com/seventv/common/utils"
 	"go.uber.org/zap"
 )
 

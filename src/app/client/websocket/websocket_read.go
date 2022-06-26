@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/SevenTV/Common/events"
 	"github.com/SevenTV/EventAPI/src/app/client"
 	"github.com/SevenTV/EventAPI/src/global"
+	"github.com/seventv/common/events"
 	"go.uber.org/zap"
 )
 

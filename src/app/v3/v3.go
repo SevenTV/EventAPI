@@ -3,13 +3,13 @@ package v3
 import (
 	"bufio"
 
-	"github.com/SevenTV/Common/events"
 	"github.com/SevenTV/EventAPI/src/app/client"
 	client_eventstream "github.com/SevenTV/EventAPI/src/app/client/eventstream"
 	client_websocket "github.com/SevenTV/EventAPI/src/app/client/websocket"
 	"github.com/SevenTV/EventAPI/src/global"
 	"github.com/fasthttp/router"
 	"github.com/fasthttp/websocket"
+	"github.com/seventv/common/events"
 	"github.com/valyala/fasthttp"
 )
 

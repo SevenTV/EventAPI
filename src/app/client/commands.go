@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"strings"
 
-	"github.com/SevenTV/Common/events"
 	"github.com/SevenTV/EventAPI/src/global"
+	"github.com/seventv/common/events"
 )
 
 func NewHandler(conn Connection) Handler {

@@ -10,7 +10,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/SevenTV/Common/redis"
 	"github.com/SevenTV/EventAPI/src/app"
 	"github.com/SevenTV/EventAPI/src/configure"
 	"github.com/SevenTV/EventAPI/src/global"
@@ -18,6 +17,7 @@ import (
 	"github.com/SevenTV/EventAPI/src/instance"
 	"github.com/SevenTV/EventAPI/src/monitoring"
 	"github.com/bugsnag/panicwrap"
+	"github.com/seventv/common/redis"
 	"github.com/sirupsen/logrus"
 )
 

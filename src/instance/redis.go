@@ -4,8 +4,8 @@ import (
 	"context"
 	"sync"
 
-	"github.com/SevenTV/Common/redis"
 	goRedis "github.com/go-redis/redis/v8"
+	"github.com/seventv/common/redis"
 
 	"github.com/sirupsen/logrus"
 )
