@@ -11,7 +11,7 @@ import (
 	"github.com/seventv/common/redis"
 	"github.com/seventv/common/sync_map"
 	"github.com/seventv/common/utils"
-	"github.com/seventv/eventapi/internal/app/client"
+	client "github.com/seventv/eventapi/internal/app/connection"
 	"github.com/seventv/eventapi/internal/global"
 	"github.com/valyala/fasthttp"
 
@@ -87,7 +87,7 @@ func New(gctx global.Context) (Server, <-chan struct{}) {
 		<-gctx.Done()
 		// wait a quarter-second, this should be enough to send end of stream events to clients
 		// todo: find a better solution for this
-		time.Sleep(time.Millisecond * 250)
+		time.Sleep(time.Millisecond * 200)
 		_ = server.Shutdown()
 	}()
 

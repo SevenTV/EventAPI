@@ -112,11 +112,12 @@ func main() {
 			logrus.Fatal("force shutdown")
 		}()
 
-		logrus.Info("shutting down")
+		logrus.Info("gracefully shutting down...")
 
 		for _, ch := range dones {
 			<-ch
 		}
+		logrus.Info("all apps stopped.")
 
 		close(done)
 	}()

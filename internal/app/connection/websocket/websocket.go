@@ -4,13 +4,14 @@ import (
 	"bufio"
 	"context"
 	"encoding/hex"
+	"encoding/json"
 	"sync"
 
 	websocket "github.com/fasthttp/websocket"
 	"github.com/hashicorp/go-multierror"
 	"github.com/seventv/common/events"
 	"github.com/seventv/common/structures/v3"
-	"github.com/seventv/eventapi/internal/app/client"
+	client "github.com/seventv/eventapi/internal/app/connection"
 	"github.com/seventv/eventapi/internal/global"
 	"go.uber.org/zap"
 )
@@ -22,7 +23,7 @@ type WebSocket struct {
 	seq               int64
 	evm               client.EventMap
 	dig               client.EventDigest
-	writeMtx          sync.Mutex
+	writeMtx          *sync.Mutex
 	sessionID         []byte
 	heartbeatInterval int64
 	heartbeatCount    int64
@@ -39,7 +40,7 @@ func NewWebSocket(gctx global.Context, conn *websocket.Conn, dig client.EventDig
 		return nil, err
 	}
 
-	lctx, cancel := context.WithCancel(gctx)
+	lctx, cancel := context.WithCancel(context.Background())
 	ws := WebSocket{
 		c:                 conn,
 		ctx:               lctx,
@@ -47,7 +48,7 @@ func NewWebSocket(gctx global.Context, conn *websocket.Conn, dig client.EventDig
 		seq:               0,
 		evm:               client.NewEventMap(make(chan string, 10)),
 		dig:               dig,
-		writeMtx:          sync.Mutex{},
+		writeMtx:          &sync.Mutex{},
 		sessionID:         sessionID,
 		heartbeatInterval: hbi,
 		heartbeatCount:    0,
@@ -56,7 +57,6 @@ func NewWebSocket(gctx global.Context, conn *websocket.Conn, dig client.EventDig
 	return &ws, nil
 }
 
-// Context implements Connection
 func (w *WebSocket) Context() context.Context {
 	return w.ctx
 }
@@ -88,15 +88,13 @@ func (w *WebSocket) Heartbeat() error {
 }
 
 func (w *WebSocket) Close(code events.CloseCode) {
-	w.writeMtx.Lock()
-	defer w.writeMtx.Unlock()
-
 	// Send "end of stream" message
 	msg := events.NewMessage(events.OpcodeEndOfStream, events.EndOfStreamPayload{
 		Code:    code,
 		Message: code.String(),
 	})
-	if err := w.c.WriteJSON(msg); err != nil {
+
+	if err := w.write(msg.ToRaw()); err != nil {
 		zap.S().Errorw("failed to close connection", "error", err)
 	}
 
@@ -106,6 +104,16 @@ func (w *WebSocket) Close(code events.CloseCode) {
 	if err != nil {
 		zap.S().Errorw("failed to close connection", "error", err)
 	}
+}
+
+func (w *WebSocket) write(msg events.Message[json.RawMessage]) error {
+	w.writeMtx.Lock()
+	defer w.writeMtx.Unlock()
+
+	if err := w.c.WriteJSON(msg); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (w *WebSocket) Events() client.EventMap {

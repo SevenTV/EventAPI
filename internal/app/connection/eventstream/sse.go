@@ -14,7 +14,7 @@ import (
 	"github.com/seventv/common/events"
 	"github.com/seventv/common/structures/v3"
 	"github.com/seventv/common/utils"
-	"github.com/seventv/eventapi/internal/app/client"
+	client "github.com/seventv/eventapi/internal/app/connection"
 	"github.com/seventv/eventapi/internal/global"
 	"github.com/valyala/fasthttp"
 	"go.uber.org/zap"

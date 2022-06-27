@@ -6,9 +6,9 @@ import (
 	"github.com/fasthttp/router"
 	"github.com/fasthttp/websocket"
 	"github.com/seventv/common/events"
-	"github.com/seventv/eventapi/internal/app/client"
-	client_eventstream "github.com/seventv/eventapi/internal/app/client/eventstream"
-	client_websocket "github.com/seventv/eventapi/internal/app/client/websocket"
+	client "github.com/seventv/eventapi/internal/app/connection"
+	client_eventstream "github.com/seventv/eventapi/internal/app/connection/eventstream"
+	client_websocket "github.com/seventv/eventapi/internal/app/connection/websocket"
 	"github.com/seventv/eventapi/internal/global"
 	"github.com/valyala/fasthttp"
 )

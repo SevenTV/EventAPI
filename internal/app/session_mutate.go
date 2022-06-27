@@ -108,7 +108,7 @@ func (s Server) HandleSessionMutation(gctx global.Context) {
 							"event_type": ev.Type,
 						},
 					})
-					conn.Digest().Ack.Publish(gctx, ackMsg.ToRaw())
+					conn.Digest().Ack.Publish(gctx, ackMsg.ToRaw(), []string{conn.SessionID()})
 				}
 
 			}

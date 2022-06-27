@@ -35,13 +35,13 @@ func NewDigest[P events.AnyPayload](gctx global.Context, key redis.Key) *Digest[
 			var (
 				s   string
 				err error
-				o   events.Message[P]
 			)
 			for {
 				select {
 				case <-gctx.Done():
 					return
 				case s = <-ch:
+					o := events.Message[P]{}
 					if err = json.Unmarshal(utils.S2B(s), &o); err != nil {
 						zap.S().Warnw("got badly encoded message",
 							"error", err.Error(),
@@ -65,10 +65,14 @@ func NewDigest[P events.AnyPayload](gctx global.Context, key redis.Key) *Digest[
 	return d
 }
 
-func (d *Digest[P]) Publish(ctx context.Context, msg events.Message[json.RawMessage]) {
+func (d *Digest[P]) Publish(ctx context.Context, msg events.Message[json.RawMessage], filter []string) {
 	m, err := events.ConvertMessage[P](msg)
 	if err == nil {
 		d.subs.Range(func(key string, value digestSub[P]) bool {
+			if len(filter) >= 0 && !utils.Contains(filter, key) {
+				return true
+			}
+
 			value.ch <- m
 			return true
 		})

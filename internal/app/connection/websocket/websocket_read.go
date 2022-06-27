@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/seventv/common/events"
-	"github.com/seventv/eventapi/internal/app/client"
+	client "github.com/seventv/eventapi/internal/app/connection"
 	"github.com/seventv/eventapi/internal/global"
 	"go.uber.org/zap"
 )
