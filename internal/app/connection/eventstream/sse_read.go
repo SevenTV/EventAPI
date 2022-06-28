@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/seventv/common/events"
+	"github.com/seventv/common/utils"
 	"github.com/seventv/eventapi/internal/global"
 	"go.uber.org/zap"
 )
@@ -48,9 +49,15 @@ func (es *EventStream) Read(gctx global.Context) {
 
 		case msg := <-dispatch:
 			// Filter by subscribed event types
-			if !es.Events().Has(msg.Data.Type) {
+			ev, ok := es.Events().Get(msg.Data.Type)
+			if !ok {
 				continue // skip if not subscribed to this
 			}
+
+			if !utils.Contains(ev.Targets(), msg.Data.Body.ID) {
+				continue // skip if the target of the dispatch is not tracked
+			}
+
 			if err := es.write(msg.ToRaw()); err != nil {
 				zap.S().Errorw("failed to write dispatch to connection",
 					"error", err,

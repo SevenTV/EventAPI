@@ -111,15 +111,15 @@ func (e EventMap) Unsubscribe(t events.EventType) error {
 	return nil
 }
 
-func (e EventMap) Has(t events.EventType) bool {
+func (e EventMap) Get(t events.EventType) (*EventChannel, bool) {
 	tWilcard := events.EventType(fmt.Sprintf("%s.*", t.ObjectName()))
-	if _, ok := e.m.Load(t); ok {
-		return true
+	if c, ok := e.m.Load(t); ok {
+		return c, true
 	}
-	if _, ok := e.m.Load(tWilcard); ok {
-		return true
+	if c, ok := e.m.Load(tWilcard); ok {
+		return c, true
 	}
-	return false
+	return nil, false
 }
 
 func (e EventMap) DispatchChannel() chan string {

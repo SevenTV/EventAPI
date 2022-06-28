@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/seventv/common/events"
+	"github.com/seventv/common/utils"
 	client "github.com/seventv/eventapi/internal/app/connection"
 	"github.com/seventv/eventapi/internal/global"
 	"go.uber.org/zap"
@@ -79,8 +80,13 @@ func (w *WebSocket) Read(gctx global.Context) {
 		// Listen for incoming dispatches
 		case msg := <-dispatch:
 			// Filter by the connection's subscribed events
-			if !w.Events().Has(msg.Data.Type) {
+			ev, ok := w.Events().Get(msg.Data.Type)
+			if !ok {
 				continue // skip if not subscribed to this
+			}
+
+			if !utils.Contains(ev.Targets(), msg.Data.Body.ID) {
+				continue // skip if the target of the dispatch is not tracked
 			}
 
 			if err := w.c.WriteJSON(msg); err != nil {

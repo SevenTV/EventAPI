@@ -102,7 +102,7 @@ func main() {
 
 	done := make(chan struct{})
 	go func() {
-		<-sig
+		s := <-sig
 		cancel()
 		go func() {
 			select {
@@ -112,12 +112,11 @@ func main() {
 			logrus.Fatal("force shutdown")
 		}()
 
-		logrus.Info("gracefully shutting down...")
+		logrus.Infof("gracefully shutting down... (%s)", s.String())
 
 		for _, ch := range dones {
 			<-ch
 		}
-		logrus.Info("all apps stopped.")
 
 		close(done)
 	}()
