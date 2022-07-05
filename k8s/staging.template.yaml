@@ -48,7 +48,7 @@ spec:
               memory: 3Gi
             requests:
               cpu: 300m
-              memory: 256Mi
+              memory: 2Gi
           volumeMounts:
             - name: config
               mountPath: /app/config.yaml
