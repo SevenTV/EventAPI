@@ -19,7 +19,6 @@ build:
 	GOOS=linux GOARCH=amd64 go build -v -ldflags "-X 'main.Version=${VERSION}' -X 'main.Unix=$(shell date +%s)' -X 'main.User=${BUILDER}'" -o out/eventapi cmd/*.go
 
 lint:
-	staticcheck ./...
 	go vet ./...
 	golangci-lint run --go=1.18
 	yarn prettier --check .
@@ -32,7 +31,6 @@ deps:
 	go mod download
 
 dev_deps:
-	go install honnef.co/go/tools/cmd/staticcheck@2022.1
 	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 	yarn
 
