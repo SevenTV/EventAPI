@@ -9,6 +9,7 @@ The Event API allows developers to receive real-time updates on 7TV data and imp
   - [API Documentation](#api-documentation)
     - [Versions](#versions)
     - [Opcodes](#opcodes)
+    - [Close codes](#close-codes)
     - [Server-Sent Events](#server-sent-events)
     - [WebSocket](#websocket)
       - [Message Structure](#message-structure)
@@ -52,6 +53,22 @@ The Event API allows developers to receive real-time updates on 7TV data and imp
 | 37  |    Signal     | ⬆️    |
 
 *Legends: ⬆️ sent by client, ⬇️ sent by server*
+
+### Close codes
+| Code | Name                   |                                Description                                |
+| ---- | :--------------------- | :-----------------------------------------------------------------------: |
+| 4000 | Server Error           |                   an error occured on the server's end                    |
+| 4001 | Unknown Operation      |                   the client sent an unexpected opcode                    |
+| 4002 | Invalid Payload        |            the client sent a payload that couldn't be decoded             |
+| 4003 | Auth Failure           |                the client unsucessfully tried to identify                 |
+| 4004 | Already Identified     |                    the client wanted to identify again                    |
+| 4005 | Rate Limited           |                     the client is being rate-limited                      |
+| 4006 | Restart                |         the server is restarting and the client should reconnect          |
+| 4007 | Maintenance            |      the server is in maintenance mode and not accepting connections      |
+| 4008 | Timeout                |                     the client was idle for too long                      |
+| 4009 | Already Subscribed     |              the client tried to subscribe to an event twice              |
+| 4010 | Not Subscribed         | the client tried to unsubscribe from an event they weren't subscribing to |
+| 4011 | Insufficient Privilege |      the client did something that they did not have permission for       |
 
 ### Server-Sent Events
 
