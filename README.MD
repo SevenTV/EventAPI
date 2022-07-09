@@ -18,6 +18,10 @@ The Event API allows developers to receive real-time updates on 7TV data and imp
       - [Managing subscriptions](#managing-subscriptions)
         - [Subscription Types](#subscription-types)
         - [Subscribing](#subscribing)
+      - [Dispatches](#dispatches)
+        - [Message Payload](#message-payload)
+        - [ChangeMap](#changemap)
+        - [ChangeField](#changefield)
 
 ### Supported Protocols
 - [x] Server-Sent Events / HTTP
@@ -153,6 +157,38 @@ To set up a subscription, you may send the opcode `[35] SUBSCRIBE` and these fie
 ```
 
 You are allowed to subscribe multiple times to the same type, however, duplicated conditions will result in a disconnect with code `4009 Already Subscribed`.
+
+#### Dispatches
+
+Once subscriptions are active, you may start receiving messages with the `[0] DISPATCH` opcode. These events notify of changes to an object and allow you to keep your state up to date.
+
+##### Message Payload
+
+| Key  |               Type               |   Description    |
+| ---- | :------------------------------: | :--------------: |
+| type | [EventType](#subscription-types) |  the event type  |
+| body |     [ChangeMap](#changemap)      | detailed changes |
+
+##### ChangeMap
+| Key     |             Type              |              Description               |
+| ------- | :---------------------------: | :------------------------------------: |
+| id      |           ObjectID            |            the object's ID             |
+| kind    |             int8              |            the object kind             |
+| actor   |             User              | the user responsible for these changes |
+| added   | [][ChangeField](#changefield) |         a list of added fields         |
+| updated | [][ChangeField](#changefield) |        a list of updated fields        |
+| removed | [][ChangeField](#changefield) |        a list of removed fields        |
+| pushed  | [][ChangeField](#changefield) |   a list of items pushed to an array   |
+| pulled  | [][ChangeField](#changefield) |  a list of items pulled from an array  |
+
+##### ChangeField
+
+| Key       |     Type      |                                        Description                                        |
+| --------- | :-----------: | :---------------------------------------------------------------------------------------: |
+| key       |    string     |                                    the key in context                                     |
+| index     |     int?      | if the field is an array, this is the index of the item within the array that was updated |
+| old_value | object or nil |                                    the previous value                                     |
+| value     | object or nil |                                       the new value                                       |
 
 ---
 
