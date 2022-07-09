@@ -10,17 +10,17 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/json-iterator/go v1.1.12
 	github.com/prometheus/client_golang v1.12.2
-	github.com/seventv/common v0.0.0-20220626183530-8da661b2ef37
+	github.com/seventv/common v0.0.0-20220709190144-8243c2cfd7a2
 	github.com/sirupsen/logrus v1.8.1
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.12.0
 	github.com/valyala/fasthttp v1.37.0
-	go.mongodb.org/mongo-driver v1.9.1
 	go.uber.org/zap v1.21.0
 )
 
 require (
 	github.com/pelletier/go-toml/v2 v2.0.2 // indirect
+	go.mongodb.org/mongo-driver v1.9.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 

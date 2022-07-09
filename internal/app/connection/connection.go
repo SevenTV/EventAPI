@@ -9,8 +9,8 @@ import (
 	"github.com/seventv/common/events"
 	"github.com/seventv/common/structures/v3"
 	"github.com/seventv/common/sync_map"
+	"github.com/seventv/common/utils"
 	"github.com/seventv/eventapi/internal/global"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type Connection interface {
@@ -64,40 +64,31 @@ func GenerateSessionID(n int) ([]byte, error) {
 func NewEventMap(ch chan string) EventMap {
 	return EventMap{
 		ch: ch,
-		m:  &sync_map.Map[events.EventType, *EventChannel]{},
+		m:  &sync_map.Map[events.EventType, EventChannel]{},
 	}
 }
 
 type EventMap struct {
 	ch chan string
-	m  *sync_map.Map[events.EventType, *EventChannel]
+	m  *sync_map.Map[events.EventType, EventChannel]
 }
 
 // Subscribe sets up a subscription to dispatch events with the specified type
-func (e EventMap) Subscribe(gctx global.Context, t events.EventType, targets []string) (*EventChannel, error) {
-	_, exists := e.m.Load(t)
-	if exists {
-		return nil, ErrAlreadySubscribed
+func (e EventMap) Subscribe(gctx global.Context, t events.EventType, cond map[string]string) (EventChannel, error) {
+	ec, exists := e.m.Load(t)
+	if !exists {
+		ec = make(EventChannel)
 	}
 
-	// Parse targets
-	targetIDs := make([]primitive.ObjectID, len(targets))
-	targetCount := 0
-	for _, s := range targets {
-		id, err := primitive.ObjectIDFromHex(s)
-		if err == nil {
-			targetIDs[targetCount] = id
-			targetCount++
+	for k, v := range cond {
+		if utils.Contains(ec[k], v) {
+			return ec, ErrAlreadySubscribed
 		}
-	}
-	if len(targets) != targetCount {
-		targetIDs = targetIDs[:targetCount]
+
+		ec[k] = append(ec[k], v)
 	}
 
 	// Create channel
-	ec := &EventChannel{
-		targets: targetIDs,
-	}
 	e.m.Store(t, ec)
 	return ec, nil
 }
@@ -111,7 +102,7 @@ func (e EventMap) Unsubscribe(t events.EventType) error {
 	return nil
 }
 
-func (e EventMap) Get(t events.EventType) (*EventChannel, bool) {
+func (e EventMap) Get(t events.EventType) (EventChannel, bool) {
 	tWilcard := events.EventType(fmt.Sprintf("%s.*", t.ObjectName()))
 	if c, ok := e.m.Load(t); ok {
 		return c, true
@@ -126,12 +117,21 @@ func (e EventMap) DispatchChannel() chan string {
 	return e.ch
 }
 
-type EventChannel struct {
-	targets []primitive.ObjectID
-}
+type EventChannel map[string][]string
 
-func (ec *EventChannel) Targets() []primitive.ObjectID {
-	return ec.targets
+func (ec EventChannel) Match(cond map[string]string) bool {
+	for k, v := range cond {
+		s, ok := ec[k]
+		if !ok {
+			return false
+		}
+
+		if !utils.Contains(s, v) {
+			return false
+		}
+	}
+
+	return true
 }
 
 var (

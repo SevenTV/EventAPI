@@ -30,9 +30,9 @@ func (s Server) HandleSessionMutation(gctx global.Context) {
 			RequestID: reqID,
 			SessionID: sid,
 			Events: []events.SessionMutationEvent{{
-				Action:  structures.ListItemActionAdd,
-				Type:    events.EventType(evt),
-				Targets: body.Targets,
+				Action:    structures.ListItemActionAdd,
+				Type:      events.EventType(evt),
+				Condition: body.Condition,
 			}},
 		})
 		gctx.Inst().Redis.RawClient().Publish(ctx, "events:session_mutation", utils.B2S(b))
@@ -94,7 +94,7 @@ func (s Server) HandleSessionMutation(gctx global.Context) {
 				for _, ev := range m.Events {
 					switch ev.Action {
 					case structures.ListItemActionAdd:
-						_, _ = conn.Events().Subscribe(gctx, ev.Type, ev.Targets)
+						_, _ = conn.Events().Subscribe(gctx, ev.Type, ev.Condition)
 					case structures.ListItemActionRemove:
 						_ = conn.Events().Unsubscribe(ev.Type)
 
@@ -117,7 +117,7 @@ func (s Server) HandleSessionMutation(gctx global.Context) {
 }
 
 type SessionMutationEventPut struct {
-	Targets []string `json:"targets"`
+	Condition map[string]string
 }
 
 type SessionMutationResponse struct {

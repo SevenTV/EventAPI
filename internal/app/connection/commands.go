@@ -38,14 +38,14 @@ func (h Handler) Subscribe(gctx global.Context, m events.Message[json.RawMessage
 	}
 
 	// No targets: this requires authentication
-	if len(msg.Data.Targets) == 0 && h.conn.Actor() == nil {
+	if len(msg.Data.Condition) == 0 && h.conn.Actor() == nil {
 		h.conn.SendError("Wildcard event target subscription requires authentication", nil)
 		h.conn.Close(events.CloseCodeInsufficientPrivilege)
 		return nil
 	}
 
 	// Add the event subscription
-	_, err = h.conn.Events().Subscribe(gctx, t, msg.Data.Targets)
+	_, err = h.conn.Events().Subscribe(gctx, t, msg.Data.Condition)
 	if err != nil {
 		if err == ErrAlreadySubscribed {
 			h.conn.Close(events.CloseCodeAlreadySubscribed)
