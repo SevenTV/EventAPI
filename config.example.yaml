@@ -11,6 +11,7 @@ redis:
 api:
   enabled: true
   bind: :3000
+  heartbeat_interval: 45000
 
 monitoring:
   enabled: true

@@ -1,0 +1,161 @@
+name: EventAPI Lint, Build, Test, Deploy
+
+on:
+  push:
+    branches:
+      - master
+      - dev
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - labeled
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: "Deploy location"
+        required: true
+        default: "none"
+        type: choice
+        options:
+          - production
+          - staging
+          - none
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    name: EventAPI Lint, Build, Test, Deploy
+    runs-on: aws-runner
+    env:
+      DEPLOY_PROD: ${{ (github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'production') || (github.event_name == 'push' && github.ref_type == 'branch' && github.ref_name == 'master') }}
+      DEPLOY_STAGE: ${{ (github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'staging') || (github.event_name == 'push' && github.ref_type == 'branch' && github.ref_name == 'dev') || (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'staged')) }}
+      GOLANGCI_LINT_CACHE: /home/runner/.cache/golangci-lint
+    concurrency:
+      group: ${{ github.workflow }}-ci-${{ github.ref }}
+      cancel-in-progress: true
+
+    steps:
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: 1.18.3
+
+      - uses: actions/setup-node@v3
+        with:
+          node-version: "18"
+
+      - name: Install Yarn
+        run: npm install -g yarn
+
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - id: cache-paths
+        run: |
+          echo "::set-output name=go-build::$(go env GOCACHE)"
+          echo "::set-output name=go-mod::$(go env GOMODCACHE)"
+
+      - name: Go Build Cache
+        uses: actions/cache@v3
+        with:
+          path: ${{ steps.cache-paths.outputs.go-build }}
+          key: ${{ runner.os }}-go-build-${{ hashFiles('go.sum') }}
+
+      - name: Go Mod Cache
+        uses: actions/cache@v3
+        with:
+          path: ${{ steps.cache-paths.outputs.go-mod }}
+          key: ${{ runner.os }}-go-mod-${{ hashFiles('go.sum') }}
+
+      - name: GoLint Cache
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.GOLANGCI_LINT_CACHE }}
+          key: ${{ runner.os }}-go-lint-ci
+
+      - name: Node Modules Cache
+        uses: actions/cache@v3
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node_modules-${{ hashFiles('yarn.lock') }}
+
+      - name: Install Dependencies
+        run: make deps
+
+      - name: Install Developer Dependencies
+        run: make dev_deps
+
+      - name: Run Linter
+        run: make lint
+
+      - name: Build App
+        run: make build
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        if: ${{ env.DEPLOY_PROD == 'true' || env.DEPLOY_STAGE == 'true' }}
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        if: ${{ env.DEPLOY_PROD == 'true' || env.DEPLOY_STAGE == 'true' }}
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Make build context
+        if: ${{ env.DEPLOY_PROD == 'true' || env.DEPLOY_STAGE == 'true' }}
+        run: |
+          docker context create builders
+
+      - name: Setup buildx
+        uses: docker/setup-buildx-action@v2
+        if: ${{ env.DEPLOY_PROD == 'true' || env.DEPLOY_STAGE == 'true' }}
+        with:
+          install: true
+          endpoint: builders
+
+      - name: Build docker image
+        uses: docker/build-push-action@v3
+        if: ${{ env.DEPLOY_PROD == 'true' || env.DEPLOY_STAGE == 'true' }}
+        with:
+          context: .
+          file: docker/partial.Dockerfile
+          # cache-from: |
+          #   type=registry,ref=gha
+          # cache-to: |
+          #   type=registry,ref=gha,mode=max
+          tags: |
+            ${{ steps.login-ecr.outputs.registry }}/${{ (env.DEPLOY_PROD == 'true' && '7tv') || '7tv-stage' }}/eventapi:latest
+            ${{ steps.login-ecr.outputs.registry }}/${{ (env.DEPLOY_PROD == 'true' && '7tv') || '7tv-stage' }}/eventapi:${{ github.sha }}
+          push: true
+
+      - name: Update deployment template
+        uses: danielr1996/envsubst-action@1.1.0
+        if: ${{ env.DEPLOY_PROD == 'true' || env.DEPLOY_STAGE == 'true' }}
+        env:
+          IMAGE: ${{ steps.login-ecr.outputs.registry }}/${{ (env.DEPLOY_PROD == 'true' && '7tv') || '7tv-stage' }}/eventapi:${{ github.sha }}
+        with:
+          input: k8s/${{ (env.DEPLOY_PROD == 'true' && 'production') || 'staging' }}.template.yaml
+          output: k8s/deploy.yaml
+
+      - name: Setup Kubectl
+        uses: azure/setup-kubectl@v2.0
+
+      - name: Deploy to k8s
+        if: ${{ env.DEPLOY_PROD == 'true' || env.DEPLOY_STAGE == 'true' }}
+        env:
+          KUBE_CONFIG_DATA: ${{ (env.DEPLOY_PROD == 'true' && secrets.KUBECONFIG) || secrets.KUBECONFIG_STAGE }}
+        run: |
+          mkdir -p ~/.kube
+          (echo $KUBE_CONFIG_DATA | base64 -d) >> ~/.kube/config
+
+          kubectl apply -f k8s/deploy.yaml
