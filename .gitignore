@@ -15,7 +15,7 @@
 # vendor/
 
 node_modules/
-bin/
+out/
 config.yaml
 
 go.work
