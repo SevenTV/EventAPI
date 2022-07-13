@@ -1,10 +1,10 @@
 package monitoring
 
 import (
-	"github.com/SevenTV/EventAPI/src/configure"
-	"github.com/SevenTV/EventAPI/src/global"
-	"github.com/SevenTV/EventAPI/src/instance"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/seventv/eventapi/internal/configure"
+	"github.com/seventv/eventapi/internal/global"
+	"github.com/seventv/eventapi/internal/instance"
 )
 
 type mon struct {

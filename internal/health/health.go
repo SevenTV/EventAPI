@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/SevenTV/EventAPI/src/global"
+	"github.com/seventv/eventapi/internal/global"
 	"github.com/sirupsen/logrus"
 	"github.com/valyala/fasthttp"
 )

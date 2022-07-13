@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/SevenTV/EventAPI/src/configure"
+	"github.com/seventv/eventapi/internal/configure"
 )
 
 type Context interface {

@@ -10,14 +10,14 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/SevenTV/Common/redis"
-	"github.com/SevenTV/EventAPI/src/app"
-	"github.com/SevenTV/EventAPI/src/configure"
-	"github.com/SevenTV/EventAPI/src/global"
-	"github.com/SevenTV/EventAPI/src/health"
-	"github.com/SevenTV/EventAPI/src/instance"
-	"github.com/SevenTV/EventAPI/src/monitoring"
 	"github.com/bugsnag/panicwrap"
+	"github.com/seventv/common/redis"
+	"github.com/seventv/eventapi/internal/app"
+	"github.com/seventv/eventapi/internal/configure"
+	"github.com/seventv/eventapi/internal/global"
+	"github.com/seventv/eventapi/internal/health"
+	"github.com/seventv/eventapi/internal/instance"
+	"github.com/seventv/eventapi/internal/monitoring"
 	"github.com/sirupsen/logrus"
 )
 
@@ -69,11 +69,12 @@ func main() {
 	{
 		ctx, cancel := context.WithTimeout(gCtx, time.Second*15)
 		redisInst, err := redis.Setup(ctx, redis.SetupOptions{
-			Username:  gCtx.Config().Redis.Username,
-			Password:  gCtx.Config().Redis.Password,
-			Database:  gCtx.Config().Redis.Database,
-			Addresses: gCtx.Config().Redis.Addresses,
-			Sentinel:  gCtx.Config().Redis.Sentinel,
+			Username:   gCtx.Config().Redis.Username,
+			Password:   gCtx.Config().Redis.Password,
+			Database:   gCtx.Config().Redis.Database,
+			Addresses:  gCtx.Config().Redis.Addresses,
+			Sentinel:   gCtx.Config().Redis.Sentinel,
+			MasterName: gCtx.Config().Redis.MasterName,
 		})
 		cancel()
 		if err != nil {
@@ -87,7 +88,8 @@ func main() {
 	dones := []<-chan struct{}{}
 
 	if gCtx.Config().API.Enabled {
-		dones = append(dones, app.New(gCtx))
+		_, done := app.New(gCtx)
+		dones = append(dones, done)
 	}
 	if gCtx.Config().Health.Enabled {
 		dones = append(dones, health.New(gCtx))
@@ -100,7 +102,7 @@ func main() {
 
 	done := make(chan struct{})
 	go func() {
-		<-sig
+		s := <-sig
 		cancel()
 		go func() {
 			select {
@@ -110,11 +112,12 @@ func main() {
 			logrus.Fatal("force shutdown")
 		}()
 
+		logrus.Infof("gracefully shutting down... (%s)", s.String())
+
 		for _, ch := range dones {
 			<-ch
 		}
 
-		logrus.Info("shutting down")
 		close(done)
 	}()
 
