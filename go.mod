@@ -11,7 +11,7 @@ require (
 	github.com/json-iterator/go v1.1.12
 	github.com/prometheus/client_golang v1.12.2
 	github.com/seventv/common v0.0.0-20220709190144-8243c2cfd7a2
-	github.com/sirupsen/logrus v1.6.0
+	github.com/sirupsen/logrus v1.8.1
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.12.0
 	github.com/valyala/fasthttp v1.38.0
@@ -19,7 +19,6 @@ require (
 )
 
 require (
-	github.com/konsorten/go-windows-terminal-sequences v1.0.3 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.1 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.8.0 // indirect
