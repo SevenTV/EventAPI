@@ -18,7 +18,7 @@ The Event API allows developers to receive real-time updates on 7TV data and imp
       - [Managing subscriptions](#managing-subscriptions)
         - [Subscription Types](#subscription-types)
         - [Subscribing](#subscribing)
-      - [Unsubscribing](#unsubscribing)
+        - [Unsubscribing](#unsubscribing)
       - [Dispatches](#dispatches)
         - [Message Payload](#message-payload)
         - [ChangeMap](#changemap)
@@ -159,7 +159,7 @@ To set up a subscription, you may send the opcode `[35] SUBSCRIBE` and these fie
 
 You are allowed to subscribe multiple times to the same type, however, duplicated conditions will result in a disconnect with code `4009 Already Subscribed`.
 
-#### Unsubscribing
+##### Unsubscribing
 
 When an event source is no longer needed, you should unsubscribe from it to avoid receiving unnecessary data with `[36] UNSUBSCRIBE`.
 
