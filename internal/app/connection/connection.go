@@ -93,9 +93,32 @@ func (e EventMap) Subscribe(gctx global.Context, t events.EventType, cond map[st
 	return ec, nil
 }
 
-func (e EventMap) Unsubscribe(t events.EventType) error {
-	_, exists := e.m.LoadAndDelete(t)
+func (e EventMap) Unsubscribe(t events.EventType, cond map[string]string) error {
+	if len(cond) == 0 {
+		_, exists := e.m.LoadAndDelete(t)
+		if !exists {
+			return ErrNotSubscribed
+		}
+
+		return nil
+	}
+
+	ec, exists := e.m.Load(t)
 	if !exists {
+		return ErrNotSubscribed
+	}
+
+	x := 0
+	for k, v := range cond {
+		for i, s := range ec[k] {
+			if s == v {
+				ec[k] = utils.SliceRemove(ec[k], i)
+				x++
+			}
+		}
+	}
+
+	if x == 0 {
 		return ErrNotSubscribed
 	}
 
