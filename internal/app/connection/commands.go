@@ -63,7 +63,7 @@ func (h Handler) Unsubscribe(gctx global.Context, m events.Message[json.RawMessa
 	}
 
 	t := msg.Data.Type
-	if err = h.conn.Events().Unsubscribe(t); err != nil {
+	if err = h.conn.Events().Unsubscribe(t, msg.Data.Condition); err != nil {
 		if err == ErrNotSubscribed {
 			h.conn.Close(events.CloseCodeNotSubscribed)
 			return nil

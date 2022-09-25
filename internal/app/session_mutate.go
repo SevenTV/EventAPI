@@ -96,7 +96,7 @@ func (s Server) HandleSessionMutation(gctx global.Context) {
 					case structures.ListItemActionAdd:
 						_, _ = conn.Events().Subscribe(gctx, ev.Type, ev.Condition)
 					case structures.ListItemActionRemove:
-						_ = conn.Events().Unsubscribe(ev.Type)
+						_ = conn.Events().Unsubscribe(ev.Type, ev.Condition)
 
 					}
 

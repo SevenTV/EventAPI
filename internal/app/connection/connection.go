@@ -81,11 +81,15 @@ func (e EventMap) Subscribe(gctx global.Context, t events.EventType, cond map[st
 	}
 
 	for k, v := range cond {
-		if utils.Contains(ec[k], v) {
+		if _, ok := ec[k]; !ok {
+			ec[k] = make(utils.Set[string])
+		}
+
+		if ec[k].Has(v) {
 			return ec, ErrAlreadySubscribed
 		}
 
-		ec[k] = append(ec[k], v)
+		ec[k].Add(v)
 	}
 
 	// Create channel
@@ -93,9 +97,32 @@ func (e EventMap) Subscribe(gctx global.Context, t events.EventType, cond map[st
 	return ec, nil
 }
 
-func (e EventMap) Unsubscribe(t events.EventType) error {
-	_, exists := e.m.LoadAndDelete(t)
+func (e EventMap) Unsubscribe(t events.EventType, cond map[string]string) error {
+	if len(cond) == 0 {
+		_, exists := e.m.LoadAndDelete(t)
+		if !exists {
+			return ErrNotSubscribed
+		}
+
+		return nil
+	}
+
+	ec, exists := e.m.Load(t)
 	if !exists {
+		return ErrNotSubscribed
+	}
+
+	x := 0
+	for k, v := range cond {
+		if !ec[k].Has(v) {
+			continue
+		}
+
+		ec[k].Delete(v)
+		x++
+	}
+
+	if x == 0 {
 		return ErrNotSubscribed
 	}
 
@@ -117,7 +144,7 @@ func (e EventMap) DispatchChannel() chan string {
 	return e.ch
 }
 
-type EventChannel map[string][]string
+type EventChannel map[string]utils.Set[string]
 
 func (ec EventChannel) Match(cond map[string]string) bool {
 	for k, v := range cond {
@@ -126,7 +153,7 @@ func (ec EventChannel) Match(cond map[string]string) bool {
 			return false
 		}
 
-		if !utils.Contains(s, v) {
+		if !s.Has(v) {
 			return false
 		}
 	}

@@ -18,6 +18,7 @@ The Event API allows developers to receive real-time updates on 7TV data and imp
       - [Managing subscriptions](#managing-subscriptions)
         - [Subscription Types](#subscription-types)
         - [Subscribing](#subscribing)
+        - [Unsubscribing](#unsubscribing)
       - [Dispatches](#dispatches)
         - [Message Payload](#message-payload)
         - [ChangeMap](#changemap)
@@ -140,7 +141,7 @@ To set up a subscription, you may send the opcode `[35] SUBSCRIBE` and these fie
 | condition | string map | filter messages by conditions |
 
 > Example
-```json
+```jsonc
 {
     "op": 35,
     "d": {
@@ -150,13 +151,35 @@ To set up a subscription, you may send the opcode `[35] SUBSCRIBE` and these fie
             // though in most cases except creations, object_id is acceptable
             // to filter for a specific object.
 
-            "object_id": "603b7c7496832ffa78522da5" 
+            "object_id": "62cdd34e72a832540de95857"
         }
     }
 }
 ```
 
 You are allowed to subscribe multiple times to the same type, however, duplicated conditions will result in a disconnect with code `4009 Already Subscribed`.
+
+##### Unsubscribing
+
+When an event source is no longer needed, you should unsubscribe from it to avoid receiving unnecessary data with `[36] UNSUBSCRIBE`.
+
+
+| Key        |    Type    |          Description          |
+| ---------- | :--------: | :---------------------------: |
+| type       |   string   |       subscription type       |
+| condition? | string map | filter messages by conditions |
+
+```jsonc
+{
+  "op": 36, 
+  "type": "emote_set.update",
+  "condition": {
+    "object_id": "62cdd34e72a832540de95857"
+  }
+}
+```
+
+It is also possible to unsubscribe from an entire event type at once by leaving the condition field empty.
 
 #### Dispatches
 
@@ -187,8 +210,11 @@ Once subscriptions are active, you may start receiving messages with the `[0] DI
 | --------- | :-----------: | :---------------------------------------------------------------------------------------: |
 | key       |    string     |                                    the key in context                                     |
 | index     |     int?      | if the field is an array, this is the index of the item within the array that was updated |
+| nested¹   |     bool      |                  if true, this means the current value is nested deeper                   |
 | old_value | object or nil |                                    the previous value                                     |
 | value     | object or nil |                                       the new value                                       |
+
+**¹** _the `value` field will always be `[]ChangeField` when `nested` is `true`._
 
 ---
 
