@@ -6,7 +6,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/seventv/common/events"
+	"github.com/seventv/api/data/events"
 	"github.com/seventv/eventapi/internal/global"
 	"go.uber.org/zap"
 )

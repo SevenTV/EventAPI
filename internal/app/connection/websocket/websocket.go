@@ -9,7 +9,7 @@ import (
 
 	websocket "github.com/fasthttp/websocket"
 	"github.com/hashicorp/go-multierror"
-	"github.com/seventv/common/events"
+	"github.com/seventv/api/data/events"
 	"github.com/seventv/common/structures/v3"
 	client "github.com/seventv/eventapi/internal/app/connection"
 	"github.com/seventv/eventapi/internal/global"

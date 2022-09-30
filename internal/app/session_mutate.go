@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 
 	"github.com/google/uuid"
+	"github.com/seventv/api/data/events"
 	"github.com/seventv/common/errors"
-	"github.com/seventv/common/events"
 	"github.com/seventv/common/structures/v3"
 	"github.com/seventv/common/utils"
 	"github.com/seventv/eventapi/internal/global"

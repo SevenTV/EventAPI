@@ -6,8 +6,8 @@ import (
 
 	"github.com/fasthttp/router"
 	"github.com/fasthttp/websocket"
+	"github.com/seventv/api/data/events"
 	"github.com/seventv/common/errors"
-	"github.com/seventv/common/events"
 	"github.com/seventv/common/redis"
 	"github.com/seventv/common/sync_map"
 	"github.com/seventv/common/utils"

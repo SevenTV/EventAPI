@@ -11,7 +11,7 @@ import (
 
 	"github.com/fasthttp/router"
 	"github.com/hashicorp/go-multierror"
-	"github.com/seventv/common/events"
+	"github.com/seventv/api/data/events"
 	"github.com/seventv/common/structures/v3"
 	"github.com/seventv/common/utils"
 	client "github.com/seventv/eventapi/internal/app/connection"

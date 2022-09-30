@@ -6,7 +6,7 @@ import (
 	"crypto/rand"
 	"fmt"
 
-	"github.com/seventv/common/events"
+	"github.com/seventv/api/data/events"
 	"github.com/seventv/common/structures/v3"
 	"github.com/seventv/common/sync_map"
 	"github.com/seventv/common/utils"
