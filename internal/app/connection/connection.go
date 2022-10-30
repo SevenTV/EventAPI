@@ -65,14 +65,14 @@ func GenerateSessionID(n int) ([]byte, error) {
 func NewEventMap(ch chan string) EventMap {
 	return EventMap{
 		ch:    ch,
-		count: &atomic.Int32{},
+		count: utils.PointerOf(int32(0)),
 		m:     &sync_map.Map[events.EventType, EventChannel]{},
 	}
 }
 
 type EventMap struct {
 	ch    chan string
-	count *atomic.Int32
+	count *int32
 	m     *sync_map.Map[events.EventType, EventChannel]
 }
 
@@ -94,7 +94,7 @@ func (e EventMap) Subscribe(gctx global.Context, t events.EventType, cond map[st
 
 		ec[k].Add(v)
 
-		e.count.Add(1)
+		atomic.AddInt32(e.count, 1)
 	}
 
 	// Create channel
@@ -126,7 +126,7 @@ func (e EventMap) Unsubscribe(t events.EventType, cond map[string]string) error 
 
 		ec[k].Delete(v)
 
-		e.count.Add(-1)
+		atomic.AddInt32(e.count, -1)
 
 		x++
 	}
@@ -139,7 +139,7 @@ func (e EventMap) Unsubscribe(t events.EventType, cond map[string]string) error 
 }
 
 func (e EventMap) Count() int32 {
-	return e.count.Load()
+	return *e.count
 }
 
 func (e EventMap) Get(t events.EventType) (EventChannel, bool) {
