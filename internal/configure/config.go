@@ -29,6 +29,7 @@ type Config struct {
 		Enabled           bool   `mapstructure:"enabled" json:"enabled"`
 		Bind              string `mapstructure:"bind" json:"bind"`
 		HeartbeatInterval int64  `mapstructure:"heartbeat_interval" json:"heartbeat_interval"`
+		ConnectionLimit   int32  `mapstructure:"connection_limit" json:"connection_limit"`
 	} `mapstructure:"api" json:"api"`
 
 	Monitoring struct {
