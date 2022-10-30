@@ -44,6 +44,12 @@ func (h Handler) Subscribe(gctx global.Context, m events.Message[json.RawMessage
 		return nil
 	}
 
+	// Too many subscriptions?
+	if h.conn.Events().Count() >= gctx.Config().API.ConnectionLimit {
+		h.conn.SendError("Too Many Active Subscriptions!", nil)
+		h.conn.Close(events.CloseCodeRateLimit)
+	}
+
 	// Add the event subscription
 	_, err = h.conn.Events().Subscribe(gctx, t, msg.Data.Condition)
 	if err != nil {
