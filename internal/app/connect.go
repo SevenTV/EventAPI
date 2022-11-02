@@ -20,28 +20,19 @@ func (s Server) HandleConnect(gctx global.Context) {
 					return
 				}
 
-				sid := con.SessionID()
-				s.conns.Store(sid, con)
 				<-con.Context().Done()
-				s.conns.Delete(sid)
 			}); err != nil {
 				ctx.SetStatusCode(fasthttp.StatusBadRequest)
 				ctx.SetBody(utils.S2B(err.Error()))
 				return
 			}
 		} else { // New EventStream connection
-			con, err := v3.SSE(gctx, ctx, s.digest, s.router)
+			_, err := v3.SSE(gctx, ctx, s.digest, s.router)
 			if err != nil {
 				ctx.SetStatusCode(fasthttp.StatusBadRequest)
 				ctx.SetBody(utils.S2B(err.Error()))
 				return
 			}
-			sid := con.SessionID()
-			s.conns.Store(sid, con)
-			go func() {
-				<-con.Context().Done()
-				s.conns.Delete(sid)
-			}()
 		}
 	})
 

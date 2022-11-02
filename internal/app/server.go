@@ -9,7 +9,6 @@ import (
 	"github.com/seventv/api/data/events"
 	"github.com/seventv/common/errors"
 	"github.com/seventv/common/redis"
-	"github.com/seventv/common/sync_map"
 	"github.com/seventv/common/utils"
 	client "github.com/seventv/eventapi/internal/app/connection"
 	"github.com/seventv/eventapi/internal/global"
@@ -22,7 +21,6 @@ type Server struct {
 	digest   client.EventDigest
 	upgrader websocket.FastHTTPUpgrader
 	router   *router.Router
-	conns    *sync_map.Map[string, client.Connection]
 }
 
 func New(gctx global.Context) (Server, <-chan struct{}) {
@@ -44,7 +42,6 @@ func New(gctx global.Context) (Server, <-chan struct{}) {
 		upgrader: upgrader,
 		digest:   dig,
 		router:   r,
-		conns:    &sync_map.Map[string, client.Connection]{},
 	}
 	srv.HandleConnect(gctx)
 	srv.HandleHealth(gctx)
