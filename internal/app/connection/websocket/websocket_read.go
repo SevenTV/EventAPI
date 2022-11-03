@@ -25,6 +25,7 @@ func (w *WebSocket) Read(gctx global.Context) {
 			err  error
 		)
 		defer func() {
+			heartbeat.Stop()
 			close(dispatch)
 			w.cancel()
 			w.evm.Destroy()
