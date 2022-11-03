@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/seventv/eventapi/internal/global"
-	"github.com/sirupsen/logrus"
 	"github.com/valyala/fasthttp"
+	"go.uber.org/zap"
 )
 
 func New(gCtx global.Context) <-chan struct{} {
@@ -14,11 +14,11 @@ func New(gCtx global.Context) <-chan struct{} {
 		Handler: func(ctx *fasthttp.RequestCtx) {
 			start := time.Now()
 			defer func() {
-				l := logrus.WithFields(logrus.Fields{
-					"status":     ctx.Response.StatusCode(),
-					"duration":   time.Since(start) / time.Millisecond,
-					"entrypoint": "health",
-				})
+				l := zap.S().With(
+					"status", ctx.Response.StatusCode(),
+					"duration", time.Since(start)/time.Millisecond,
+					"entrypoint", "health",
+				)
 				if err := recover(); err != nil {
 					l.Error("panic in handler: ", err)
 				} else {
@@ -31,7 +31,7 @@ func New(gCtx global.Context) <-chan struct{} {
 			defer cancel()
 
 			if err := gCtx.Inst().Redis.Ping(redisCtx); err != nil {
-				logrus.Error("redis down: ", err)
+				zap.S().Error("redis down: ", err)
 				ctx.SetStatusCode(503)
 			}
 		},
@@ -41,7 +41,7 @@ func New(gCtx global.Context) <-chan struct{} {
 
 	go func() {
 		if err := server.ListenAndServe(gCtx.Config().Health.Bind); err != nil {
-			logrus.Fatal("failed to start health bind: ", err)
+			zap.S().Fatal("failed to start health bind: ", err)
 		}
 	}()
 

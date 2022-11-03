@@ -6,9 +6,9 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+	"go.uber.org/zap"
 )
 
 type Config struct {
@@ -38,6 +38,11 @@ type Config struct {
 		Labels  []KeyValue `mapstructure:"labels" json:"labels"`
 	} `mapstructure:"monitoring" json:"monitoring"`
 
+	PProf struct {
+		Enabled bool   `mapstructure:"enabled" json:"enabled"`
+		Bind    string `mapstructure:"bind" json:"bind"`
+	} `mapstructure:"pprof" json:"pprof"`
+
 	Health struct {
 		Enabled bool   `mapstructure:"enabled" json:"enabled"`
 		Bind    string `mapstructure:"bind" json:"bind"`
@@ -55,7 +60,7 @@ type KeyValue struct {
 
 func checkErr(err error) {
 	if err != nil {
-		logrus.WithError(err).Fatal("config")
+		zap.S().Fatalw("config", "error", err)
 	}
 }
 

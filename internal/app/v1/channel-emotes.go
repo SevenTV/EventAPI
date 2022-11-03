@@ -17,8 +17,8 @@ import (
 	"github.com/seventv/common/utils"
 	"github.com/seventv/eventapi/internal/events"
 	"github.com/seventv/eventapi/internal/global"
-	"github.com/sirupsen/logrus"
 	"github.com/valyala/fasthttp"
+	"go.uber.org/zap"
 )
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
@@ -83,7 +83,7 @@ func ChannelEmotesSSE(gCtx global.Context, ctx *fasthttp.RequestCtx) {
 		)
 
 		if _, err = w.Write(utils.S2B("event: ready\ndata: 7tv-event-sub.v1\n\n")); err != nil {
-			logrus.Error(err)
+			zap.S().Error(err)
 			return
 		}
 		if err := w.Flush(); err != nil {

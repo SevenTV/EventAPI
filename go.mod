@@ -11,7 +11,6 @@ require (
 	github.com/prometheus/client_golang v1.13.0
 	github.com/seventv/api v0.0.0-20220930105113-20b12f893b48
 	github.com/seventv/common v0.0.0-20220930075104-a9dbae31f9a9
-	github.com/sirupsen/logrus v1.9.0
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.13.0
 	github.com/valyala/fasthttp v1.40.0

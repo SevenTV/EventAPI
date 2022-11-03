@@ -6,9 +6,9 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/seventv/eventapi/internal/global"
-	"github.com/sirupsen/logrus"
 	"github.com/valyala/fasthttp"
 	"github.com/valyala/fasthttp/fasthttpadaptor"
+	"go.uber.org/zap"
 )
 
 func New(gCtx global.Context) <-chan struct{} {
@@ -17,7 +17,6 @@ func New(gCtx global.Context) <-chan struct{} {
 
 	handler := fasthttpadaptor.NewFastHTTPHandler(promhttp.HandlerFor(r, promhttp.HandlerOpts{
 		Registry:          r,
-		ErrorLog:          logrus.New(),
 		EnableOpenMetrics: true,
 	}))
 
@@ -25,11 +24,11 @@ func New(gCtx global.Context) <-chan struct{} {
 		Handler: func(ctx *fasthttp.RequestCtx) {
 			start := time.Now()
 			defer func() {
-				l := logrus.WithFields(logrus.Fields{
-					"status":     ctx.Response.StatusCode(),
-					"duration":   time.Since(start) / time.Millisecond,
-					"entrypoint": "monitoring",
-				})
+				l := zap.S().With(
+					"status", ctx.Response.StatusCode(),
+					"duration", time.Since(start)/time.Millisecond,
+					"entrypoint", "monitoring",
+				)
 				if err := recover(); err != nil {
 					l.Error("panic in handler: ", err)
 				} else {
@@ -44,7 +43,7 @@ func New(gCtx global.Context) <-chan struct{} {
 
 	go func() {
 		if err := server.ListenAndServe(gCtx.Config().Monitoring.Bind); err != nil {
-			logrus.Fatal("failed to start monitoring bind: ", err)
+			zap.S().Fatal("failed to start monitoring bind: ", err)
 		}
 	}()
 
