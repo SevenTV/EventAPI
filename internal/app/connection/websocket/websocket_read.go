@@ -38,20 +38,20 @@ func (w *WebSocket) Read(gctx global.Context) {
 			}
 
 			if err != nil {
-				w.Close(events.CloseCodeInvalidPayload, true)
+				w.Close(events.CloseCodeInvalidPayload)
 				return
 			}
 
 			// Decode the payload
 			if err := json.Unmarshal(data, &msg); err != nil {
 				w.SendError(err.Error(), nil)
-				w.Close(events.CloseCodeInvalidPayload, true)
+				w.Close(events.CloseCodeInvalidPayload)
 				return
 			}
 
 			// Verify the opcode
 			if !client.IsClientSentOp(msg.Op) {
-				w.Close(events.CloseCodeUnknownOperation, true)
+				w.Close(events.CloseCodeUnknownOperation)
 				return
 			}
 
@@ -77,11 +77,11 @@ func (w *WebSocket) Read(gctx global.Context) {
 		case <-w.ctx.Done():
 			return
 		case <-gctx.Done(): // App is shutting down
-			w.Close(events.CloseCodeRestart, true)
+			w.Close(events.CloseCodeRestart)
 			return
 		case <-heartbeat.C: // Send a heartbeat
 			if err := w.Heartbeat(); err != nil {
-				w.Close(events.CloseCodeTimeout, true)
+				w.Close(events.CloseCodeTimeout)
 				return
 			}
 		// Listen for incoming dispatches

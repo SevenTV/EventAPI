@@ -27,7 +27,7 @@ type Connection interface {
 	// SendError publishes an error message to the client
 	SendError(txt string, fields map[string]any)
 	// Close sends a close frame with the specified code and ends the connection
-	Close(code events.CloseCode, write bool)
+	Close(code events.CloseCode)
 	// Actor returns the authenticated user for this connection
 	Actor() *structures.User
 	// Subscriptions returns an instance of Events

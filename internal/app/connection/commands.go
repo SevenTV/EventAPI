@@ -28,33 +28,33 @@ func (h Handler) Subscribe(gctx global.Context, m events.Message[json.RawMessage
 	// Empty subscription event type
 	if t == "" {
 		h.conn.SendError("Missing event type", nil)
-		h.conn.Close(events.CloseCodeInvalidPayload, true)
+		h.conn.Close(events.CloseCodeInvalidPayload)
 		return nil
 	}
 	if len(path) < 2 {
 		h.conn.SendError("Bad event type path", nil)
-		h.conn.Close(events.CloseCodeInvalidPayload, true)
+		h.conn.Close(events.CloseCodeInvalidPayload)
 		return nil
 	}
 
 	// No targets: this requires authentication
 	if len(msg.Data.Condition) == 0 && h.conn.Actor() == nil {
 		h.conn.SendError("Wildcard event target subscription requires authentication", nil)
-		h.conn.Close(events.CloseCodeInsufficientPrivilege, true)
+		h.conn.Close(events.CloseCodeInsufficientPrivilege)
 		return nil
 	}
 
 	// Too many subscriptions?
 	if h.conn.Events().Count() >= gctx.Config().API.ConnectionLimit {
 		h.conn.SendError("Too Many Active Subscriptions!", nil)
-		h.conn.Close(events.CloseCodeRateLimit, true)
+		h.conn.Close(events.CloseCodeRateLimit)
 	}
 
 	// Add the event subscription
 	_, err = h.conn.Events().Subscribe(gctx, t, msg.Data.Condition)
 	if err != nil {
 		if err == ErrAlreadySubscribed {
-			h.conn.Close(events.CloseCodeAlreadySubscribed, true)
+			h.conn.Close(events.CloseCodeAlreadySubscribed)
 			return nil
 		}
 		return err
@@ -71,7 +71,7 @@ func (h Handler) Unsubscribe(gctx global.Context, m events.Message[json.RawMessa
 	t := msg.Data.Type
 	if err = h.conn.Events().Unsubscribe(t, msg.Data.Condition); err != nil {
 		if err == ErrNotSubscribed {
-			h.conn.Close(events.CloseCodeNotSubscribed, true)
+			h.conn.Close(events.CloseCodeNotSubscribed)
 			return nil
 		}
 		return err

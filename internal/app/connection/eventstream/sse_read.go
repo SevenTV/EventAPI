@@ -24,7 +24,7 @@ func (es *EventStream) Read(gctx global.Context) {
 		es.cancel()
 		es.evm.Destroy()
 		close(dispatch)
-		es.Close(events.CloseCodeRestart, false)
+		es.Close(events.CloseCodeRestart)
 	}()
 
 	if err := es.Greet(); err != nil {
