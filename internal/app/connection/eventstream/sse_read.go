@@ -22,8 +22,9 @@ func (es *EventStream) Read(gctx global.Context) {
 	defer func() {
 		heartbeat.Stop()
 		es.cancel()
+		es.evm.Destroy()
 		close(dispatch)
-		es.Close(events.CloseCodeRestart)
+		es.Close(events.CloseCodeRestart, false)
 	}()
 
 	if err := es.Greet(); err != nil {

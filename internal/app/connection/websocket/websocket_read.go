@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/fasthttp/websocket"
 	"github.com/seventv/api/data/events"
 	client "github.com/seventv/eventapi/internal/app/connection"
 	"github.com/seventv/eventapi/internal/global"
@@ -24,28 +25,33 @@ func (w *WebSocket) Read(gctx global.Context) {
 			err  error
 		)
 		defer func() {
-			w.cancel()
 			close(dispatch)
+			w.cancel()
+			w.evm.Destroy()
 		}()
 
 		// Listen for incoming messages sent by the client
 		for {
 			_, data, err = w.c.ReadMessage()
+			if websocket.IsUnexpectedCloseError(err) {
+				return
+			}
+
 			if err != nil {
-				w.Close(events.CloseCodeInvalidPayload)
+				w.Close(events.CloseCodeInvalidPayload, true)
 				return
 			}
 
 			// Decode the payload
 			if err := json.Unmarshal(data, &msg); err != nil {
 				w.SendError(err.Error(), nil)
-				w.Close(events.CloseCodeInvalidPayload)
+				w.Close(events.CloseCodeInvalidPayload, true)
 				return
 			}
 
 			// Verify the opcode
 			if !client.IsClientSentOp(msg.Op) {
-				w.Close(events.CloseCodeUnknownOperation)
+				w.Close(events.CloseCodeUnknownOperation, true)
 				return
 			}
 
@@ -68,12 +74,14 @@ func (w *WebSocket) Read(gctx global.Context) {
 
 	for {
 		select {
+		case <-w.ctx.Done():
+			return
 		case <-gctx.Done(): // App is shutting down
-			w.Close(events.CloseCodeRestart)
+			w.Close(events.CloseCodeRestart, true)
 			return
 		case <-heartbeat.C: // Send a heartbeat
 			if err := w.Heartbeat(); err != nil {
-				w.Close(events.CloseCodeTimeout)
+				w.Close(events.CloseCodeTimeout, true)
 				return
 			}
 		// Listen for incoming dispatches

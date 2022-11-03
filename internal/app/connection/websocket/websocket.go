@@ -8,7 +8,6 @@ import (
 	"sync"
 
 	websocket "github.com/fasthttp/websocket"
-	"github.com/hashicorp/go-multierror"
 	"github.com/seventv/api/data/events"
 	"github.com/seventv/common/structures/v3"
 	client "github.com/seventv/eventapi/internal/app/connection"
@@ -87,7 +86,7 @@ func (w *WebSocket) Heartbeat() error {
 	return w.c.WriteJSON(msg)
 }
 
-func (w *WebSocket) Close(code events.CloseCode) {
+func (w *WebSocket) Close(code events.CloseCode, write bool) {
 	// Send "end of stream" message
 	msg := events.NewMessage(events.OpcodeEndOfStream, events.EndOfStreamPayload{
 		Code:    code,
@@ -100,7 +99,6 @@ func (w *WebSocket) Close(code events.CloseCode) {
 
 	// Write close frame
 	err := w.c.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(int(code), code.String()))
-	err = multierror.Append(err, w.c.Close()).ErrorOrNil()
 	if err != nil {
 		zap.S().Errorw("failed to close connection", "error", err)
 	}

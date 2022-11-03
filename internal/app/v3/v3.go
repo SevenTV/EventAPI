@@ -20,7 +20,7 @@ func WebSocket(gctx global.Context, conn *websocket.Conn, dig client.EventDigest
 	}
 
 	if err := w.Greet(); err != nil {
-		w.Close(events.CloseCodeServerError)
+		w.Close(events.CloseCodeServerError, true)
 	}
 
 	go w.Read(gctx)

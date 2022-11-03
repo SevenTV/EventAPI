@@ -76,7 +76,7 @@ func (*EventStream) Actor() *structures.User {
 	return nil
 }
 
-func (es *EventStream) Close(code events.CloseCode) {
+func (es *EventStream) Close(code events.CloseCode, write bool) {
 	msg := events.NewMessage(events.OpcodeEndOfStream, events.EndOfStreamPayload{
 		Code:    code,
 		Message: code.String(),

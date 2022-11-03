@@ -27,7 +27,7 @@ type Connection interface {
 	// SendError publishes an error message to the client
 	SendError(txt string, fields map[string]any)
 	// Close sends a close frame with the specified code and ends the connection
-	Close(code events.CloseCode)
+	Close(code events.CloseCode, write bool)
 	// Actor returns the authenticated user for this connection
 	Actor() *structures.User
 	// Subscriptions returns an instance of Events
@@ -155,6 +155,15 @@ func (e EventMap) Get(t events.EventType) (EventChannel, bool) {
 
 func (e EventMap) DispatchChannel() chan string {
 	return e.ch
+}
+
+func (e EventMap) Destroy() {
+	e.m.Range(func(key events.EventType, value EventChannel) bool {
+		e.m.Delete(key)
+		return true
+	})
+
+	close(e.ch)
 }
 
 type EventChannel map[string]utils.Set[string]
