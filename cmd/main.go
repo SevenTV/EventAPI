@@ -18,7 +18,8 @@ import (
 	"github.com/seventv/eventapi/internal/health"
 	"github.com/seventv/eventapi/internal/instance"
 	"github.com/seventv/eventapi/internal/monitoring"
-	"github.com/sirupsen/logrus"
+	"github.com/seventv/eventapi/internal/pprof"
+	"go.uber.org/zap"
 )
 
 var (
@@ -39,10 +40,10 @@ func main() {
 	config := configure.New()
 
 	exitStatus, err := panicwrap.BasicWrap(func(s string) {
-		logrus.Error(s)
+		zap.S().Error(s)
 	})
 	if err != nil {
-		logrus.Error("failed to setup panic handler: ", err)
+		zap.S().Errorf("failed to setup panic handler: ", err)
 		os.Exit(2)
 	}
 
@@ -51,13 +52,13 @@ func main() {
 	}
 
 	if !config.NoHeader {
-		logrus.Info("7TV EventAPI")
-		logrus.Infof("Version: %s", Version)
-		logrus.Infof("build.Time: %s", Time)
-		logrus.Infof("build.User: %s", User)
+		zap.S().Info("7TV EventAPI")
+		zap.S().Infof("Version: %s", Version)
+		zap.S().Infof("build.Time: %s", Time)
+		zap.S().Infof("build.User: %s", User)
 	}
 
-	logrus.Debug("MaxProcs: ", runtime.GOMAXPROCS(0))
+	zap.S().Debugf("MaxProcs: ", runtime.GOMAXPROCS(0))
 
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
@@ -78,7 +79,7 @@ func main() {
 		})
 		cancel()
 		if err != nil {
-			logrus.WithError(err).Fatal("failed to connect to redis")
+			zap.S().Fatalw("failed to connect to redis", "error", err)
 		}
 
 		gCtx.Inst().Redis = instance.WrapRedis(redisInst)
@@ -86,6 +87,11 @@ func main() {
 	}
 
 	dones := []<-chan struct{}{}
+
+	if gCtx.Config().PProf.Enabled {
+		done := pprof.New(gCtx)
+		dones = append(dones, done)
+	}
 
 	if gCtx.Config().API.Enabled {
 		_, done := app.New(gCtx)
@@ -98,7 +104,7 @@ func main() {
 		dones = append(dones, monitoring.New(gCtx))
 	}
 
-	logrus.Info("running")
+	zap.S().Infof("running")
 
 	done := make(chan struct{})
 	go func() {
@@ -109,10 +115,10 @@ func main() {
 			case <-time.After(time.Minute):
 			case <-sig:
 			}
-			logrus.Fatal("force shutdown")
+			zap.S().Fatal("force shutdown")
 		}()
 
-		logrus.Infof("gracefully shutting down... (%s)", s.String())
+		zap.S().Infof("gracefully shutting down... (%s)", s.String())
 
 		for _, ch := range dones {
 			<-ch
@@ -123,6 +129,6 @@ func main() {
 
 	<-done
 
-	logrus.Info("shutdown")
+	zap.S().Info("shutdown")
 	os.Exit(0)
 }

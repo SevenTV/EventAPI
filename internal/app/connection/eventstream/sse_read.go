@@ -22,6 +22,7 @@ func (es *EventStream) Read(gctx global.Context) {
 	defer func() {
 		heartbeat.Stop()
 		es.cancel()
+		es.evm.Destroy()
 		close(dispatch)
 		es.Close(events.CloseCodeRestart)
 	}()

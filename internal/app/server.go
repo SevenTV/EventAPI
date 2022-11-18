@@ -9,20 +9,17 @@ import (
 	"github.com/seventv/api/data/events"
 	"github.com/seventv/common/errors"
 	"github.com/seventv/common/redis"
-	"github.com/seventv/common/sync_map"
 	"github.com/seventv/common/utils"
 	client "github.com/seventv/eventapi/internal/app/connection"
 	"github.com/seventv/eventapi/internal/global"
 	"github.com/valyala/fasthttp"
-
-	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 )
 
 type Server struct {
 	digest   client.EventDigest
 	upgrader websocket.FastHTTPUpgrader
 	router   *router.Router
-	conns    *sync_map.Map[string, client.Connection]
 }
 
 func New(gctx global.Context) (Server, <-chan struct{}) {
@@ -44,7 +41,6 @@ func New(gctx global.Context) (Server, <-chan struct{}) {
 		upgrader: upgrader,
 		digest:   dig,
 		router:   r,
-		conns:    &sync_map.Map[string, client.Connection]{},
 	}
 	srv.HandleConnect(gctx)
 	srv.HandleHealth(gctx)
@@ -55,14 +51,14 @@ func New(gctx global.Context) (Server, <-chan struct{}) {
 		Handler: func(ctx *fasthttp.RequestCtx) {
 			start := time.Now()
 			defer func() {
-				l := logrus.WithFields(logrus.Fields{
-					"status":     ctx.Response.StatusCode(),
-					"path":       utils.B2S(ctx.Request.RequestURI()),
-					"duration":   time.Since(start) / time.Millisecond,
-					"ip":         utils.B2S(ctx.Request.Header.Peek("cf-connecting-ip")),
-					"method":     utils.B2S(ctx.Method()),
-					"entrypoint": "api",
-				})
+				l := zap.S().With(
+					"status", ctx.Response.StatusCode(),
+					"path", utils.B2S(ctx.Request.RequestURI()),
+					"duration", time.Since(start)/time.Millisecond,
+					"ip", utils.B2S(ctx.Request.Header.Peek("cf-connecting-ip")),
+					"method", utils.B2S(ctx.Method()),
+					"entrypoint", "api",
+				)
 				if err := recover(); err != nil {
 					l.Error("panic in handler: ", err)
 				} else {
@@ -79,7 +75,7 @@ func New(gctx global.Context) (Server, <-chan struct{}) {
 	go func() {
 		defer close(done)
 		if err := server.ListenAndServe(gctx.Config().API.Bind); err != nil {
-			logrus.Fatal("failed to start server: ", err)
+			zap.S().Fatal("failed to start server: ", err)
 		}
 	}()
 

@@ -6,8 +6,7 @@ import (
 
 	goRedis "github.com/go-redis/redis/v8"
 	"github.com/seventv/common/redis"
-
-	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 )
 
 type Redis interface {
@@ -31,7 +30,7 @@ func WrapRedis(r redis.Instance) Redis {
 	go func() {
 		defer func() {
 			if err := recover(); err != nil {
-				logrus.WithField("err", err).Fatal("panic in subs")
+				zap.S().Fatalw("panic in subs", "error", err)
 			}
 		}()
 		ch := inst.sub.Channel()
@@ -44,7 +43,7 @@ func WrapRedis(r redis.Instance) Redis {
 				select {
 				case s.ch <- payload:
 				default:
-					logrus.Warn("channel blocked dropping message: ", msg.Channel)
+					zap.S().Warn("channel blocked dropping message: ", msg.Channel)
 				}
 			}
 			inst.subsMtx.Unlock()
@@ -84,7 +83,7 @@ func (r *RedisInst) EventsSubscribe(ctx context.Context, ch chan string, subscri
 					if len(r.subs[e]) == 0 {
 						delete(r.subs, e)
 						if err := r.sub.Unsubscribe(context.Background(), e); err != nil {
-							logrus.WithError(err).Error("failed to unsubscribe")
+							zap.S().Errorw("failed to unsubscribe", "error", err)
 						}
 					}
 					break

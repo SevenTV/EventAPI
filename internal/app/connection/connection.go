@@ -157,6 +157,15 @@ func (e EventMap) DispatchChannel() chan string {
 	return e.ch
 }
 
+func (e EventMap) Destroy() {
+	e.m.Range(func(key events.EventType, value EventChannel) bool {
+		e.m.Delete(key)
+		return true
+	})
+
+	close(e.ch)
+}
+
 type EventChannel map[string]utils.Set[string]
 
 func (ec EventChannel) Match(cond map[string]string) bool {

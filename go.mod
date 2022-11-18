@@ -6,13 +6,11 @@ require (
 	github.com/bugsnag/panicwrap v1.3.4
 	github.com/fasthttp/websocket v1.5.0
 	github.com/go-redis/redis/v8 v8.11.5
-	github.com/google/uuid v1.3.0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/json-iterator/go v1.1.12
 	github.com/prometheus/client_golang v1.13.0
 	github.com/seventv/api v0.0.0-20220930105113-20b12f893b48
 	github.com/seventv/common v0.0.0-20220930075104-a9dbae31f9a9
-	github.com/sirupsen/logrus v1.9.0
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.13.0
 	github.com/valyala/fasthttp v1.40.0
