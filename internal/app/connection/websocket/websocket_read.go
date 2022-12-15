@@ -93,11 +93,11 @@ func (w *WebSocket) Read(gctx global.Context) {
 				continue // skip if not subscribed to this
 			}
 
-			if !ev.Match(msg.Data.Condition) {
+			if !ev.Match(msg.Data.Conditions) {
 				continue
 			}
 
-			msg.Data.Condition = nil
+			msg.Data.Conditions = nil
 
 			if err := w.c.WriteJSON(msg); err != nil {
 				zap.S().Errorw("failed to write dispatch to connection",

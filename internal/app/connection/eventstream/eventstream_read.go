@@ -54,11 +54,11 @@ func (es *EventStream) Read(gctx global.Context) {
 				continue // skip if not subscribed to this
 			}
 
-			if !ev.Match(msg.Data.Condition) {
+			if !ev.Match(msg.Data.Conditions) {
 				continue
 			}
 
-			msg.Data.Condition = nil
+			msg.Data.Conditions = nil
 
 			if err := es.write(msg.ToRaw()); err != nil {
 				zap.S().Errorw("failed to write dispatch to connection",

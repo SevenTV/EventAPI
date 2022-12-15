@@ -168,19 +168,22 @@ func (e EventMap) Destroy() {
 
 type EventChannel map[string]utils.Set[string]
 
-func (ec EventChannel) Match(cond map[string]string) bool {
-	for k, v := range cond {
-		s, ok := ec[k]
-		if !ok {
-			return false
+func (ec EventChannel) Match(cond []events.EventCondition) bool {
+	for _, c := range cond {
+		ok := 0
+
+		for k, v := range c {
+			if ec[k].Has(v) {
+				ok++
+			}
 		}
 
-		if !s.Has(v) {
-			return false
+		if ok == len(c) {
+			return true
 		}
 	}
 
-	return true
+	return false
 }
 
 var (
