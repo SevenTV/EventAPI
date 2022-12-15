@@ -31,7 +31,7 @@ func WebSocket(gctx global.Context, conn *websocket.Conn, dig client.EventDigest
 }
 
 var (
-	SSE_SUBSCRIPTION_ITEM       = regexp.MustCompile(`(?P<EVT>^\w+\.\w+)\<(?P<CND>.+)\>`)
+	SSE_SUBSCRIPTION_ITEM       = regexp.MustCompile(`(?P<EVT>^\w+\.[a-zA-Z0-9*]+)(\<(?P<CND>.+)\>)?`)
 	SSE_SUBSCRIPTION_ITEM_I_EVT = SSE_SUBSCRIPTION_ITEM.SubexpIndex("EVT")
 	SSE_SUBSCRIPTION_ITEM_I_CND = SSE_SUBSCRIPTION_ITEM.SubexpIndex("CND")
 )

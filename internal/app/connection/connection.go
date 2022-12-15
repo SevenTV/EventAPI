@@ -169,6 +169,10 @@ func (e EventMap) Destroy() {
 type EventChannel map[string]utils.Set[string]
 
 func (ec EventChannel) Match(cond []events.EventCondition) bool {
+	if len(ec) == 0 { // No condition
+		return true
+	}
+
 	for _, c := range cond {
 		ok := 0
 
