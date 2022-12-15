@@ -74,8 +74,7 @@ func SSE(gctx global.Context, ctx *fasthttp.RequestCtx, dig client.EventDigest, 
 				cm[kv[0]] = kv[1]
 			}
 
-			es.Events().Subscribe(gctx, events.EventType(evt), cm)
-
+			_, _ = es.Events().Subscribe(gctx, events.EventType(evt), cm)
 		}
 	}
 
@@ -83,5 +82,6 @@ func SSE(gctx global.Context, ctx *fasthttp.RequestCtx, dig client.EventDigest, 
 		es.SetWriter(w)
 		es.Read(gctx)
 	})
+
 	return es, nil
 }
