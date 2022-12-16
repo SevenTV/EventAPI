@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"crypto/rand"
+	"encoding/json"
 	"fmt"
 	"sync/atomic"
 
@@ -28,10 +29,14 @@ type Connection interface {
 	SendError(txt string, fields map[string]any)
 	// Close sends a close frame with the specified code and ends the connection
 	Close(code events.CloseCode)
+	// Write sends a message to the client
+	Write(msg events.Message[json.RawMessage]) error
 	// Actor returns the authenticated user for this connection
 	Actor() *structures.User
 	// Subscriptions returns an instance of Events
 	Events() EventMap
+	// Cache returns the connection's cache utility
+	Cache() Cache
 	// Digest returns the message decoder channel utility
 	Digest() EventDigest
 	// SetWriter defines the connection's writable stream (SSE only)
@@ -81,6 +86,10 @@ func (e EventMap) Subscribe(gctx global.Context, t events.EventType, cond map[st
 	ec, exists := e.m.Load(t)
 	if !exists {
 		ec = make(EventChannel)
+	}
+
+	if exists && len(ec) == 0 && len(cond) == 0 {
+		return ec, ErrAlreadySubscribed
 	}
 
 	for k, v := range cond {
@@ -168,19 +177,26 @@ func (e EventMap) Destroy() {
 
 type EventChannel map[string]utils.Set[string]
 
-func (ec EventChannel) Match(cond map[string]string) bool {
-	for k, v := range cond {
-		s, ok := ec[k]
-		if !ok {
-			return false
+func (ec EventChannel) Match(cond []events.EventCondition) bool {
+	if len(ec) == 0 { // No condition
+		return true
+	}
+
+	for _, c := range cond {
+		ok := 0
+
+		for k, v := range c {
+			if ec[k].Has(v) {
+				ok++
+			}
 		}
 
-		if !s.Has(v) {
-			return false
+		if ok == len(c) {
+			return true
 		}
 	}
 
-	return true
+	return false
 }
 
 var (

@@ -38,7 +38,7 @@ test:
 	go test -count=1 -cover ./...
 
 work:
-	echo -e "go 1.18\n\nuse (\n\t.\n\t../Common\n)" > go.work
+	echo -e "go 1.18\n\nuse (\n\t.\n\t../Common\n\t../API\n)" > go.work
 	go mod tidy
 
 dev:

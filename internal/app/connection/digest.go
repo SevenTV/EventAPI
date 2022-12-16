@@ -16,7 +16,7 @@ import (
 type Digest[P events.AnyPayload] struct {
 	gctx global.Context
 	ch   chan string
-	subs *sync_map.Map[string, digestSub[P]]
+	subs *sync_map.Map[string, *DigestSub[P]]
 }
 
 func NewDigest[P events.AnyPayload](gctx global.Context, key redis.Key) *Digest[P] {
@@ -24,7 +24,7 @@ func NewDigest[P events.AnyPayload](gctx global.Context, key redis.Key) *Digest[
 	d := &Digest[P]{
 		gctx: gctx,
 		ch:   ch,
-		subs: &sync_map.Map[string, digestSub[P]]{},
+		subs: &sync_map.Map[string, *DigestSub[P]]{},
 	}
 
 	if key != "" {
@@ -48,7 +48,11 @@ func NewDigest[P events.AnyPayload](gctx global.Context, key redis.Key) *Digest[
 						)
 					}
 
-					d.subs.Range(func(key string, value digestSub[P]) bool {
+					d.subs.Range(func(key string, value *DigestSub[P]) bool {
+						if value.closed {
+							return true
+						}
+
 						select {
 						case value.ch <- o:
 						default:
@@ -68,7 +72,7 @@ func NewDigest[P events.AnyPayload](gctx global.Context, key redis.Key) *Digest[
 func (d *Digest[P]) Publish(ctx context.Context, msg events.Message[json.RawMessage], filter []string) {
 	m, err := events.ConvertMessage[P](msg)
 	if err == nil {
-		d.subs.Range(func(key string, value digestSub[P]) bool {
+		d.subs.Range(func(key string, value *DigestSub[P]) bool {
 			if len(filter) >= 0 && !utils.Contains(filter, key) {
 				return true
 			}
@@ -80,11 +84,19 @@ func (d *Digest[P]) Publish(ctx context.Context, msg events.Message[json.RawMess
 }
 
 // Dispatch implements Digest
-func (d *Digest[P]) Subscribe(ctx context.Context, sessionID []byte, ch chan events.Message[P]) {
+func (d *Digest[P]) Subscribe(ctx context.Context, sessionID []byte, ch chan events.Message[P]) *DigestSub[P] {
 	sid := hex.EncodeToString(sessionID)
-	d.subs.Store(sid, digestSub[P]{ch})
-	<-ctx.Done()
-	d.subs.Delete(sid)
+
+	ds := &DigestSub[P]{ch, false}
+
+	d.subs.Store(sid, ds)
+
+	go func() {
+		<-ctx.Done()
+		d.subs.Delete(sid)
+	}()
+
+	return ds
 }
 
 type EventDigest struct {
@@ -92,6 +104,14 @@ type EventDigest struct {
 	Ack      *Digest[events.AckPayload]
 }
 
-type digestSub[P events.AnyPayload] struct {
-	ch chan events.Message[P]
+type DigestSub[P events.AnyPayload] struct {
+	ch     chan events.Message[P]
+	closed bool
+}
+
+func (ds *DigestSub[P]) Close() {
+	if !ds.closed {
+		close(ds.ch)
+		ds.closed = true
+	}
 }

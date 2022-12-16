@@ -10,19 +10,29 @@ The Event API allows developers to receive real-time updates on 7TV data and imp
     - [Versions](#versions)
     - [Opcodes](#opcodes)
     - [Close codes](#close-codes)
-    - [Server-Sent Events](#server-sent-events)
-    - [WebSocket](#websocket)
-      - [Message Structure](#message-structure)
-      - [Connection](#connection)
-      - [Heartbeat](#heartbeat)
-      - [Managing subscriptions](#managing-subscriptions)
-        - [Subscription Types](#subscription-types)
-        - [Subscribing](#subscribing)
-        - [Unsubscribing](#unsubscribing)
-      - [Dispatches](#dispatches)
-        - [Message Payload](#message-payload)
+    - [Payloads](#payloads)
+      - [Dispatch (0)](#dispatch-0)
         - [ChangeMap](#changemap)
         - [ChangeField](#changefield)
+      - [Hello (1)](#hello-1)
+      - [Subscribe (35)](#subscribe-35)
+      - [Unsubscribe (36)](#unsubscribe-36)
+    - [Subscription types](#subscription-types)
+        - [Subscription Types](#subscription-types-1)
+    - [EventStream / Server-Sent Events (HTTP)](#eventstream--server-sent-events-http)
+      - [Message Structure (EventStream)](#message-structure-eventstream)
+      - [Connection (EventStream)](#connection-eventstream)
+        - [Inline Event Subscriptions (EventStream)](#inline-event-subscriptions-eventstream)
+      - [Managing subscriptions (EventStream)](#managing-subscriptions-eventstream)
+      - [Dispatches (EventStream)](#dispatches-eventstream)
+    - [WebSocket](#websocket)
+      - [Message Structure (WebSocket)](#message-structure-websocket)
+      - [Connection (WebSocket)](#connection-websocket)
+      - [Heartbeat (WebSocket)](#heartbeat-websocket)
+      - [Managing subscriptions (WebSocket)](#managing-subscriptions-websocket)
+        - [Subscribing (WebSocket)](#subscribing-websocket)
+        - [Unsubscribing (WebSocket)](#unsubscribing-websocket)
+      - [Dispatches (WebSocket)](#dispatches-websocket)
 
 ### Supported Protocols
 - [x] Server-Sent Events / HTTP
@@ -42,6 +52,9 @@ The Event API allows developers to receive real-time updates on 7TV data and imp
 | V1   | ⚠️ Deprecated |
 
 ### Opcodes
+
+Operation codes are used to identify what kind of payload an event contains.
+
 | Op  |     Name      | Type |                                                            Description |
 | --- | :-----------: | :--- | ---------------------------------------------------------------------: |
 | 0   |   Dispatch    | ⬇️    |      A standard event message, sent when a subscribed event is emitted |
@@ -60,6 +73,9 @@ The Event API allows developers to receive real-time updates on 7TV data and imp
 *Legends: ⬆️ sent by client, ⬇️ sent by server*
 
 ### Close codes
+
+Close codes provide a reason for the closure of a connection to help clients understand what happened.
+
 | Code | Name                   |                                Description                                |
 | ---- | :--------------------- | :-----------------------------------------------------------------------: |
 | 4000 | Server Error           |                   an error occured on the server's end                    |
@@ -75,65 +91,48 @@ The Event API allows developers to receive real-time updates on 7TV data and imp
 | 4010 | Not Subscribed         | the client tried to unsubscribe from an event they weren't subscribing to |
 | 4011 | Insufficient Privilege |      the client did something that they did not have permission for       |
 
-### Server-Sent Events
+### Payloads
 
-TODO
+#### Dispatch (0)
 
-### WebSocket
+| Key  |               Type               |   Description    |
+| ---- | :------------------------------: | :--------------: |
+| type | [EventType](#subscription-types) |  the event type  |
+| body |     [ChangeMap](#changemap)      | detailed changes |
 
-For apps which commonly need to add or remove event subscriptions, WebSocket is typically a better choice.
+##### ChangeMap
+| Key        |             Type              |                                Description                                |
+| ---------- | :---------------------------: | :-----------------------------------------------------------------------: |
+| id         |           ObjectID            |                              the object's ID                              |
+| kind       |             int8              |                              the object kind                              |
+| contextual |             bool              | if true, this event represents a change local only to the current session |
+| actor      |             User              |                  the user responsible for these changes                   |
+| added      | [][ChangeField](#changefield) |                          a list of added fields                           |
+| updated    | [][ChangeField](#changefield) |                         a list of updated fields                          |
+| removed    | [][ChangeField](#changefield) |                         a list of removed fields                          |
+| pushed     | [][ChangeField](#changefield) |                    a list of items pushed to an array                     |
+| pulled     | [][ChangeField](#changefield) |                   a list of items pulled from an array                    |
 
-The websocket access point is `wss://events.7tv.io/v3`. The following sections will cover how to maintain and modify the connection.
+##### ChangeField
 
-#### Message Structure
+| Key       |     Type      |                                        Description                                        |
+| --------- | :-----------: | :---------------------------------------------------------------------------------------: |
+| key       |    string     |                                    the key in context                                     |
+| index     |     int?      | if the field is an array, this is the index of the item within the array that was updated |
+| nested¹   |     bool      |                  if true, this means the current value is nested deeper                   |
+| old_value | object or nil |                                    the previous value                                     |
+| value     | object or nil |                                       the new value                                       |
 
-WebSocket messages are composed of three root properties, `op` is the opcode, `t` is the timstamp of the message's formation, and `d` is the data payload. 
+**¹** _the `value` field will always be `[]ChangeField` when `nested` is `true`._
 
-| Key |  Type  |                     Description                     |
-| --- | :----: | :-------------------------------------------------: |
-| op  | uint8  |               message operation code                |
-| t   |  date  | timestamp of the message's formation in unix millis |
-| d   | object |                generic data payload                 |
-
-#### Connection
-
-Upon establishing a connection, you will receive a `[1] HELLO` opcode. The payload contains the following data
+#### Hello (1)
 
 | Key                |  Type  |                                Description                                |
 | ------------------ | :----: | :-----------------------------------------------------------------------: |
 | heartbeat_interval | int32  |              interval in milliseconds between each heartbeat              |
 | session_id         | string | unique token for this session, used for resuming and mutating the session |
 
-#### Heartbeat
-
-The server will send periodic heartbeats at the interval specified in the Hello payload. If heartbeats are missed for 3 cycles, the connection can be considered dead (i.e due to an error or network issue) and you should reconnect.
-
-#### Managing subscriptions
-
-A subscription consists of a **type** and a **condition**. This is where you can choose exactly what kind of data your application needs.
-
-##### Subscription Types
-| Type                   | Kind                   |
-| ---------------------- | :--------------------- |
-| System - Announcement  | system.announcement    |
-| Create Emote           | emote.create           |
-| Update Emote           | emote.update           |
-| Delete Emote           | emote.delete           |
-| Create Emote Set       | emote_set.create       |
-| Update Emote Set       | emote_set.update       |
-| Delete Emote Set       | emote_set.delete       |
-| Create User            | user.create            |
-| Update User            | user.update            |
-| Delete User            | user.delete            |
-| Add User Connection    | user.add_connection    |
-| Update User Connection | user.update_connection |
-| Delete User Connection | user.delete_connection |
-
-If you'd like to receive all events about an object, it is also possible to use an asterisk symbol as a wildcard. For example, using the type `emote.*` will subscribe to each of `emote.create`, `emote.update` and `emote.delete`.
-
-##### Subscribing
-
-To set up a subscription, you may send the opcode `[35] SUBSCRIBE` and these fields
+#### Subscribe (35)
 
 | Key       |    Type    |          Description          |
 | --------- | :--------: | :---------------------------: |
@@ -157,12 +156,7 @@ To set up a subscription, you may send the opcode `[35] SUBSCRIBE` and these fie
 }
 ```
 
-You are allowed to subscribe multiple times to the same type, however, duplicated conditions will result in a disconnect with code `4009 Already Subscribed`.
-
-##### Unsubscribing
-
-When an event source is no longer needed, you should unsubscribe from it to avoid receiving unnecessary data with `[36] UNSUBSCRIBE`.
-
+#### Unsubscribe (36)
 
 | Key        |    Type    |          Description          |
 | ---------- | :--------: | :---------------------------: |
@@ -179,42 +173,132 @@ When an event source is no longer needed, you should unsubscribe from it to avoi
 }
 ```
 
+### Subscription types
+
+##### Subscription Types
+| Type                   | Kind                   |
+| ---------------------- | :--------------------- |
+| System - Announcement  | system.announcement    |
+| Create Emote           | emote.create           |
+| Update Emote           | emote.update           |
+| Delete Emote           | emote.delete           |
+| Create Emote Set       | emote_set.create       |
+| Update Emote Set       | emote_set.update       |
+| Delete Emote Set       | emote_set.delete       |
+| Create User            | user.create            |
+| Update User            | user.update            |
+| Delete User            | user.delete            |
+| Add User Connection    | user.add_connection    |
+| Update User Connection | user.update_connection |
+| Delete User Connection | user.delete_connection |
+| Create Cosmetic        | cosmetic.create        |
+| Update Cosmetic        | cosmetic.update        |
+| Delete Cosmetic        | cosmetic.delete        |
+| Create Entitlement     | entitlement.create     |
+| Update Entitlement     | entitlement.update     |
+| Delete Entitlement     | entitlement.delete     |
+
+If you'd like to receive all events about an object, it is also possible to use an asterisk symbol as a wildcard. For example, using the type `emote.*` will subscribe to each of `emote.create`, `emote.update` and `emote.delete`.
+
+---
+
+### EventStream / Server-Sent Events (HTTP)
+
+EventStream, or [Server-Sent Events (SSE)](https://en.wikipedia.org/wiki/Server-sent_events) is the recommended way to use the EventAPI.
+This is a one-way stream which operates via a regular HTTP connection rather than a different protocol such as WebSocket.
+
+The EventStream access point is [`https://events.7tv.io/v3`](https://events.7tv.io/v3). The following sections will cover how to initiate and modify the connection.
+
+#### Message Structure (EventStream)
+
+In a browser environment, the `EventSource` interface exists to automatically handle an EventStream endpoint.
+
+Otherwise, to read and parse this data refer to the [spec for Server-Sent Events](https://html.spec.whatwg.org/multipage/server-sent-events.html).
+
+Opcodes are sent in their text form as the event's type, and the data will always be JSON.
+
+#### Connection (EventStream)
+
+Upon opening the connection, you will receive a [`[1] HELLO`](#hello-1) event, which will contain the following data
+
+##### Inline Event Subscriptions (EventStream)
+
+It is possible to add subscriptions directly in the connection string, by appending a `@` to the URL followed by the following syntax
+
+`{type}<{condition1}={value1},{condition2}={value2}>,...`
+
+where `type` is a [subscription type](#subscription-types), then wrapped between brackets (`<...>`) are a list of conditions. 
+Separate each subscription by a comma. The same type can be subscribed to multiple times with different conditions.
+
+Full examples
+
+```
+Subscribe to updates on a specific emote set
+: GET https://events.7tv.io/v3@emote_set.update<object_id=62cdd34e72a832540de95857>
+
+Subscribe to all entitlement and cosmetic events on a specific channel
+: GET https://events.7tv.io/v3@entitlement.*<host_id=60867b015e01df61570ab900,connection_id=1234>,cosmetic.*<host_id=60867b015e01df61570ab900,connection_id=1234>
+```
+
+At this time, it is possible to subscribe with no conditions and effectively turn the connection into a Firehose, however this may be restricted in the future.
+
+#### Managing subscriptions (EventStream)
+
+Adding or removing a subscription is done by sending a request via a REST endpoint and passing your session ID to authenticate.
+
+The endpoint for managing subscriptions is currently unavailable. You may use [Inline Event Subscriptions](#inline-event-subscriptions-eventstream) in the meantime.
+
+#### Dispatches (EventStream)
+
+Once subscriptions are active, you will receive [`[0] DISPATCH`](#dispatch-0) events 
+
+---
+
+### WebSocket
+
+For apps which must issue commands frequently, WebSocket may be a better choice.
+
+The websocket access point is `wss://events.7tv.io/v3`. The following sections will cover how to maintain and modify the connection.
+
+#### Message Structure (WebSocket)
+
+WebSocket messages are sent in JSON format and are composed of three root properties, `op` is the opcode, `t` is the timstamp of the message's formation, and `d` is the data payload. 
+
+| Key |  Type  |                     Description                     |
+| --- | :----: | :-------------------------------------------------: |
+| op  | uint8  |               message operation code                |
+| t   |  date  | timestamp of the message's formation in unix millis |
+| d   | object |                generic data payload                 |
+
+#### Connection (WebSocket)
+
+Upon establishing a connection, you will receive a [`[1] HELLO`](#hello-1) event.
+
+#### Heartbeat (WebSocket)
+
+The server will send periodic heartbeats at the interval specified in the Hello payload. If heartbeats are missed for 3 cycles, the connection can be considered dead (i.e due to an error or network issue) and you should reconnect.
+
+#### Managing subscriptions (WebSocket)
+
+A subscription consists of a **type** and a **condition**. This is where you can choose exactly what kind of data your application needs.
+
+Valid subscription types can be found [here](#subscription-types).
+
+##### Subscribing (WebSocket)
+
+To set up a subscription, you may send the opcode [`[35] SUBSCRIBE`](#subscribe-35) and these fields
+
+You are allowed to subscribe multiple times to the same type, however, duplicated conditions will result in a disconnect with code `4009 Already Subscribed`.
+
+##### Unsubscribing (WebSocket)
+
+When an event source is no longer needed, you should unsubscribe from it to avoid receiving unnecessary data with [`[36] UNSUBSCRIBE`](#unsubscribe-36).
+
 It is also possible to unsubscribe from an entire event type at once by leaving the condition field empty.
 
-#### Dispatches
+#### Dispatches (WebSocket)
 
-Once subscriptions are active, you may start receiving messages with the `[0] DISPATCH` opcode. These events notify of changes to an object and allow you to keep your state up to date.
-
-##### Message Payload
-
-| Key  |               Type               |   Description    |
-| ---- | :------------------------------: | :--------------: |
-| type | [EventType](#subscription-types) |  the event type  |
-| body |     [ChangeMap](#changemap)      | detailed changes |
-
-##### ChangeMap
-| Key     |             Type              |              Description               |
-| ------- | :---------------------------: | :------------------------------------: |
-| id      |           ObjectID            |            the object's ID             |
-| kind    |             int8              |            the object kind             |
-| actor   |             User              | the user responsible for these changes |
-| added   | [][ChangeField](#changefield) |         a list of added fields         |
-| updated | [][ChangeField](#changefield) |        a list of updated fields        |
-| removed | [][ChangeField](#changefield) |        a list of removed fields        |
-| pushed  | [][ChangeField](#changefield) |   a list of items pushed to an array   |
-| pulled  | [][ChangeField](#changefield) |  a list of items pulled from an array  |
-
-##### ChangeField
-
-| Key       |     Type      |                                        Description                                        |
-| --------- | :-----------: | :---------------------------------------------------------------------------------------: |
-| key       |    string     |                                    the key in context                                     |
-| index     |     int?      | if the field is an array, this is the index of the item within the array that was updated |
-| nested¹   |     bool      |                  if true, this means the current value is nested deeper                   |
-| old_value | object or nil |                                    the previous value                                     |
-| value     | object or nil |                                       the new value                                       |
-
-**¹** _the `value` field will always be `[]ChangeField` when `nested` is `true`._
+Once subscriptions are active, you may start receiving messages with the [`[0] DISPATCH`](#dispatch-0) opcode. These events notify of changes to an object and allow you to keep your state up to date.
 
 ---
 

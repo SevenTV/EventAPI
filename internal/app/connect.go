@@ -10,7 +10,7 @@ import (
 )
 
 func (s Server) HandleConnect(gctx global.Context) {
-	s.router.GET("/v3", func(ctx *fasthttp.RequestCtx) {
+	v3Fn := func(ctx *fasthttp.RequestCtx) {
 		if utils.B2S(ctx.Request.Header.Peek("upgrade")) == "websocket" {
 			if err := s.upgrader.Upgrade(ctx, func(c *websocket.Conn) { // New WebSocket connection
 				con, err := v3.WebSocket(gctx, c, s.digest)
@@ -34,7 +34,10 @@ func (s Server) HandleConnect(gctx global.Context) {
 				return
 			}
 		}
-	})
+	}
+
+	s.router.GET("/v3{sub?:\\@(.*)}", v3Fn)
+	s.router.GET("/v3", v3Fn)
 
 	s.router.GET("/v1/channel-emotes", func(ctx *fasthttp.RequestCtx) {
 		if utils.B2S(ctx.Request.Header.Peek("upgrade")) == "websocket" {

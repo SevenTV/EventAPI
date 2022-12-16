@@ -7,23 +7,27 @@ import (
 	"time"
 
 	"github.com/seventv/api/data/events"
+	client "github.com/seventv/eventapi/internal/app/connection"
 	"github.com/seventv/eventapi/internal/global"
 	"go.uber.org/zap"
 )
 
 func (es *EventStream) Read(gctx global.Context) {
 	conn := es.c.Conn().(*net.TCPConn)
+
 	heartbeat := time.NewTicker(time.Duration(es.heartbeatInterval) * time.Millisecond)
-	dispatch := make(chan events.Message[events.DispatchPayload])
+	dispatch := make(chan events.Message[events.DispatchPayload], 128)
+
 	ack := make(chan events.Message[events.AckPayload])
-	go es.Digest().Dispatch.Subscribe(es.ctx, es.sessionID, dispatch)
-	go es.Digest().Ack.Subscribe(es.ctx, es.sessionID, ack)
+
+	subDispatch := es.Digest().Dispatch.Subscribe(es.ctx, es.sessionID, dispatch)
+	_ = es.Digest().Ack.Subscribe(es.ctx, es.sessionID, ack)
 
 	defer func() {
+		subDispatch.Close()
 		heartbeat.Stop()
 		es.cancel()
 		es.evm.Destroy()
-		close(dispatch)
 		es.Close(events.CloseCodeRestart)
 	}()
 
@@ -35,6 +39,7 @@ func (es *EventStream) Read(gctx global.Context) {
 		if err := checkConn(conn); err != nil {
 			return
 		}
+
 		select {
 		case <-es.c.Done():
 			return
@@ -48,27 +53,11 @@ func (es *EventStream) Read(gctx global.Context) {
 			}
 
 		case msg := <-dispatch:
-			// Filter by subscribed event types
-			ev, ok := es.Events().Get(msg.Data.Type)
-			if !ok {
-				continue // skip if not subscribed to this
-			}
+			_ = client.HandleDispatch(gctx, es, msg)
 
-			if !ev.Match(msg.Data.Condition) {
-				continue
-			}
-
-			msg.Data.Condition = nil
-
-			if err := es.write(msg.ToRaw()); err != nil {
-				zap.S().Errorw("failed to write dispatch to connection",
-					"error", err,
-				)
-				continue
-			}
 		// Listen for acks (i.e in response to a session mutation)
 		case msg := <-ack:
-			if err := es.write(msg.ToRaw()); err != nil {
+			if err := es.Write(msg.ToRaw()); err != nil {
 				zap.S().Errorw("failed to write ack to connection",
 					"error", err,
 				)

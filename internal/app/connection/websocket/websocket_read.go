@@ -8,15 +8,13 @@ import (
 	"github.com/seventv/api/data/events"
 	client "github.com/seventv/eventapi/internal/app/connection"
 	"github.com/seventv/eventapi/internal/global"
-	"go.uber.org/zap"
 )
 
 func (w *WebSocket) Read(gctx global.Context) {
 	heartbeat := time.NewTicker(time.Duration(w.heartbeatInterval) * time.Millisecond)
-	dispatch := make(chan events.Message[events.DispatchPayload])
-	go func() {
-		w.Digest().Dispatch.Subscribe(w.ctx, w.sessionID, dispatch)
-	}()
+	dispatch := make(chan events.Message[events.DispatchPayload], 128)
+
+	dispatchSub := w.Digest().Dispatch.Subscribe(w.ctx, w.sessionID, dispatch)
 
 	go func() {
 		var (
@@ -26,7 +24,7 @@ func (w *WebSocket) Read(gctx global.Context) {
 		)
 		defer func() {
 			heartbeat.Stop()
-			close(dispatch)
+			dispatchSub.Close()
 			w.cancel()
 			w.evm.Destroy()
 		}()
@@ -87,24 +85,7 @@ func (w *WebSocket) Read(gctx global.Context) {
 			}
 		// Listen for incoming dispatches
 		case msg := <-dispatch:
-			// Filter by the connection's subscribed events
-			ev, ok := w.Events().Get(msg.Data.Type)
-			if !ok {
-				continue // skip if not subscribed to this
-			}
-
-			if !ev.Match(msg.Data.Condition) {
-				continue
-			}
-
-			msg.Data.Condition = nil
-
-			if err := w.c.WriteJSON(msg); err != nil {
-				zap.S().Errorw("failed to write dispatch to connection",
-					"error", err,
-				)
-				continue
-			}
+			_ = client.HandleDispatch(gctx, w, msg)
 		}
 	}
 }
