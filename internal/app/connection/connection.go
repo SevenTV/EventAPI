@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"crypto/rand"
+	"encoding/json"
 	"fmt"
 	"sync/atomic"
 
@@ -28,10 +29,14 @@ type Connection interface {
 	SendError(txt string, fields map[string]any)
 	// Close sends a close frame with the specified code and ends the connection
 	Close(code events.CloseCode)
+	// Write sends a message to the client
+	Write(msg events.Message[json.RawMessage]) error
 	// Actor returns the authenticated user for this connection
 	Actor() *structures.User
 	// Subscriptions returns an instance of Events
 	Events() EventMap
+	// Cache returns the connection's cache utility
+	Cache() Cache
 	// Digest returns the message decoder channel utility
 	Digest() EventDigest
 	// SetWriter defines the connection's writable stream (SSE only)

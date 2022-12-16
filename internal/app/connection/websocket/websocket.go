@@ -22,6 +22,7 @@ type WebSocket struct {
 	cancel            context.CancelFunc
 	seq               int64
 	evm               client.EventMap
+	cache             client.Cache
 	dig               client.EventDigest
 	writeMtx          *sync.Mutex
 	sessionID         []byte
@@ -47,6 +48,7 @@ func NewWebSocket(gctx global.Context, conn *websocket.Conn, dig client.EventDig
 		cancel:            cancel,
 		seq:               0,
 		evm:               client.NewEventMap(make(chan string, 10)),
+		cache:             client.NewCache(),
 		dig:               dig,
 		writeMtx:          &sync.Mutex{},
 		sessionID:         sessionID,
@@ -94,7 +96,7 @@ func (w *WebSocket) Close(code events.CloseCode) {
 		Message: code.String(),
 	})
 
-	if err := w.write(msg.ToRaw()); err != nil {
+	if err := w.Write(msg.ToRaw()); err != nil {
 		zap.S().Errorw("failed to close connection", "error", err)
 	}
 
@@ -106,7 +108,7 @@ func (w *WebSocket) Close(code events.CloseCode) {
 	}
 }
 
-func (w *WebSocket) write(msg events.Message[json.RawMessage]) error {
+func (w *WebSocket) Write(msg events.Message[json.RawMessage]) error {
 	w.writeMtx.Lock()
 	defer w.writeMtx.Unlock()
 
@@ -118,6 +120,10 @@ func (w *WebSocket) write(msg events.Message[json.RawMessage]) error {
 
 func (w *WebSocket) Events() client.EventMap {
 	return w.evm
+}
+
+func (w *WebSocket) Cache() client.Cache {
+	return w.cache
 }
 
 func (w *WebSocket) Digest() client.EventDigest {

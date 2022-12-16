@@ -26,6 +26,7 @@ type EventStream struct {
 	cancel            context.CancelFunc
 	seq               int64
 	evm               client.EventMap
+	cache             client.Cache
 	dig               client.EventDigest
 	writeMtx          sync.Mutex
 	writer            *bufio.Writer
@@ -52,6 +53,7 @@ func NewEventStream(gctx global.Context, c *fasthttp.RequestCtx, dig client.Even
 		cancel:            cancel,
 		seq:               0,
 		evm:               client.NewEventMap(make(chan string, 10)),
+		cache:             client.NewCache(),
 		dig:               dig,
 		writeMtx:          sync.Mutex{},
 		writer:            nil,
@@ -82,7 +84,7 @@ func (es *EventStream) Close(code events.CloseCode) {
 		Message: code.String(),
 	})
 
-	if err := es.write(msg.ToRaw()); err != nil {
+	if err := es.Write(msg.ToRaw()); err != nil {
 		zap.S().Errorw("failed to write end of stream event to closing connection", "error", err)
 	}
 	es.cancel()
@@ -90,6 +92,10 @@ func (es *EventStream) Close(code events.CloseCode) {
 
 func (es *EventStream) Events() client.EventMap {
 	return es.evm
+}
+
+func (es *EventStream) Cache() client.Cache {
+	return es.cache
 }
 
 func (es *EventStream) Digest() client.EventDigest {
@@ -102,7 +108,7 @@ func (es *EventStream) Greet() error {
 		SessionID:         hex.EncodeToString(es.sessionID),
 	})
 
-	return es.write(msg.ToRaw())
+	return es.Write(msg.ToRaw())
 }
 
 func (es *EventStream) Heartbeat() error {
@@ -111,7 +117,7 @@ func (es *EventStream) Heartbeat() error {
 		Count: es.heartbeatCount,
 	})
 
-	return es.write(msg.ToRaw())
+	return es.Write(msg.ToRaw())
 }
 
 func (es *EventStream) SendError(txt string, fields map[string]any) {
@@ -123,12 +129,12 @@ func (es *EventStream) SendError(txt string, fields map[string]any) {
 		Fields:  fields,
 	})
 
-	if err := es.write(msg.ToRaw()); err != nil {
+	if err := es.Write(msg.ToRaw()); err != nil {
 		zap.S().Errorw("failed to write an error message to the socket", "error", err)
 	}
 }
 
-func (es *EventStream) write(msg events.Message[json.RawMessage]) error {
+func (es *EventStream) Write(msg events.Message[json.RawMessage]) error {
 	es.writeMtx.Lock()
 	defer es.writeMtx.Unlock()
 

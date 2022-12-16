@@ -8,7 +8,6 @@ import (
 	"github.com/seventv/api/data/events"
 	client "github.com/seventv/eventapi/internal/app/connection"
 	"github.com/seventv/eventapi/internal/global"
-	"go.uber.org/zap"
 )
 
 func (w *WebSocket) Read(gctx global.Context) {
@@ -86,24 +85,7 @@ func (w *WebSocket) Read(gctx global.Context) {
 			}
 		// Listen for incoming dispatches
 		case msg := <-dispatch:
-			// Filter by the connection's subscribed events
-			ev, ok := w.Events().Get(msg.Data.Type)
-			if !ok {
-				continue // skip if not subscribed to this
-			}
-
-			if !ev.Match(msg.Data.Conditions) {
-				continue
-			}
-
-			msg.Data.Conditions = nil
-
-			if err := w.c.WriteJSON(msg); err != nil {
-				zap.S().Errorw("failed to write dispatch to connection",
-					"error", err,
-				)
-				continue
-			}
+			_ = client.HandleDispatch(gctx, w, msg)
 		}
 	}
 }
