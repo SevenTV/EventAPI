@@ -101,16 +101,17 @@ Close codes provide a reason for the closure of a connection to help clients und
 | body |     [ChangeMap](#changemap)      | detailed changes |
 
 ##### ChangeMap
-| Key     |             Type              |              Description               |
-| ------- | :---------------------------: | :------------------------------------: |
-| id      |           ObjectID            |            the object's ID             |
-| kind    |             int8              |            the object kind             |
-| actor   |             User              | the user responsible for these changes |
-| added   | [][ChangeField](#changefield) |         a list of added fields         |
-| updated | [][ChangeField](#changefield) |        a list of updated fields        |
-| removed | [][ChangeField](#changefield) |        a list of removed fields        |
-| pushed  | [][ChangeField](#changefield) |   a list of items pushed to an array   |
-| pulled  | [][ChangeField](#changefield) |  a list of items pulled from an array  |
+| Key        |             Type              |                                Description                                |
+| ---------- | :---------------------------: | :-----------------------------------------------------------------------: |
+| id         |           ObjectID            |                              the object's ID                              |
+| kind       |             int8              |                              the object kind                              |
+| contextual |             bool              | if true, this event represents a change local only to the current session |
+| actor      |             User              |                  the user responsible for these changes                   |
+| added      | [][ChangeField](#changefield) |                          a list of added fields                           |
+| updated    | [][ChangeField](#changefield) |                         a list of updated fields                          |
+| removed    | [][ChangeField](#changefield) |                         a list of removed fields                          |
+| pushed     | [][ChangeField](#changefield) |                    a list of items pushed to an array                     |
+| pulled     | [][ChangeField](#changefield) |                   a list of items pulled from an array                    |
 
 ##### ChangeField
 
