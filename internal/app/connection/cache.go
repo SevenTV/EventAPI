@@ -20,7 +20,6 @@ func NewCache() Cache {
 	}
 }
 
-// AddDispatch implements Cache
 func (c *cacheInst) AddDispatch(h uint32) bool {
 	had := c.dispatch.Has(h)
 
@@ -29,12 +28,10 @@ func (c *cacheInst) AddDispatch(h uint32) bool {
 	return !had
 }
 
-// ExpireDispatch implements Cache
 func (c *cacheInst) ExpireDispatch(h uint32) {
 	c.dispatch.Delete(h)
 }
 
-// HasDispatch implements Cache
 func (c *cacheInst) HasDispatch(h uint32) bool {
 	return c.dispatch.Has(h)
 }
