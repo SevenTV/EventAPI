@@ -190,6 +190,12 @@ Close codes provide a reason for the closure of a connection to help clients und
 | Add User Connection    | user.add_connection    |
 | Update User Connection | user.update_connection |
 | Delete User Connection | user.delete_connection |
+| Create Cosmetic        | cosmetic.create        |
+| Update Cosmetic        | cosmetic.update        |
+| Delete Cosmetic        | cosmetic.delete        |
+| Create Entitlement     | entitlement.create     |
+| Update Entitlement     | entitlement.update     |
+| Delete Entitlement     | entitlement.delete     |
 
 If you'd like to receive all events about an object, it is also possible to use an asterisk symbol as a wildcard. For example, using the type `emote.*` will subscribe to each of `emote.create`, `emote.update` and `emote.delete`.
 
