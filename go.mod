@@ -9,7 +9,7 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/json-iterator/go v1.1.12
 	github.com/prometheus/client_golang v1.14.0
-	github.com/seventv/api v0.0.0-20221215221048-9879b3e48736
+	github.com/seventv/api v0.0.0-20221216001938-a2addffae293
 	github.com/seventv/common v0.0.0-20221211205632-bab03db2e420
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.14.0
@@ -18,10 +18,19 @@ require (
 )
 
 require (
+	github.com/99designs/gqlgen v0.17.22 // indirect
+	github.com/agnivade/levenshtein v1.1.1 // indirect
+	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
 	github.com/go-redsync/redsync/v4 v4.7.1 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.6 // indirect
+	github.com/russross/blackfriday/v2 v2.1.0 // indirect
+	github.com/urfave/cli/v2 v2.23.7 // indirect
+	github.com/vektah/gqlparser/v2 v2.5.1 // indirect
+	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
 	go.uber.org/atomic v1.10.0 // indirect
 	go.uber.org/multierr v1.9.0 // indirect
+	golang.org/x/mod v0.7.0 // indirect
+	golang.org/x/tools v0.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
