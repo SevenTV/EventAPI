@@ -13,17 +13,20 @@ import (
 
 func (es *EventStream) Read(gctx global.Context) {
 	conn := es.c.Conn().(*net.TCPConn)
+
 	heartbeat := time.NewTicker(time.Duration(es.heartbeatInterval) * time.Millisecond)
-	dispatch := make(chan events.Message[events.DispatchPayload])
+	dispatch := make(chan events.Message[events.DispatchPayload], 128)
+
 	ack := make(chan events.Message[events.AckPayload])
-	go es.Digest().Dispatch.Subscribe(es.ctx, es.sessionID, dispatch)
-	go es.Digest().Ack.Subscribe(es.ctx, es.sessionID, ack)
+
+	subDispatch := es.Digest().Dispatch.Subscribe(es.ctx, es.sessionID, dispatch)
+	_ = es.Digest().Ack.Subscribe(es.ctx, es.sessionID, ack)
 
 	defer func() {
+		subDispatch.Close()
 		heartbeat.Stop()
 		es.cancel()
 		es.evm.Destroy()
-		close(dispatch)
 		es.Close(events.CloseCodeRestart)
 	}()
 

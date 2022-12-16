@@ -83,7 +83,7 @@ func (e EventMap) Subscribe(gctx global.Context, t events.EventType, cond map[st
 		ec = make(EventChannel)
 	}
 
-	if len(ec) == 0 && len(cond) == 0 {
+	if exists && len(ec) == 0 && len(cond) == 0 {
 		return ec, ErrAlreadySubscribed
 	}
 

@@ -13,10 +13,9 @@ import (
 
 func (w *WebSocket) Read(gctx global.Context) {
 	heartbeat := time.NewTicker(time.Duration(w.heartbeatInterval) * time.Millisecond)
-	dispatch := make(chan events.Message[events.DispatchPayload])
-	go func() {
-		w.Digest().Dispatch.Subscribe(w.ctx, w.sessionID, dispatch)
-	}()
+	dispatch := make(chan events.Message[events.DispatchPayload], 128)
+
+	dispatchSub := w.Digest().Dispatch.Subscribe(w.ctx, w.sessionID, dispatch)
 
 	go func() {
 		var (
@@ -26,7 +25,7 @@ func (w *WebSocket) Read(gctx global.Context) {
 		)
 		defer func() {
 			heartbeat.Stop()
-			close(dispatch)
+			dispatchSub.Close()
 			w.cancel()
 			w.evm.Destroy()
 		}()
