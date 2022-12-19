@@ -24,6 +24,13 @@ type handler struct {
 	conn Connection
 }
 
+const (
+	EVENT_TYPE_MAX_LENGTH                   = 64
+	SUBSCRIPTION_CONDITION_MAX              = 10
+	SUBSCRIPTION_CONDITION_KEY_MAX_LENGTH   = 64
+	SUBSCRIPTION_CONDITION_VALUE_MAX_LENGTH = 128
+)
+
 func (h handler) Subscribe(gctx global.Context, m events.Message[json.RawMessage]) (error, bool) {
 	msg, err := events.ConvertMessage[events.SubscribePayload](m)
 	if err != nil {
@@ -63,16 +70,62 @@ func (h handler) Subscribe(gctx global.Context, m events.Message[json.RawMessage
 		return nil, false
 	}
 
-	// Add the event subscription
-	_, err = h.conn.Events().Subscribe(gctx, t, msg.Data.Condition)
-	if err != nil {
-		if err == ErrAlreadySubscribed {
-			h.conn.Close(events.CloseCodeAlreadySubscribed)
+	// Validate: event type
+	if len(msg.Data.Type) > EVENT_TYPE_MAX_LENGTH {
+		h.conn.SendError("Event Type Too Large", map[string]any{
+			"event_type":             msg.Data.Type,
+			"event_type_length":      len(msg.Data.Type),
+			"event_type_length_most": EVENT_TYPE_MAX_LENGTH,
+		})
+		h.conn.Close(events.CloseCodeRateLimit)
+
+		return nil, false
+	}
+
+	// Validate: condition
+	pos := -1
+	for k, v := range msg.Data.Condition {
+		pos++
+
+		if pos > SUBSCRIPTION_CONDITION_MAX {
+			h.conn.SendError("Subscription Condition Too Large", map[string]any{
+				"condition_keys":      len(msg.Data.Condition),
+				"condition_keys_most": SUBSCRIPTION_CONDITION_MAX,
+			})
+			h.conn.Close(events.CloseCodeRateLimit)
 
 			return nil, false
 		}
 
-		return err, false
+		kL := len(k)
+		vL := len(v)
+
+		if kL > SUBSCRIPTION_CONDITION_KEY_MAX_LENGTH || vL > SUBSCRIPTION_CONDITION_VALUE_MAX_LENGTH {
+			h.conn.SendError("Subscription Condition Key Too Large", map[string]any{
+				"key":               k,
+				"key_index":         pos,
+				"value":             v,
+				"key_length":        kL,
+				"key_length_most":   SUBSCRIPTION_CONDITION_KEY_MAX_LENGTH,
+				"value_length":      vL,
+				"value_length_most": SUBSCRIPTION_CONDITION_VALUE_MAX_LENGTH,
+			})
+			h.conn.Close(events.CloseCodeRateLimit)
+
+			return nil, false
+		}
+	}
+
+	// Add the event subscription
+	_, err = h.conn.Events().Subscribe(gctx, t, msg.Data.Condition)
+	if err != nil {
+		switch err {
+		case ErrAlreadySubscribed:
+			h.conn.SendError("Already subscribed to this event", nil)
+			return nil, false
+		default:
+			return err, false
+		}
 	}
 
 	_ = h.conn.SendAck(events.OpcodeSubscribe, utils.ToJSON(struct {
