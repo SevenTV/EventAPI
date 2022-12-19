@@ -23,20 +23,26 @@ type Connection interface {
 	Greet() error
 	// Listen for incoming and outgoing events
 	Read(gctx global.Context)
-	// Heartbeat lets the client know that the connection is healthy
-	Heartbeat() error
+	// SendHeartbeat lets the client know that the connection is healthy
+	SendHeartbeat() error
+	// SendAck sends an Ack message to the client
+	SendAck(cmd events.Opcode, data json.RawMessage) error
 	// SendError publishes an error message to the client
 	SendError(txt string, fields map[string]any)
-	// Close sends a close frame with the specified code and ends the connection
-	Close(code events.CloseCode)
 	// Write sends a message to the client
 	Write(msg events.Message[json.RawMessage]) error
 	// Actor returns the authenticated user for this connection
 	Actor() *structures.User
+	// Handler returns a utility to handle commands for the connection
+	Handler() Handler
 	// Subscriptions returns an instance of Events
 	Events() EventMap
 	// Cache returns the connection's cache utility
 	Cache() Cache
+	// Ready returns a channel that is closed when the connection is ready
+	Ready() <-chan bool
+	// Close sends a close frame with the specified code and ends the connection
+	Close(code events.CloseCode)
 	// Digest returns the message decoder channel utility
 	Digest() EventDigest
 	// SetWriter defines the connection's writable stream (SSE only)

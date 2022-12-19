@@ -25,14 +25,17 @@ type EventStream struct {
 	ctx               context.Context
 	cancel            context.CancelFunc
 	seq               int64
+	handler           client.Handler
 	evm               client.EventMap
 	cache             client.Cache
 	dig               client.EventDigest
 	writeMtx          sync.Mutex
 	writer            *bufio.Writer
+	ready             chan bool
 	sessionID         []byte
-	heartbeatInterval int64
-	heartbeatCount    int64
+	heartbeatInterval uint32
+	heartbeatCount    uint64
+	subscriptionLimit int32
 }
 
 func NewEventStream(gctx global.Context, c *fasthttp.RequestCtx, dig client.EventDigest, r *router.Router) (client.Connection, error) {
@@ -47,7 +50,7 @@ func NewEventStream(gctx global.Context, c *fasthttp.RequestCtx, dig client.Even
 	}
 
 	lctx, cancel := context.WithCancel(gctx)
-	es := EventStream{
+	es := &EventStream{
 		c:                 c,
 		ctx:               lctx,
 		cancel:            cancel,
@@ -57,12 +60,16 @@ func NewEventStream(gctx global.Context, c *fasthttp.RequestCtx, dig client.Even
 		dig:               dig,
 		writeMtx:          sync.Mutex{},
 		writer:            nil,
+		ready:             make(chan bool, 1),
 		sessionID:         sessionID,
 		heartbeatInterval: hbi,
 		heartbeatCount:    0,
+		subscriptionLimit: gctx.Config().API.SubscriptionLimit,
 	}
 
-	return &es, nil
+	es.handler = client.NewHandler(es)
+
+	return es, nil
 }
 
 // Context implements Connection
@@ -76,6 +83,11 @@ func (es *EventStream) SessionID() string {
 
 func (*EventStream) Actor() *structures.User {
 	return nil
+}
+
+// Handler implements client.Connection
+func (es *EventStream) Handler() client.Handler {
+	return es.handler
 }
 
 func (es *EventStream) Close(code events.CloseCode) {
@@ -104,17 +116,28 @@ func (es *EventStream) Digest() client.EventDigest {
 
 func (es *EventStream) Greet() error {
 	msg := events.NewMessage(events.OpcodeHello, events.HelloPayload{
-		HeartbeatInterval: int64(es.heartbeatInterval),
+		HeartbeatInterval: uint32(es.heartbeatInterval),
 		SessionID:         hex.EncodeToString(es.sessionID),
+		SubscriptionLimit: es.subscriptionLimit,
 	})
 
 	return es.Write(msg.ToRaw())
 }
 
-func (es *EventStream) Heartbeat() error {
+func (es *EventStream) SendHeartbeat() error {
 	es.heartbeatCount++
 	msg := events.NewMessage(events.OpcodeHeartbeat, events.HeartbeatPayload{
 		Count: es.heartbeatCount,
+	})
+
+	return es.Write(msg.ToRaw())
+}
+
+// SendAck implements client.Connection
+func (es *EventStream) SendAck(cmd events.Opcode, data json.RawMessage) error {
+	msg := events.NewMessage(events.OpcodeAck, events.AckPayload{
+		Command: cmd.String(),
+		Data:    data,
 	})
 
 	return es.Write(msg.ToRaw())
@@ -169,6 +192,11 @@ func (es *EventStream) Write(msg events.Message[json.RawMessage]) error {
 // SetWriter implements Connection
 func (es *EventStream) SetWriter(w *bufio.Writer) {
 	es.writer = w
+}
+
+// Ready implements client.Connection
+func (es *EventStream) Ready() <-chan bool {
+	return es.ready
 }
 
 func SetupEventStream(ctx *fasthttp.RequestCtx, writer fasthttp.StreamWriter) {

@@ -20,14 +20,18 @@ type WebSocket struct {
 	c                 *websocket.Conn
 	ctx               context.Context
 	cancel            context.CancelFunc
+	closed            bool
 	seq               int64
+	handler           client.Handler
 	evm               client.EventMap
 	cache             client.Cache
 	dig               client.EventDigest
 	writeMtx          *sync.Mutex
+	ready             chan bool
 	sessionID         []byte
-	heartbeatInterval int64
-	heartbeatCount    int64
+	heartbeatInterval uint32
+	heartbeatCount    uint64
+	subscriptionLimit int32
 }
 
 func NewWebSocket(gctx global.Context, conn *websocket.Conn, dig client.EventDigest) (client.Connection, error) {
@@ -42,7 +46,7 @@ func NewWebSocket(gctx global.Context, conn *websocket.Conn, dig client.EventDig
 	}
 
 	lctx, cancel := context.WithCancel(context.Background())
-	ws := WebSocket{
+	ws := &WebSocket{
 		c:                 conn,
 		ctx:               lctx,
 		cancel:            cancel,
@@ -51,12 +55,16 @@ func NewWebSocket(gctx global.Context, conn *websocket.Conn, dig client.EventDig
 		cache:             client.NewCache(),
 		dig:               dig,
 		writeMtx:          &sync.Mutex{},
+		ready:             make(chan bool, 1),
 		sessionID:         sessionID,
 		heartbeatInterval: hbi,
 		heartbeatCount:    0,
+		subscriptionLimit: gctx.Config().API.SubscriptionLimit,
 	}
 
-	return &ws, nil
+	ws.handler = client.NewHandler(ws)
+
+	return ws, nil
 }
 
 func (w *WebSocket) Context() context.Context {
@@ -68,28 +76,38 @@ func (w *WebSocket) SessionID() string {
 }
 
 func (w *WebSocket) Greet() error {
-	w.writeMtx.Lock()
-	defer w.writeMtx.Unlock()
 	msg := events.NewMessage(events.OpcodeHello, events.HelloPayload{
-		HeartbeatInterval: int64(w.heartbeatInterval),
+		HeartbeatInterval: uint32(w.heartbeatInterval),
 		SessionID:         hex.EncodeToString(w.sessionID),
+		SubscriptionLimit: w.subscriptionLimit,
 	})
 
-	return w.c.WriteJSON(msg)
+	return w.Write(msg.ToRaw())
 }
 
-func (w *WebSocket) Heartbeat() error {
-	w.writeMtx.Lock()
-	defer w.writeMtx.Unlock()
+func (w *WebSocket) SendHeartbeat() error {
 	w.heartbeatCount++
 	msg := events.NewMessage(events.OpcodeHeartbeat, events.HeartbeatPayload{
 		Count: w.heartbeatCount,
 	})
 
-	return w.c.WriteJSON(msg)
+	return w.Write(msg.ToRaw())
+}
+
+func (w *WebSocket) SendAck(cmd events.Opcode, data json.RawMessage) error {
+	msg := events.NewMessage(events.OpcodeAck, events.AckPayload{
+		Command: cmd.String(),
+		Data:    data,
+	})
+
+	return w.Write(msg.ToRaw())
 }
 
 func (w *WebSocket) Close(code events.CloseCode) {
+	if w.closed {
+		return
+	}
+
 	// Send "end of stream" message
 	msg := events.NewMessage(events.OpcodeEndOfStream, events.EndOfStreamPayload{
 		Code:    code,
@@ -106,15 +124,22 @@ func (w *WebSocket) Close(code events.CloseCode) {
 	if err != nil {
 		zap.S().Errorw("failed to close connection", "error", err)
 	}
+
+	w.closed = true
 }
 
 func (w *WebSocket) Write(msg events.Message[json.RawMessage]) error {
+	if w.closed {
+		return nil
+	}
+
 	w.writeMtx.Lock()
 	defer w.writeMtx.Unlock()
 
 	if err := w.c.WriteJSON(msg); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -135,21 +160,29 @@ func (*WebSocket) Actor() *structures.User {
 	return nil
 }
 
+func (w *WebSocket) Handler() client.Handler {
+	return w.handler
+}
+
 // SendError implements Connection
 func (w *WebSocket) SendError(txt string, fields map[string]any) {
-	w.writeMtx.Lock()
-	defer w.writeMtx.Unlock()
-
 	if fields == nil {
 		fields = map[string]any{}
 	}
+
 	msg := events.NewMessage(events.OpcodeError, events.ErrorPayload{
 		Message: txt,
 		Fields:  fields,
 	})
-	if err := w.c.WriteJSON(msg); err != nil {
+
+	if err := w.Write(msg.ToRaw()); err != nil {
 		zap.S().Errorw("failed to write an error message to the socket", "error", err)
 	}
+}
+
+// Ready implements client.Connection
+func (w *WebSocket) Ready() <-chan bool {
+	return w.ready
 }
 
 func (*WebSocket) SetWriter(w *bufio.Writer) {

@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/seventv/api/data/events"
-	client "github.com/seventv/eventapi/internal/app/connection"
 	"github.com/seventv/eventapi/internal/global"
 	"go.uber.org/zap"
 )
@@ -28,12 +27,17 @@ func (es *EventStream) Read(gctx global.Context) {
 		heartbeat.Stop()
 		es.cancel()
 		es.evm.Destroy()
-		es.Close(events.CloseCodeRestart)
 	}()
 
 	if err := es.Greet(); err != nil {
+		es.ready <- false
+		close(es.ready)
+
 		return
 	}
+
+	es.ready <- true // mark the connection as ready
+	close(es.ready)
 
 	for {
 		if err := checkConn(conn); err != nil {
@@ -44,16 +48,18 @@ func (es *EventStream) Read(gctx global.Context) {
 		case <-es.c.Done():
 			return
 		case <-gctx.Done():
+			es.Close(events.CloseCodeRestart)
+
 			return
 		case <-es.ctx.Done():
 			return
 		case <-heartbeat.C:
-			if err := es.Heartbeat(); err != nil {
+			if err := es.SendHeartbeat(); err != nil {
 				return
 			}
 
 		case msg := <-dispatch:
-			_ = client.HandleDispatch(gctx, es, msg)
+			_ = es.handler.OnDispatch(msg)
 
 		// Listen for acks (i.e in response to a session mutation)
 		case msg := <-ack:
