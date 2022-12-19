@@ -15,6 +15,8 @@ The Event API allows developers to receive real-time updates on 7TV data and imp
         - [ChangeMap](#changemap)
         - [ChangeField](#changefield)
       - [Hello (1)](#hello-1)
+      - [Heartbeat](#heartbeat)
+      - [Ack (5)](#ack-5)
       - [Subscribe (35)](#subscribe-35)
       - [Unsubscribe (36)](#unsubscribe-36)
     - [Subscription types](#subscription-types)
@@ -24,6 +26,7 @@ The Event API allows developers to receive real-time updates on 7TV data and imp
       - [Connection (EventStream)](#connection-eventstream)
         - [Inline Event Subscriptions (EventStream)](#inline-event-subscriptions-eventstream)
       - [Managing subscriptions (EventStream)](#managing-subscriptions-eventstream)
+      - [Acks (EventStream)](#acks-eventstream)
       - [Dispatches (EventStream)](#dispatches-eventstream)
     - [WebSocket](#websocket)
       - [Message Structure (WebSocket)](#message-structure-websocket)
@@ -32,6 +35,7 @@ The Event API allows developers to receive real-time updates on 7TV data and imp
       - [Managing subscriptions (WebSocket)](#managing-subscriptions-websocket)
         - [Subscribing (WebSocket)](#subscribing-websocket)
         - [Unsubscribing (WebSocket)](#unsubscribing-websocket)
+      - [Acks (WebSocket)](#acks-websocket)
       - [Dispatches (WebSocket)](#dispatches-websocket)
 
 ### Supported Protocols
@@ -101,27 +105,27 @@ Close codes provide a reason for the closure of a connection to help clients und
 | body |     [ChangeMap](#changemap)      | detailed changes |
 
 ##### ChangeMap
-| Key        |             Type              |                                Description                                |
-| ---------- | :---------------------------: | :-----------------------------------------------------------------------: |
-| id         |           ObjectID            |                              the object's ID                              |
-| kind       |             int8              |                              the object kind                              |
-| contextual |             bool              | if true, this event represents a change local only to the current session |
-| actor      |             User              |                  the user responsible for these changes                   |
-| added      | [][ChangeField](#changefield) |                          a list of added fields                           |
-| updated    | [][ChangeField](#changefield) |                         a list of updated fields                          |
-| removed    | [][ChangeField](#changefield) |                         a list of removed fields                          |
-| pushed     | [][ChangeField](#changefield) |                    a list of items pushed to an array                     |
-| pulled     | [][ChangeField](#changefield) |                   a list of items pulled from an array                    |
+| Key         |             Type              |                                Description                                |
+| ----------- | :---------------------------: | :-----------------------------------------------------------------------: |
+| id          |           ObjectID            |                              the object's ID                              |
+| kind        |             int8              |                              the object kind                              |
+| contextual? |             bool              | if true, this event represents a change local only to the current session |
+| actor       |             User              |                  the user responsible for these changes                   |
+| added?      | [][ChangeField](#changefield) |                          a list of added fields                           |
+| updated?    | [][ChangeField](#changefield) |                         a list of updated fields                          |
+| removed?    | [][ChangeField](#changefield) |                         a list of removed fields                          |
+| pushed?     | [][ChangeField](#changefield) |                    a list of items pushed to an array                     |
+| pulled?     | [][ChangeField](#changefield) |                   a list of items pulled from an array                    |
 
 ##### ChangeField
 
-| Key       |     Type      |                                        Description                                        |
-| --------- | :-----------: | :---------------------------------------------------------------------------------------: |
-| key       |    string     |                                    the key in context                                     |
-| index     |     int?      | if the field is an array, this is the index of the item within the array that was updated |
-| nested¹   |     bool      |                  if true, this means the current value is nested deeper                   |
-| old_value | object or nil |                                    the previous value                                     |
-| value     | object or nil |                                       the new value                                       |
+| Key       |                     Type                     |                                        Description                                        |
+| --------- | :------------------------------------------: | :---------------------------------------------------------------------------------------: |
+| key       |                    string                    |                                    the key in context                                     |
+| index     |                     int?                     | if the field is an array, this is the index of the item within the array that was updated |
+| nested¹   |                     bool                     |                  if true, this means the current value is nested deeper                   |
+| old_value |                object or nil                 |                                    the previous value                                     |
+| value     | object, [][ChangeField](#changefield) or nil |                                       the new value                                       |
 
 **¹** _the `value` field will always be `[]ChangeField` when `nested` is `true`._
 
@@ -129,8 +133,22 @@ Close codes provide a reason for the closure of a connection to help clients und
 
 | Key                |  Type  |                                Description                                |
 | ------------------ | :----: | :-----------------------------------------------------------------------: |
-| heartbeat_interval | int32  |              interval in milliseconds between each heartbeat              |
+| heartbeat_interval | uint32 |              interval in milliseconds between each heartbeat              |
 | session_id         | string | unique token for this session, used for resuming and mutating the session |
+| subscription_limit | int32  |     the maximum amount of subscriptions this connection can initiate      |
+
+#### Heartbeat
+
+| Key   |  Type  |           Description           |
+| :---- | :----: | :-----------------------------: |
+| Count | uint64 | The amount of heartbeats so far |
+
+#### Ack (5)
+
+|   Key   |  Type  |                Description                |
+| :-----: | :----: | :---------------------------------------: |
+| command | string | the acknowledged sent opcode in text form |
+|  data   |  echo  |        the data sent by the client        |
 
 #### Subscribe (35)
 
@@ -219,16 +237,18 @@ Opcodes are sent in their text form as the event's type, and the data will alway
 
 #### Connection (EventStream)
 
-Upon opening the connection, you will receive a [`[1] HELLO`](#hello-1) event, which will contain the following data
+Upon opening the connection, you will receive a [`[1] HELLO`](#hello-1) event.
 
 ##### Inline Event Subscriptions (EventStream)
 
-It is possible to add subscriptions directly in the connection string, by appending a `@` to the URL followed by the following syntax
+It is possible to add subscriptions directly in the connection string, by appending a `@` to the URL followed by a URL-encoded string with the following syntax,
 
 `{type}<{condition1}={value1},{condition2}={value2}>,...`
 
 where `type` is a [subscription type](#subscription-types), then wrapped between brackets (`<...>`) are a list of conditions. 
 Separate each subscription by a comma. The same type can be subscribed to multiple times with different conditions.
+
+The entire inline subscription string **must be URL-encoded**.
 
 Full examples
 
@@ -248,6 +268,12 @@ Adding or removing a subscription is done by sending a request via a REST endpoi
 
 The endpoint for managing subscriptions is currently unavailable. You may use [Inline Event Subscriptions](#inline-event-subscriptions-eventstream) in the meantime.
 
+#### Acks (EventStream)
+
+An ack will be sent when the session is mutated, such as when subscribing or unsubscribing. ACKs are also sent when using [Inline Event Subscriptions](#inline-event-subscriptions-eventstream) immediately after the session becomes ready. This can be used to confirm the validity of the inline subscription string.
+
+Handling ACKs is optional, but allows an implementation to confirm that the server accepted their input.
+
 #### Dispatches (EventStream)
 
 Once subscriptions are active, you will receive [`[0] DISPATCH`](#dispatch-0) events 
@@ -262,7 +288,7 @@ The websocket access point is `wss://events.7tv.io/v3`. The following sections w
 
 #### Message Structure (WebSocket)
 
-WebSocket messages are sent in JSON format and are composed of three root properties, `op` is the opcode, `t` is the timstamp of the message's formation, and `d` is the data payload. 
+WebSocket messages are sent in JSON format and are composed of three root properties, `op` is the opcode, `t` is the timestamp of the message's formation, and `d` is the data payload. 
 
 | Key |  Type  |                     Description                     |
 | --- | :----: | :-------------------------------------------------: |
@@ -295,6 +321,11 @@ You are allowed to subscribe multiple times to the same type, however, duplicate
 When an event source is no longer needed, you should unsubscribe from it to avoid receiving unnecessary data with [`[36] UNSUBSCRIBE`](#unsubscribe-36).
 
 It is also possible to unsubscribe from an entire event type at once by leaving the condition field empty.
+
+#### Acks (WebSocket)
+
+An ack will be sent when a command is successfully executed, such as subscribing or unsubscribing.
+Handling ACKs is optional, but allows an implementation to confirm that the server accepted their input.
 
 #### Dispatches (WebSocket)
 

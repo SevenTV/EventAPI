@@ -69,8 +69,8 @@ func NewDigest[P events.AnyPayload](gctx global.Context, key redis.Key) *Digest[
 	return d
 }
 
-func (d *Digest[P]) Publish(ctx context.Context, msg events.Message[json.RawMessage], filter []string) {
-	m, err := events.ConvertMessage[P](msg)
+func (d *Digest[P]) Publish(ctx context.Context, msg events.Message[P], filter []string) {
+	m, err := events.ConvertMessage[P](msg.ToRaw())
 	if err == nil {
 		d.subs.Range(func(key string, value *DigestSub[P]) bool {
 			if len(filter) >= 0 && !utils.Contains(filter, key) {

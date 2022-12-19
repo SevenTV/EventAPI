@@ -22,10 +22,6 @@ func WebSocket(gctx global.Context, conn *websocket.Conn, dig client.EventDigest
 		return nil, err
 	}
 
-	if err := w.Greet(); err != nil {
-		w.Close(events.CloseCodeServerError)
-	}
-
 	go w.Read(gctx)
 	return w, nil
 }
@@ -42,46 +38,57 @@ func SSE(gctx global.Context, ctx *fasthttp.RequestCtx, dig client.EventDigest, 
 		return nil, err
 	}
 
-	// Parse subscriptions
-	sub := ctx.UserValue("sub")
-	switch s := sub.(type) {
-	case string:
-		s, _ = url.QueryUnescape(s)
-		if s == "" || !strings.HasPrefix(s, "@") {
-			break
-		}
-
-		subStrs := strings.Split(s[1:], ",")
-
-		for _, subStr := range subStrs {
-			matches := SSE_SUBSCRIPTION_ITEM.FindStringSubmatch(subStr)
-			if len(matches) == 0 {
-				continue
-			}
-
-			evt := matches[SSE_SUBSCRIPTION_ITEM_I_EVT]
-			cnd := matches[SSE_SUBSCRIPTION_ITEM_I_CND]
-
-			conds := strings.Split(cnd, ";")
-			cm := make(map[string]string)
-
-			for _, cond := range conds {
-				kv := strings.Split(cond, "=")
-				if len(kv) != 2 {
-					continue
-				}
-
-				cm[kv[0]] = kv[1]
-			}
-
-			_, _ = es.Events().Subscribe(gctx, events.EventType(evt), cm)
-		}
-	}
-
 	client_eventstream.SetupEventStream(ctx, func(w *bufio.Writer) {
 		es.SetWriter(w)
 		es.Read(gctx)
 	})
+
+	go func() {
+		if ok := <-es.Ready(); !ok {
+			return
+		} // wait for the connection to be ready
+
+		// Parse subscriptions
+		sub := ctx.UserValue("sub")
+		switch s := sub.(type) {
+		case string:
+			s, _ = url.QueryUnescape(s)
+			if s == "" || !strings.HasPrefix(s, "@") {
+				break
+			}
+
+			subStrs := strings.Split(s[1:], ",")
+
+			for _, subStr := range subStrs {
+				matches := SSE_SUBSCRIPTION_ITEM.FindStringSubmatch(subStr)
+				if len(matches) == 0 {
+					continue
+				}
+
+				evt := matches[SSE_SUBSCRIPTION_ITEM_I_EVT]
+				cnd := matches[SSE_SUBSCRIPTION_ITEM_I_CND]
+
+				conds := strings.Split(cnd, ";")
+				cm := make(map[string]string)
+
+				for _, cond := range conds {
+					kv := strings.Split(cond, "=")
+					if len(kv) != 2 {
+						continue
+					}
+
+					cm[kv[0]] = kv[1]
+				}
+
+				if err, ok := es.Handler().Subscribe(gctx, events.NewMessage(events.OpcodeSubscribe, events.SubscribePayload{
+					Type:      events.EventType(evt),
+					Condition: cm,
+				}).ToRaw()); err != nil || !ok {
+					return
+				}
+			}
+		}
+	}()
 
 	return es, nil
 }

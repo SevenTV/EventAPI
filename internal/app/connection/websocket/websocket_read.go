@@ -17,6 +17,8 @@ func (w *WebSocket) Read(gctx global.Context) {
 	dispatchSub := w.Digest().Dispatch.Subscribe(w.ctx, w.sessionID, dispatch)
 
 	go func() {
+		<-w.Ready() // wait for the connection to be ready before accepting input
+
 		var (
 			data []byte
 			msg  events.Message[json.RawMessage]
@@ -58,7 +60,7 @@ func (w *WebSocket) Read(gctx global.Context) {
 			switch msg.Op {
 			// Handle command - SUBSCRIBE
 			case events.OpcodeSubscribe:
-				if err = handler.Subscribe(gctx, msg); err != nil {
+				if err, _ = handler.Subscribe(gctx, msg); err != nil {
 					return
 				}
 			// Handle command - UNSUBSCRIBE
@@ -71,6 +73,16 @@ func (w *WebSocket) Read(gctx global.Context) {
 		}
 	}()
 
+	if err := w.Greet(); err != nil {
+		w.ready <- false
+		close(w.ready)
+
+		return
+	}
+
+	w.ready <- true // mark the connection as ready
+	close(w.ready)
+
 	for {
 		select {
 		case <-w.ctx.Done():
@@ -79,13 +91,13 @@ func (w *WebSocket) Read(gctx global.Context) {
 			w.Close(events.CloseCodeRestart)
 			return
 		case <-heartbeat.C: // Send a heartbeat
-			if err := w.Heartbeat(); err != nil {
+			if err := w.SendHeartbeat(); err != nil {
 				w.Close(events.CloseCodeTimeout)
 				return
 			}
 		// Listen for incoming dispatches
 		case msg := <-dispatch:
-			_ = client.HandleDispatch(gctx, w, msg)
+			_ = w.handler.OnDispatch(msg)
 		}
 	}
 }
