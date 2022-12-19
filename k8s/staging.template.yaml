@@ -46,7 +46,7 @@ spec:
           lifecycle:
             preStop:
               exec:
-                command: ["sh", "-c", "sleep 10"]
+                command: ["pkill", "-15", "eventapi"]
           resources:
             limits:
               cpu: "2"
