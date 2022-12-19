@@ -7,7 +7,6 @@ import (
 	"runtime"
 	"runtime/debug"
 	"strconv"
-	"syscall"
 	"time"
 
 	"github.com/bugsnag/panicwrap"
@@ -61,7 +60,7 @@ func main() {
 	zap.S().Debugf("MaxProcs: ", runtime.GOMAXPROCS(0))
 
 	sig := make(chan os.Signal, 1)
-	signal.Notify(sig, syscall.SIGHUP, syscall.SIGILL, syscall.SIGTERM, syscall.SIGQUIT)
+	signal.Notify(sig)
 
 	c, cancel := context.WithCancel(context.Background())
 
