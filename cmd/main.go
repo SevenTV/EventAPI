@@ -60,8 +60,9 @@ func main() {
 
 	zap.S().Debugf("MaxProcs: ", runtime.GOMAXPROCS(0))
 
-	sig := make(chan os.Signal, 1)
-	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
+	sig := make(chan os.Signal, 5)
+	signal.Notify(sig, os.Interrupt)
+	signal.Notify(sig, syscall.SIGTERM)
 
 	c, cancel := context.WithCancel(context.Background())
 
@@ -110,6 +111,7 @@ func main() {
 	go func() {
 		s := <-sig
 		cancel()
+
 		go func() {
 			select {
 			case <-time.After(time.Minute):

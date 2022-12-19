@@ -81,9 +81,10 @@ func New(gctx global.Context) (Server, <-chan struct{}) {
 
 	go func() {
 		<-gctx.Done()
+
 		// wait a quarter-second, this should be enough to send end of stream events to clients
 		// todo: find a better solution for this
-		time.Sleep(time.Millisecond * 200)
+		time.Sleep(time.Millisecond * 2500)
 		_ = server.Shutdown()
 	}()
 
