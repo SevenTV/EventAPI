@@ -60,9 +60,8 @@ func main() {
 
 	zap.S().Debugf("MaxProcs: ", runtime.GOMAXPROCS(0))
 
-	sig := make(chan os.Signal, 5)
-	signal.Notify(sig, os.Interrupt)
-	signal.Notify(sig, syscall.SIGTERM, syscall.SIGINT)
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, syscall.SIGHUP, syscall.SIGILL, syscall.SIGTERM, syscall.SIGQUIT)
 
 	c, cancel := context.WithCancel(context.Background())
 
@@ -89,13 +88,12 @@ func main() {
 
 	dones := []<-chan struct{}{}
 
-	if gctx.Config().PProf.Enabled {
-		done := pprof.New(gctx)
-		dones = append(dones, done)
-	}
-
 	if gctx.Config().API.Enabled {
 		_, done := app.New(gctx)
+		dones = append(dones, done)
+	}
+	if gctx.Config().PProf.Enabled {
+		done := pprof.New(gctx)
 		dones = append(dones, done)
 	}
 	if gctx.Config().Health.Enabled {
