@@ -73,7 +73,6 @@ func New(gctx global.Context) (Server, <-chan struct{}) {
 
 	done := make(chan struct{})
 	go func() {
-		defer close(done)
 		if err := server.ListenAndServe(gctx.Config().API.Bind); err != nil {
 			zap.S().Fatal("failed to start server: ", err)
 		}
@@ -84,8 +83,9 @@ func New(gctx global.Context) (Server, <-chan struct{}) {
 
 		// wait a quarter-second, this should be enough to send end of stream events to clients
 		// todo: find a better solution for this
-		time.Sleep(time.Millisecond * 2500)
 		_ = server.Shutdown()
+
+		close(done)
 	}()
 
 	return srv, done
