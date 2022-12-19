@@ -51,6 +51,6 @@ FROM $BASE_IMG as final
 
     COPY --from=go-builder /tmp/build/out .
 
-    STOPSIGNAL SIGINT
+    STOPSIGNAL SIGTERM
     CMD ["./api"]
 

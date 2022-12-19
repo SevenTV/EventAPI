@@ -12,5 +12,5 @@ FROM $BASE_IMG
         
     COPY out/eventapi eventapi
 
-    STOPSIGNAL SIGINT
+    STOPSIGNAL SIGTERM
     CMD ["./eventapi"]
