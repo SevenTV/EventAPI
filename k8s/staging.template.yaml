@@ -108,7 +108,7 @@ data:
       enabled: true
       bind: 0.0.0.0:3000
       heartbeat_interval: 25000
-      subscription_limit: 100
+      subscription_limit: 500
 
     health:
       enabled: true
