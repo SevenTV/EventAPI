@@ -58,22 +58,22 @@ spec:
             - name: config
               mountPath: /app/config.yaml
               subPath: config.yaml
-#          livenessProbe:
-#            tcpSocket:
-#              port: health
-#            initialDelaySeconds: 30
-#            timeoutSeconds: 5
-#            periodSeconds: 10
-#            successThreshold: 1
-#            failureThreshold: 6
-#          readinessProbe:
-#            tcpSocket:
-#              port: health
-#            initialDelaySeconds: 5
-#            timeoutSeconds: 5
-#            periodSeconds: 10
-#            successThreshold: 1
-#            failureThreshold: 6
+          #          livenessProbe:
+          #            tcpSocket:
+          #              port: health
+          #            initialDelaySeconds: 30
+          #            timeoutSeconds: 5
+          #            periodSeconds: 10
+          #            successThreshold: 1
+          #            failureThreshold: 6
+          #          readinessProbe:
+          #            tcpSocket:
+          #              port: health
+          #            initialDelaySeconds: 5
+          #            timeoutSeconds: 5
+          #            periodSeconds: 10
+          #            successThreshold: 1
+          #            failureThreshold: 6
           imagePullPolicy: Always
 ---
 apiVersion: v1
