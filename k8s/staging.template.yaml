@@ -12,7 +12,7 @@ spec:
       labels:
         app: eventapi
     spec:
-      terminationGracePeriodSeconds: 10
+      terminationGracePeriodSeconds: 15
       volumes:
         - name: config
           configMap:
@@ -58,23 +58,23 @@ spec:
             - name: config
               mountPath: /app/config.yaml
               subPath: config.yaml
-          #          livenessProbe:
-          #            tcpSocket:
-          #              port: health
-          #            initialDelaySeconds: 30
-          #            timeoutSeconds: 5
-          #            periodSeconds: 10
-          #            successThreshold: 1
-          #            failureThreshold: 6
-          #          readinessProbe:
-          #            tcpSocket:
-          #              port: health
-          #            initialDelaySeconds: 5
-          #            timeoutSeconds: 5
-          #            periodSeconds: 10
-          #            successThreshold: 1
-          #            failureThreshold: 6
-          imagePullPolicy: Always
+          livenessProbe:
+            tcpSocket:
+              port: health
+            initialDelaySeconds: 30
+            timeoutSeconds: 5
+            periodSeconds: 10
+            successThreshold: 1
+            failureThreshold: 6
+          readinessProbe:
+            tcpSocket:
+              port: health
+            initialDelaySeconds: 5
+            timeoutSeconds: 5
+            periodSeconds: 10
+            successThreshold: 1
+            failureThreshold: 6
+          imagePullPolicy: IfNotPresent
 ---
 apiVersion: v1
 kind: Service
