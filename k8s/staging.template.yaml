@@ -12,6 +12,7 @@ spec:
       labels:
         app: eventapi
     spec:
+      terminationGracePeriodSeconds: 10
       volumes:
         - name: config
           configMap:
@@ -42,10 +43,6 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
-          lifecycle:
-            preStop:
-              exec:
-                command: ["sh", "-c", "sleep 10"]
           resources:
             limits:
               cpu: "2"

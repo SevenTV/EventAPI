@@ -62,7 +62,7 @@ func main() {
 
 	sig := make(chan os.Signal, 5)
 	signal.Notify(sig, os.Interrupt)
-	signal.Notify(sig, syscall.SIGTERM)
+	signal.Notify(sig, syscall.SIGTERM, syscall.SIGINT)
 
 	c, cancel := context.WithCancel(context.Background())
 
