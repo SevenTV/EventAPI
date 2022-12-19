@@ -45,11 +45,11 @@ func (es *EventStream) Read(gctx global.Context) {
 		}
 
 		select {
-		case <-es.c.Done():
-			return
 		case <-gctx.Done():
 			es.Close(events.CloseCodeRestart)
 
+			return
+		case <-es.c.Done():
 			return
 		case <-es.ctx.Done():
 			return

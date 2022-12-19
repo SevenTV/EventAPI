@@ -24,6 +24,7 @@ type EventStream struct {
 	c                 *fasthttp.RequestCtx
 	ctx               context.Context
 	cancel            context.CancelFunc
+	closed            bool
 	seq               int64
 	handler           client.Handler
 	evm               client.EventMap
@@ -91,6 +92,10 @@ func (es *EventStream) Handler() client.Handler {
 }
 
 func (es *EventStream) Close(code events.CloseCode) {
+	if es.closed {
+		return
+	}
+
 	msg := events.NewMessage(events.OpcodeEndOfStream, events.EndOfStreamPayload{
 		Code:    code,
 		Message: code.String(),
@@ -100,6 +105,8 @@ func (es *EventStream) Close(code events.CloseCode) {
 		zap.S().Errorw("failed to write end of stream event to closing connection", "error", err)
 	}
 	es.cancel()
+
+	es.closed = true
 }
 
 func (es *EventStream) Events() client.EventMap {

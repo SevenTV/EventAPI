@@ -85,10 +85,10 @@ func (w *WebSocket) Read(gctx global.Context) {
 
 	for {
 		select {
-		case <-w.ctx.Done():
-			return
 		case <-gctx.Done(): // App is shutting down
 			w.Close(events.CloseCodeRestart)
+			return
+		case <-w.ctx.Done():
 			return
 		case <-heartbeat.C: // Send a heartbeat
 			if err := w.SendHeartbeat(); err != nil {

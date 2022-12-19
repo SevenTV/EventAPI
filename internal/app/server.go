@@ -83,8 +83,6 @@ func New(gctx global.Context) (Server, <-chan struct{}) {
 
 		_ = server.Shutdown()
 
-		time.Sleep(time.Second)
-
 		close(done)
 	}()
 
