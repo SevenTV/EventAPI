@@ -50,7 +50,7 @@ func NewEventStream(gctx global.Context, c *fasthttp.RequestCtx, dig client.Even
 		return nil, err
 	}
 
-	lctx, cancel := context.WithCancel(gctx)
+	lctx, cancel := context.WithCancel(context.Background())
 	es := &EventStream{
 		c:                 c,
 		ctx:               lctx,

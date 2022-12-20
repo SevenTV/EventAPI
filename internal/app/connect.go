@@ -1,6 +1,7 @@
 package app
 
 import (
+	"fmt"
 	"sync/atomic"
 	"time"
 
@@ -21,15 +22,19 @@ func (s Server) HandleConnect(gctx global.Context) {
 			err error
 		)
 
+		connected := make(chan bool, 1)
+
 		if utils.B2S(ctx.Request.Header.Peek("upgrade")) == "websocket" {
 			if err := s.upgrader.Upgrade(ctx, func(c *websocket.Conn) { // New WebSocket connection
 				con, err = v3.WebSocket(gctx, c, s.digest)
+				fmt.Println("hi?", con)
 				if err != nil {
 					ctx.SetStatusCode(fasthttp.StatusBadRequest)
 					ctx.SetBody(utils.S2B(err.Error()))
 					return
 				}
 
+				connected <- true
 				<-con.Context().Done()
 			}); err != nil {
 				ctx.SetStatusCode(fasthttp.StatusBadRequest)
@@ -43,42 +48,20 @@ func (s Server) HandleConnect(gctx global.Context) {
 				ctx.SetBody(utils.S2B(err.Error()))
 				return
 			}
+
+			connected <- true
 		}
 
 		go func() {
-			if con == nil {
+			ok := <-connected
+
+			close(connected)
+
+			if !ok {
 				return
 			}
 
-			zap.S().Debugw("new connection",
-				"client_addr", ctx.RemoteAddr().String(),
-				"connection_count", atomic.LoadInt32(s.activeConns),
-			)
-
-			<-con.Ready()
-
-			start := time.Now()
-
-			atomic.AddInt32(s.activeConns, 1)
-
-			gctx.Inst().Monitoring.EventV3().CurrentConnections.Inc()
-			gctx.Inst().Monitoring.EventV3().TotalConnections.Observe(1)
-
-			select {
-			case <-gctx.Done():
-				break
-			case <-con.Context().Done():
-				break
-			}
-
-			atomic.AddInt32(s.activeConns, -1)
-			gctx.Inst().Monitoring.EventV3().CurrentConnections.Dec()
-			gctx.Inst().Monitoring.EventV3().TotalConnections.Observe(float64(time.Since(start)/time.Millisecond) / 1000)
-
-			zap.S().Debugw("connection ended",
-				"client_addr", ctx.RemoteAddr().String(),
-				"connection_count", atomic.LoadInt32(s.activeConns),
-			)
+			s.TrackConnection(gctx, ctx, con)
 		}()
 	}
 
@@ -98,4 +81,36 @@ func (s Server) HandleConnect(gctx global.Context) {
 		}
 
 	})
+}
+
+func (s Server) TrackConnection(gctx global.Context, ctx *fasthttp.RequestCtx, con client.Connection) {
+	fmt.Println("new con", con)
+	if con == nil {
+		return
+	}
+
+	zap.S().Debugw("new connection",
+		"client_addr", ctx.RemoteAddr().String(),
+		"connection_count", atomic.LoadInt32(s.activeConns),
+	)
+
+	<-con.Ready()
+
+	start := time.Now()
+
+	atomic.AddInt32(s.activeConns, 1)
+
+	gctx.Inst().Monitoring.EventV3().CurrentConnections.Inc()
+	gctx.Inst().Monitoring.EventV3().TotalConnections.Observe(1)
+
+	<-con.Context().Done()
+
+	atomic.AddInt32(s.activeConns, -1)
+	gctx.Inst().Monitoring.EventV3().CurrentConnections.Dec()
+	gctx.Inst().Monitoring.EventV3().TotalConnections.Observe(float64(time.Since(start)/time.Millisecond) / 1000)
+
+	zap.S().Debugw("connection ended",
+		"client_addr", ctx.RemoteAddr().String(),
+		"connection_count", atomic.LoadInt32(s.activeConns),
+	)
 }

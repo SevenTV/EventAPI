@@ -16,6 +16,13 @@ func (w *WebSocket) Read(gctx global.Context) {
 
 	dispatchSub := w.Digest().Dispatch.Subscribe(w.ctx, w.sessionID, dispatch)
 
+	defer func() {
+		heartbeat.Stop()
+		dispatchSub.Close()
+		w.cancel()
+		w.evm.Destroy()
+	}()
+
 	go func() {
 		<-w.Ready() // wait for the connection to be ready before accepting input
 
@@ -24,12 +31,6 @@ func (w *WebSocket) Read(gctx global.Context) {
 			msg  events.Message[json.RawMessage]
 			err  error
 		)
-		defer func() {
-			heartbeat.Stop()
-			dispatchSub.Close()
-			w.cancel()
-			w.evm.Destroy()
-		}()
 
 		// Listen for incoming messages sent by the client
 		for {
