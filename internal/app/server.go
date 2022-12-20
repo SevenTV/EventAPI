@@ -102,8 +102,6 @@ func New(gctx global.Context) (Server, <-chan struct{}) {
 		}
 
 	shutdown:
-		<-time.After(time.Second * 5)
-
 		_ = server.Shutdown()
 
 		close(done)

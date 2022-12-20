@@ -174,9 +174,6 @@ func (es *EventStream) SendError(txt string, fields map[string]any) {
 }
 
 func (es *EventStream) Write(msg events.Message[json.RawMessage]) error {
-	es.writeMtx.Lock()
-	defer es.writeMtx.Unlock()
-
 	if es.writer == nil {
 		return fmt.Errorf("connection not writable")
 	}
