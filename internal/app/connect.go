@@ -1,7 +1,6 @@
 package app
 
 import (
-	"fmt"
 	"sync/atomic"
 	"time"
 
@@ -27,7 +26,6 @@ func (s Server) HandleConnect(gctx global.Context) {
 		if utils.B2S(ctx.Request.Header.Peek("upgrade")) == "websocket" {
 			if err := s.upgrader.Upgrade(ctx, func(c *websocket.Conn) { // New WebSocket connection
 				con, err = v3.WebSocket(gctx, c, s.digest)
-				fmt.Println("hi?", con)
 				if err != nil {
 					ctx.SetStatusCode(fasthttp.StatusBadRequest)
 					ctx.SetBody(utils.S2B(err.Error()))
