@@ -87,17 +87,22 @@ func New(gctx global.Context) (Server, <-chan struct{}) {
 	go func() {
 		<-gctx.Done()
 
-		timeout := time.Now().Add(time.Second * 5)
-		for {
-			if atomic.LoadInt32(srv.activeConns) == 0 {
-				break
-			}
+		timeout := time.After(time.Second * 30)
+		ticker := time.NewTicker(time.Millisecond * 100)
+		defer ticker.Stop()
 
-			if time.Now().After(timeout) {
-				zap.S().Warn("timeout waiting for connections to close")
-				break
+		for {
+			select {
+			case <-timeout:
+				goto shutdown
+			case <-ticker.C:
+				if atomic.LoadInt32(srv.activeConns) == 0 {
+					goto shutdown
+				}
 			}
 		}
+
+	shutdown:
 
 		_ = server.Shutdown()
 

@@ -31,7 +31,7 @@ type EventStream struct {
 	evm               client.EventMap
 	cache             client.Cache
 	dig               client.EventDigest
-	writeMtx          sync.Mutex
+	writeMtx          *sync.Mutex
 	writer            *bufio.Writer
 	ready             chan struct{}
 	close             chan struct{}
@@ -61,7 +61,7 @@ func NewEventStream(gctx global.Context, c *fasthttp.RequestCtx, dig client.Even
 		evm:               client.NewEventMap(make(chan string, 10)),
 		cache:             client.NewCache(),
 		dig:               dig,
-		writeMtx:          sync.Mutex{},
+		writeMtx:          &sync.Mutex{},
 		writer:            nil,
 		ready:             make(chan struct{}, 1),
 		close:             make(chan struct{}),

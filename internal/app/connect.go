@@ -86,11 +86,6 @@ func (s Server) TrackConnection(gctx global.Context, ctx *fasthttp.RequestCtx, c
 		return
 	}
 
-	zap.S().Debugw("new connection",
-		"client_addr", ctx.RemoteAddr().String(),
-		"connection_count", atomic.LoadInt32(s.activeConns),
-	)
-
 	<-con.OnReady() // wait for connection to be ready
 
 	start := time.Now()
@@ -100,6 +95,11 @@ func (s Server) TrackConnection(gctx global.Context, ctx *fasthttp.RequestCtx, c
 
 	gctx.Inst().Monitoring.EventV3().CurrentConnections.Inc()
 	gctx.Inst().Monitoring.EventV3().TotalConnections.Observe(1)
+
+	zap.S().Debugw("new connection",
+		"client_addr", ctx.RemoteAddr().String(),
+		"connection_count", atomic.LoadInt32(s.activeConns),
+	)
 
 	<-con.OnClose() // wait for connection to end
 
