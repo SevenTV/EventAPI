@@ -53,7 +53,6 @@ func New(gctx global.Context) (Server, <-chan struct{}) {
 	srv.HandleSessionMutation(gctx)
 
 	server := fasthttp.Server{
-		CloseOnShutdown: true,
 		Handler: func(ctx *fasthttp.RequestCtx) {
 			start := time.Now()
 			defer func() {
@@ -103,6 +102,7 @@ func New(gctx global.Context) (Server, <-chan struct{}) {
 		}
 
 	shutdown:
+		<-time.After(time.Second * 5)
 
 		_ = server.Shutdown()
 
