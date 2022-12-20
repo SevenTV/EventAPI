@@ -170,7 +170,7 @@ func (es *EventStream) Write(msg events.Message[json.RawMessage]) error {
 	}
 
 	sb := strings.Builder{}
-	_, er1 := sb.WriteString(fmt.Sprintf("type: %s\ndata: ", strings.ToLower(msg.Op.String())))
+	_, er1 := sb.WriteString(fmt.Sprintf("event: %s\ndata: ", strings.ToLower(msg.Op.String())))
 	_, er2 := sb.Write(b)
 	_, er3 := sb.WriteString(fmt.Sprintf("\nid: %d", es.seq))
 	_, er4 := sb.WriteString("\n\n")
