@@ -43,13 +43,13 @@ func (h handler) Subscribe(gctx global.Context, m events.Message[json.RawMessage
 	// Empty subscription event type
 	if t == "" {
 		h.conn.SendError("Missing event type", nil)
-		h.conn.Close(events.CloseCodeInvalidPayload)
+		h.conn.Close(events.CloseCodeInvalidPayload, 0)
 
 		return nil, false
 	}
 	if len(path) < 2 {
 		h.conn.SendError("Bad event type path", nil)
-		h.conn.Close(events.CloseCodeInvalidPayload)
+		h.conn.Close(events.CloseCodeInvalidPayload, 0)
 
 		return nil, false
 	}
@@ -57,7 +57,7 @@ func (h handler) Subscribe(gctx global.Context, m events.Message[json.RawMessage
 	// No targets: this requires authentication
 	if len(msg.Data.Condition) == 0 && h.conn.Actor() == nil {
 		h.conn.SendError("Wildcard event target subscription requires authentication", nil)
-		h.conn.Close(events.CloseCodeInsufficientPrivilege)
+		h.conn.Close(events.CloseCodeInsufficientPrivilege, 0)
 
 		return nil, false
 	}
@@ -65,7 +65,7 @@ func (h handler) Subscribe(gctx global.Context, m events.Message[json.RawMessage
 	// Too many subscriptions?
 	if h.conn.Events().Count() >= gctx.Config().API.SubscriptionLimit {
 		h.conn.SendError("Too Many Active Subscriptions!", nil)
-		h.conn.Close(events.CloseCodeRateLimit)
+		h.conn.Close(events.CloseCodeRateLimit, 0)
 
 		return nil, false
 	}
@@ -77,7 +77,7 @@ func (h handler) Subscribe(gctx global.Context, m events.Message[json.RawMessage
 			"event_type_length":      len(msg.Data.Type),
 			"event_type_length_most": EVENT_TYPE_MAX_LENGTH,
 		})
-		h.conn.Close(events.CloseCodeRateLimit)
+		h.conn.Close(events.CloseCodeRateLimit, 0)
 
 		return nil, false
 	}
@@ -92,7 +92,7 @@ func (h handler) Subscribe(gctx global.Context, m events.Message[json.RawMessage
 				"condition_keys":      len(msg.Data.Condition),
 				"condition_keys_most": SUBSCRIPTION_CONDITION_MAX,
 			})
-			h.conn.Close(events.CloseCodeRateLimit)
+			h.conn.Close(events.CloseCodeRateLimit, 0)
 
 			return nil, false
 		}
@@ -110,7 +110,7 @@ func (h handler) Subscribe(gctx global.Context, m events.Message[json.RawMessage
 				"value_length":      vL,
 				"value_length_most": SUBSCRIPTION_CONDITION_VALUE_MAX_LENGTH,
 			})
-			h.conn.Close(events.CloseCodeRateLimit)
+			h.conn.Close(events.CloseCodeRateLimit, 0)
 
 			return nil, false
 		}
@@ -148,7 +148,7 @@ func (h handler) Unsubscribe(gctx global.Context, m events.Message[json.RawMessa
 	t := msg.Data.Type
 	if err = h.conn.Events().Unsubscribe(t, msg.Data.Condition); err != nil {
 		if err == ErrNotSubscribed {
-			h.conn.Close(events.CloseCodeNotSubscribed)
+			h.conn.Close(events.CloseCodeNotSubscribed, 0)
 			return nil
 		}
 		return err

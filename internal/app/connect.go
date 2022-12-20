@@ -84,7 +84,6 @@ func (s Server) HandleConnect(gctx global.Context) {
 }
 
 func (s Server) TrackConnection(gctx global.Context, ctx *fasthttp.RequestCtx, con client.Connection) {
-	fmt.Println("new con", con)
 	if con == nil {
 		return
 	}
@@ -94,18 +93,21 @@ func (s Server) TrackConnection(gctx global.Context, ctx *fasthttp.RequestCtx, c
 		"connection_count", atomic.LoadInt32(s.activeConns),
 	)
 
-	<-con.Ready()
+	<-con.OnReady() // wait for connection to be ready
 
 	start := time.Now()
 
+	// Increment counters
 	atomic.AddInt32(s.activeConns, 1)
 
 	gctx.Inst().Monitoring.EventV3().CurrentConnections.Inc()
 	gctx.Inst().Monitoring.EventV3().TotalConnections.Observe(1)
 
-	<-con.Context().Done()
+	<-con.OnClose() // wait for connection to end
 
+	// Decrement counters
 	atomic.AddInt32(s.activeConns, -1)
+
 	gctx.Inst().Monitoring.EventV3().CurrentConnections.Dec()
 	gctx.Inst().Monitoring.EventV3().TotalConnections.Observe(float64(time.Since(start)/time.Millisecond) / 1000)
 

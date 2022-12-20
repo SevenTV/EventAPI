@@ -27,17 +27,17 @@ func (es *EventStream) Read(gctx global.Context) {
 		heartbeat.Stop()
 		es.cancel()
 		es.evm.Destroy()
+
+		close(es.close)
 	}()
 
 	if err := es.Greet(); err != nil {
-		es.ready <- false
 		close(es.ready)
 
 		return
 	}
 
-	es.ready <- true // mark the connection as ready
-	close(es.ready)
+	close(es.ready) // mark the connection as ready
 
 	for {
 		if err := checkConn(conn); err != nil {
@@ -46,10 +46,8 @@ func (es *EventStream) Read(gctx global.Context) {
 
 		select {
 		case <-gctx.Done():
-			es.Close(events.CloseCodeRestart)
-		case <-es.c.Done():
+			es.Close(events.CloseCodeRestart, time.Second)
 		case <-es.ctx.Done():
-			<-time.After(time.Millisecond * 1000)
 			return
 		case <-heartbeat.C:
 			if err := es.SendHeartbeat(); err != nil {
