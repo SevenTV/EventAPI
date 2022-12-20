@@ -2,6 +2,7 @@ package app
 
 import (
 	"encoding/json"
+	"sync/atomic"
 	"time"
 
 	"github.com/fasthttp/router"
@@ -20,6 +21,8 @@ type Server struct {
 	digest   client.EventDigest
 	upgrader websocket.FastHTTPUpgrader
 	router   *router.Router
+
+	activeConns *int32
 }
 
 func New(gctx global.Context) (Server, <-chan struct{}) {
@@ -41,7 +44,10 @@ func New(gctx global.Context) (Server, <-chan struct{}) {
 		upgrader: upgrader,
 		digest:   dig,
 		router:   r,
+
+		activeConns: new(int32),
 	}
+
 	srv.HandleConnect(gctx)
 	srv.HandleHealth(gctx)
 	srv.HandleSessionMutation(gctx)
@@ -62,7 +68,7 @@ func New(gctx global.Context) (Server, <-chan struct{}) {
 				if err := recover(); err != nil {
 					l.Error("panic in handler: ", err)
 				} else {
-					l.Info("")
+					l.Debug("")
 				}
 			}()
 			ctx.Response.Header.Set("X-Pod-Name", gctx.Config().Pod.Name)
@@ -80,6 +86,18 @@ func New(gctx global.Context) (Server, <-chan struct{}) {
 
 	go func() {
 		<-gctx.Done()
+
+		timeout := time.Now().Add(time.Second * 5)
+		for {
+			if atomic.LoadInt32(srv.activeConns) == 0 {
+				break
+			}
+
+			if time.Now().After(timeout) {
+				zap.S().Warn("timeout waiting for connections to close")
+				break
+			}
+		}
 
 		_ = server.Shutdown()
 

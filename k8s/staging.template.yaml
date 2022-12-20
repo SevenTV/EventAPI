@@ -107,7 +107,7 @@ metadata:
   namespace: app
 data:
   config.yaml: |
-    level: info
+    level: debug
 
     api:
       enabled: true

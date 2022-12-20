@@ -104,8 +104,8 @@ func (es *EventStream) Close(code events.CloseCode) {
 	if err := es.Write(msg.ToRaw()); err != nil {
 		zap.S().Errorw("failed to write end of stream event to closing connection", "error", err)
 	}
-	es.cancel()
 
+	es.cancel()
 	es.closed = true
 }
 
