@@ -67,17 +67,17 @@ func NewPrometheus(gCtx global.Context) instance.Monitoring {
 		},
 		eventv3: instance.EventV3{
 			TotalConnections: prometheus.NewHistogram(prometheus.HistogramOpts{
-				Name:        "events_total_connections",
+				Name:        "events_v3_total_connections",
 				ConstLabels: labelsFromKeyValue(gCtx.Config().Monitoring.Labels),
 				Help:        "The total number of connections",
 			}),
 			TotalConnectionDurationSeconds: prometheus.NewHistogram(prometheus.HistogramOpts{
-				Name:        "events_total_connection_duration_seconds",
+				Name:        "events_v3_total_connection_duration_seconds",
 				ConstLabels: labelsFromKeyValue(gCtx.Config().Monitoring.Labels),
 				Help:        "The total number of seconds used on connections",
 			}),
 			CurrentConnections: prometheus.NewGauge(prometheus.GaugeOpts{
-				Name:        "events_current_connections",
+				Name:        "events_v3_current_connections",
 				ConstLabels: labelsFromKeyValue(gCtx.Config().Monitoring.Labels),
 				Help:        "The current number of connections",
 			}),
