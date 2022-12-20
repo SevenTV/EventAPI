@@ -12,7 +12,7 @@ spec:
       labels:
         app: eventapi
     spec:
-      terminationGracePeriodSeconds: 15
+      terminationGracePeriodSeconds: 60
       volumes:
         - name: config
           configMap:
