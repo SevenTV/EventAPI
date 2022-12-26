@@ -102,10 +102,11 @@ func (s Server) TrackConnection(gctx global.Context, ctx *fasthttp.RequestCtx, c
 		"connection_count", atomic.LoadInt32(s.activeConns),
 	)
 
+	// Handle shutdown
 	go func() {
 		<-shutdown
 
-		con.Close(events.CloseCodeRestart, time.Second*2)
+		con.Close(events.CloseCodeRestart, 0)
 	}()
 
 	<-con.OnClose() // wait for connection to end

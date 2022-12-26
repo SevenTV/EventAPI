@@ -50,9 +50,7 @@ spec:
                   - "sh"
                   - "-c"
                   - |
-                    sleep 5 &&
-                    pkill -15 eventapi &&
-                    sleep 30
+                    echo "1" >> shutdown
           resources:
             limits:
               cpu: "1"
