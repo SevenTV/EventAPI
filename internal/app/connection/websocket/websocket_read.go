@@ -87,12 +87,14 @@ func (w *WebSocket) Read(gctx global.Context) {
 	for {
 		select {
 		case <-gctx.Done(): // App is shutting down
+			heartbeat.Stop()
+
 			w.Close(events.CloseCodeRestart, time.Second)
 		case <-w.ctx.Done():
 			return
 		case <-heartbeat.C: // Send a heartbeat
 			if err := w.SendHeartbeat(); err != nil {
-				w.Close(events.CloseCodeTimeout, 0)
+				w.Close(events.CloseCodeTimeout, time.Second)
 				return
 			}
 		// Listen for incoming dispatches

@@ -48,6 +48,8 @@ func (es *EventStream) Read(gctx global.Context) {
 		case <-es.ctx.Done():
 			return
 		case <-gctx.Done():
+			heartbeat.Stop()
+
 			es.Close(events.CloseCodeRestart, time.Second*5)
 		case <-heartbeat.C:
 			if err := es.SendHeartbeat(); err != nil {
