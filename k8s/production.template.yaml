@@ -12,6 +12,7 @@ spec:
       labels:
         app: eventapi
     spec:
+      terminationGracePeriodSeconds: 60
       volumes:
         - name: config
           configMap:
@@ -34,14 +35,22 @@ spec:
             - secretRef:
                 name: eventapi-secret
           env:
-            - name: API_K8S_POD_NAME
+            - name: EVENTS_K8S_POD_NAME
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.name
-            - name: API_K8S_NODE_NAME
+            - name: EVENTS_K8S_NODE_NAME
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                  - "sh"
+                  - "-c"
+                  - |
+                    sleep 5 && echo "1" >> shutdown
           resources:
             limits:
               cpu: "1"
@@ -56,20 +65,20 @@ spec:
           livenessProbe:
             tcpSocket:
               port: health
-            initialDelaySeconds: 30
+            initialDelaySeconds: 3
             timeoutSeconds: 5
-            periodSeconds: 10
+            periodSeconds: 5
             successThreshold: 1
             failureThreshold: 6
           readinessProbe:
             tcpSocket:
               port: health
-            initialDelaySeconds: 5
+            initialDelaySeconds: 3
             timeoutSeconds: 5
-            periodSeconds: 10
+            periodSeconds: 5
             successThreshold: 1
             failureThreshold: 6
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
 ---
 apiVersion: v1
 kind: Service

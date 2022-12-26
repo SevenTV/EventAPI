@@ -16,20 +16,23 @@ func (w *WebSocket) Read(gctx global.Context) {
 
 	dispatchSub := w.Digest().Dispatch.Subscribe(w.ctx, w.sessionID, dispatch)
 
+	defer func() {
+		heartbeat.Stop()
+		dispatchSub.Close()
+		w.cancel()
+		w.evm.Destroy()
+
+		close(w.close)
+	}()
+
 	go func() {
-		<-w.Ready() // wait for the connection to be ready before accepting input
+		<-w.OnReady() // wait for the connection to be ready before accepting input
 
 		var (
 			data []byte
 			msg  events.Message[json.RawMessage]
 			err  error
 		)
-		defer func() {
-			heartbeat.Stop()
-			dispatchSub.Close()
-			w.cancel()
-			w.evm.Destroy()
-		}()
 
 		// Listen for incoming messages sent by the client
 		for {
@@ -39,20 +42,20 @@ func (w *WebSocket) Read(gctx global.Context) {
 			}
 
 			if err != nil {
-				w.Close(events.CloseCodeInvalidPayload)
+				w.Close(events.CloseCodeInvalidPayload, 0)
 				return
 			}
 
 			// Decode the payload
 			if err := json.Unmarshal(data, &msg); err != nil {
 				w.SendError(err.Error(), nil)
-				w.Close(events.CloseCodeInvalidPayload)
+				w.Close(events.CloseCodeInvalidPayload, 0)
 				return
 			}
 
 			// Verify the opcode
 			if !client.IsClientSentOp(msg.Op) {
-				w.Close(events.CloseCodeUnknownOperation)
+				w.Close(events.CloseCodeUnknownOperation, 0)
 				return
 			}
 
@@ -74,25 +77,25 @@ func (w *WebSocket) Read(gctx global.Context) {
 	}()
 
 	if err := w.Greet(); err != nil {
-		w.ready <- false
 		close(w.ready)
 
 		return
 	}
 
-	w.ready <- true // mark the connection as ready
-	close(w.ready)
+	close(w.ready) // mark the connection as ready
 
 	for {
 		select {
-		case <-w.ctx.Done():
-			return
 		case <-gctx.Done(): // App is shutting down
-			w.Close(events.CloseCodeRestart)
+			heartbeat.Stop()
+
+			w.Close(events.CloseCodeRestart, time.Second)
+		case <-w.ctx.Done():
+			heartbeat.Stop()
+
 			return
 		case <-heartbeat.C: // Send a heartbeat
 			if err := w.SendHeartbeat(); err != nil {
-				w.Close(events.CloseCodeTimeout)
 				return
 			}
 		// Listen for incoming dispatches

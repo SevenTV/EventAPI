@@ -61,47 +61,46 @@ func main() {
 	zap.S().Debugf("MaxProcs: ", runtime.GOMAXPROCS(0))
 
 	sig := make(chan os.Signal, 1)
-	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
+	signal.Notify(sig, syscall.SIGINT, syscall.SIGHUP, syscall.SIGILL, syscall.SIGTERM, syscall.SIGQUIT)
 
 	c, cancel := context.WithCancel(context.Background())
 
-	gCtx := global.New(c, config)
+	gctx := global.New(c, config)
 
 	{
-		ctx, cancel := context.WithTimeout(gCtx, time.Second*15)
+		ctx, cancel := context.WithTimeout(gctx, time.Second*15)
 		redisInst, err := redis.Setup(ctx, redis.SetupOptions{
-			Username:   gCtx.Config().Redis.Username,
-			Password:   gCtx.Config().Redis.Password,
-			Database:   gCtx.Config().Redis.Database,
-			Addresses:  gCtx.Config().Redis.Addresses,
-			Sentinel:   gCtx.Config().Redis.Sentinel,
-			MasterName: gCtx.Config().Redis.MasterName,
+			Username:   gctx.Config().Redis.Username,
+			Password:   gctx.Config().Redis.Password,
+			Database:   gctx.Config().Redis.Database,
+			Addresses:  gctx.Config().Redis.Addresses,
+			Sentinel:   gctx.Config().Redis.Sentinel,
+			MasterName: gctx.Config().Redis.MasterName,
 		})
 		cancel()
 		if err != nil {
 			zap.S().Fatalw("failed to connect to redis", "error", err)
 		}
 
-		gCtx.Inst().Redis = instance.WrapRedis(redisInst)
-		gCtx.Inst().Monitoring = monitoring.NewPrometheus(gCtx)
+		gctx.Inst().Redis = instance.WrapRedis(redisInst)
+		gctx.Inst().Monitoring = monitoring.NewPrometheus(gctx)
 	}
 
 	dones := []<-chan struct{}{}
 
-	if gCtx.Config().PProf.Enabled {
-		done := pprof.New(gCtx)
+	if gctx.Config().API.Enabled {
+		_, done := app.New(gctx)
 		dones = append(dones, done)
 	}
-
-	if gCtx.Config().API.Enabled {
-		_, done := app.New(gCtx)
+	if gctx.Config().PProf.Enabled {
+		done := pprof.New(gctx)
 		dones = append(dones, done)
 	}
-	if gCtx.Config().Health.Enabled {
-		dones = append(dones, health.New(gCtx))
+	if gctx.Config().Health.Enabled {
+		dones = append(dones, health.New(gctx))
 	}
-	if gCtx.Config().Monitoring.Enabled {
-		dones = append(dones, monitoring.New(gCtx))
+	if gctx.Config().Monitoring.Enabled {
+		dones = append(dones, monitoring.New(gctx))
 	}
 
 	zap.S().Infof("running")
@@ -110,6 +109,7 @@ func main() {
 	go func() {
 		s := <-sig
 		cancel()
+
 		go func() {
 			select {
 			case <-time.After(time.Minute):

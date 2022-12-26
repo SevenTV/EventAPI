@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sync/atomic"
+	"time"
 
 	"github.com/seventv/api/data/events"
 	"github.com/seventv/common/structures/v3"
@@ -40,9 +41,11 @@ type Connection interface {
 	// Cache returns the connection's cache utility
 	Cache() Cache
 	// Ready returns a channel that is closed when the connection is ready
-	Ready() <-chan bool
+	OnReady() <-chan struct{}
+	// OnClose returns a channel that is closed when the connection is closed
+	OnClose() <-chan struct{}
 	// Close sends a close frame with the specified code and ends the connection
-	Close(code events.CloseCode)
+	Close(code events.CloseCode, after time.Duration)
 	// Digest returns the message decoder channel utility
 	Digest() EventDigest
 	// SetWriter defines the connection's writable stream (SSE only)

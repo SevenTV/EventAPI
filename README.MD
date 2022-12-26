@@ -19,6 +19,7 @@ The Event API allows developers to receive real-time updates on 7TV data and imp
       - [Ack (5)](#ack-5)
       - [Subscribe (35)](#subscribe-35)
       - [Unsubscribe (36)](#unsubscribe-36)
+      - [End of Stream (7)](#end-of-stream-7)
     - [Subscription types](#subscription-types)
         - [Subscription Types](#subscription-types-1)
     - [EventStream / Server-Sent Events (HTTP)](#eventstream--server-sent-events-http)
@@ -80,20 +81,25 @@ Operation codes are used to identify what kind of payload an event contains.
 
 Close codes provide a reason for the closure of a connection to help clients understand what happened.
 
-| Code | Name                   |                                Description                                |
-| ---- | :--------------------- | :-----------------------------------------------------------------------: |
-| 4000 | Server Error           |                   an error occured on the server's end                    |
-| 4001 | Unknown Operation      |                   the client sent an unexpected opcode                    |
-| 4002 | Invalid Payload        |            the client sent a payload that couldn't be decoded             |
-| 4003 | Auth Failure           |                the client unsucessfully tried to identify                 |
-| 4004 | Already Identified     |                    the client wanted to identify again                    |
-| 4005 | Rate Limited           |                     the client is being rate-limited                      |
-| 4006 | Restart                |         the server is restarting and the client should reconnect          |
-| 4007 | Maintenance            |      the server is in maintenance mode and not accepting connections      |
-| 4008 | Timeout                |                     the client was idle for too long                      |
-| 4009 | Already Subscribed     |              the client tried to subscribe to an event twice              |
-| 4010 | Not Subscribed         | the client tried to unsubscribe from an event they weren't subscribing to |
-| 4011 | Insufficient Privilege |      the client did something that they did not have permission for       |
+| Code | Name                   |                                Description                                | Reconnect? |
+| ---- | :--------------------- | :-----------------------------------------------------------------------: | ---------- |
+| 4000 | Server Error           |                   an error occured on the server's end                    | Yes        |
+| 4001 | Unknown Operation      |                   the client sent an unexpected opcode                    | No¹        |
+| 4002 | Invalid Payload        |            the client sent a payload that couldn't be decoded             | No¹        |
+| 4003 | Auth Failure           |                the client unsucessfully tried to identify                 | No¹        |
+| 4004 | Already Identified     |                    the client wanted to identify again                    | No¹        |
+| 4005 | Rate Limited           |                     the client is being rate-limited                      | Maybe³     |
+| 4006 | Restart                |         the server is restarting and the client should reconnect          | Yes        |
+| 4007 | Maintenance            |      the server is in maintenance mode and not accepting connections      | Yes²       |
+| 4008 | Timeout                |                     the client was idle for too long                      | Yes        |
+| 4009 | Already Subscribed     |              the client tried to subscribe to an event twice              | No¹        |
+| 4010 | Not Subscribed         | the client tried to unsubscribe from an event they weren't subscribing to | No¹        |
+| 4011 | Insufficient Privilege |      the client did something that they did not have permission for       | Maybe³     |
+
+
+**¹** _this code indicate a bad client implementation. you must log such error and fix the issue before reconnecting_
+**²** _reconnect with significantly greater delay, i.e at least 5 minutes, including jitter_
+**³** _only reconnect if this was initiated by action of the end-user_
 
 ### Payloads
 
@@ -190,6 +196,17 @@ Close codes provide a reason for the closure of a connection to help clients und
   }
 }
 ```
+
+#### End of Stream (7)
+
+End of Stream events are sent when the connection is closed by the server.
+
+The close code provided in the event indicates the reason for the disconnect and whether or not the client should reconnect.
+
+| Key     | Type   |           Description            |
+| ------- | :----- | :------------------------------: |
+| code    | uint16 |    [close code](#close-codes)    |
+| message | string | a text message about the closure |
 
 ### Subscription types
 

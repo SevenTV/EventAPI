@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/fasthttp/router"
 	"github.com/hashicorp/go-multierror"
@@ -24,14 +25,16 @@ type EventStream struct {
 	c                 *fasthttp.RequestCtx
 	ctx               context.Context
 	cancel            context.CancelFunc
+	closed            bool
 	seq               int64
 	handler           client.Handler
 	evm               client.EventMap
 	cache             client.Cache
 	dig               client.EventDigest
-	writeMtx          sync.Mutex
+	writeMtx          *sync.Mutex
 	writer            *bufio.Writer
-	ready             chan bool
+	ready             chan struct{}
+	close             chan struct{}
 	sessionID         []byte
 	heartbeatInterval uint32
 	heartbeatCount    uint64
@@ -49,7 +52,7 @@ func NewEventStream(gctx global.Context, c *fasthttp.RequestCtx, dig client.Even
 		return nil, err
 	}
 
-	lctx, cancel := context.WithCancel(gctx)
+	lctx, cancel := context.WithCancel(context.Background())
 	es := &EventStream{
 		c:                 c,
 		ctx:               lctx,
@@ -58,9 +61,10 @@ func NewEventStream(gctx global.Context, c *fasthttp.RequestCtx, dig client.Even
 		evm:               client.NewEventMap(make(chan string, 10)),
 		cache:             client.NewCache(),
 		dig:               dig,
-		writeMtx:          sync.Mutex{},
+		writeMtx:          &sync.Mutex{},
 		writer:            nil,
-		ready:             make(chan bool, 1),
+		ready:             make(chan struct{}, 1),
+		close:             make(chan struct{}),
 		sessionID:         sessionID,
 		heartbeatInterval: hbi,
 		heartbeatCount:    0,
@@ -90,7 +94,11 @@ func (es *EventStream) Handler() client.Handler {
 	return es.handler
 }
 
-func (es *EventStream) Close(code events.CloseCode) {
+func (es *EventStream) Close(code events.CloseCode, after time.Duration) {
+	if es.closed {
+		return
+	}
+
 	msg := events.NewMessage(events.OpcodeEndOfStream, events.EndOfStreamPayload{
 		Code:    code,
 		Message: code.String(),
@@ -99,7 +107,15 @@ func (es *EventStream) Close(code events.CloseCode) {
 	if err := es.Write(msg.ToRaw()); err != nil {
 		zap.S().Errorw("failed to write end of stream event to closing connection", "error", err)
 	}
+
+	select {
+	case <-es.ctx.Done():
+	case <-es.close:
+	case <-time.After(after):
+	}
+
 	es.cancel()
+	es.closed = true
 }
 
 func (es *EventStream) Events() client.EventMap {
@@ -158,9 +174,6 @@ func (es *EventStream) SendError(txt string, fields map[string]any) {
 }
 
 func (es *EventStream) Write(msg events.Message[json.RawMessage]) error {
-	es.writeMtx.Lock()
-	defer es.writeMtx.Unlock()
-
 	if es.writer == nil {
 		return fmt.Errorf("connection not writable")
 	}
@@ -195,8 +208,13 @@ func (es *EventStream) SetWriter(w *bufio.Writer) {
 }
 
 // Ready implements client.Connection
-func (es *EventStream) Ready() <-chan bool {
+func (es *EventStream) OnReady() <-chan struct{} {
 	return es.ready
+}
+
+// Ready implements client.Connection
+func (es *EventStream) OnClose() <-chan struct{} {
+	return es.close
 }
 
 func SetupEventStream(ctx *fasthttp.RequestCtx, writer fasthttp.StreamWriter) {

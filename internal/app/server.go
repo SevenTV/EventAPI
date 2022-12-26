@@ -2,10 +2,13 @@ package app
 
 import (
 	"encoding/json"
+	"os"
+	"sync/atomic"
 	"time"
 
 	"github.com/fasthttp/router"
 	"github.com/fasthttp/websocket"
+	"github.com/fsnotify/fsnotify"
 	"github.com/seventv/api/data/events"
 	"github.com/seventv/common/errors"
 	"github.com/seventv/common/redis"
@@ -20,6 +23,8 @@ type Server struct {
 	digest   client.EventDigest
 	upgrader websocket.FastHTTPUpgrader
 	router   *router.Router
+
+	activeConns *int32
 }
 
 func New(gctx global.Context) (Server, <-chan struct{}) {
@@ -41,13 +46,17 @@ func New(gctx global.Context) (Server, <-chan struct{}) {
 		upgrader: upgrader,
 		digest:   dig,
 		router:   r,
+
+		activeConns: new(int32),
 	}
-	srv.HandleConnect(gctx)
+
+	shutdown := make(chan struct{})
+
+	srv.HandleConnect(gctx, shutdown)
 	srv.HandleHealth(gctx)
 	srv.HandleSessionMutation(gctx)
 
 	server := fasthttp.Server{
-		CloseOnShutdown: true,
 		Handler: func(ctx *fasthttp.RequestCtx) {
 			start := time.Now()
 			defer func() {
@@ -62,7 +71,7 @@ func New(gctx global.Context) (Server, <-chan struct{}) {
 				if err := recover(); err != nil {
 					l.Error("panic in handler: ", err)
 				} else {
-					l.Info("")
+					l.Debug("")
 				}
 			}()
 			ctx.Response.Header.Set("X-Pod-Name", gctx.Config().Pod.Name)
@@ -73,18 +82,54 @@ func New(gctx global.Context) (Server, <-chan struct{}) {
 
 	done := make(chan struct{})
 	go func() {
-		defer close(done)
 		if err := server.ListenAndServe(gctx.Config().API.Bind); err != nil {
 			zap.S().Fatal("failed to start server: ", err)
 		}
 	}()
 
+	// Watch for file-based shutdown signal
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		zap.S().Fatal("failed to create file watcher: ", err)
+	}
+
+	if _, err := os.Create("shutdown"); err != nil {
+		zap.S().Fatal("failed to create kill file: ", err)
+	}
+
+	if err = watcher.Add("shutdown"); err != nil {
+		zap.S().Fatal("failed to add file to watcher: ", err)
+	}
+
 	go func() {
-		<-gctx.Done()
-		// wait a quarter-second, this should be enough to send end of stream events to clients
-		// todo: find a better solution for this
-		time.Sleep(time.Millisecond * 200)
+		select {
+		case <-gctx.Done():
+		case <-watcher.Events:
+			zap.S().Infof("received api shutdown signal via file system. closing %d connections and shuttering", atomic.LoadInt32(srv.activeConns))
+		}
+
+		close(shutdown)
+
+		timeout := time.After(time.Second * 30)
+		ticker := time.NewTicker(time.Millisecond * 100)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-timeout:
+				goto shutdown
+			case <-ticker.C:
+				if atomic.LoadInt32(srv.activeConns) == 0 {
+					goto shutdown
+				}
+			}
+		}
+
+	shutdown:
 		_ = server.Shutdown()
+
+		watcher.Close()
+		close(done)
 	}()
 
 	return srv, done

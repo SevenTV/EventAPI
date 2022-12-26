@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"sync"
+	"time"
 
 	websocket "github.com/fasthttp/websocket"
 	"github.com/hashicorp/go-multierror"
@@ -27,7 +28,8 @@ type WebSocket struct {
 	cache             client.Cache
 	dig               client.EventDigest
 	writeMtx          *sync.Mutex
-	ready             chan bool
+	ready             chan struct{}
+	close             chan struct{}
 	sessionID         []byte
 	heartbeatInterval uint32
 	heartbeatCount    uint64
@@ -55,7 +57,8 @@ func NewWebSocket(gctx global.Context, conn *websocket.Conn, dig client.EventDig
 		cache:             client.NewCache(),
 		dig:               dig,
 		writeMtx:          &sync.Mutex{},
-		ready:             make(chan bool, 1),
+		ready:             make(chan struct{}, 1),
+		close:             make(chan struct{}),
 		sessionID:         sessionID,
 		heartbeatInterval: hbi,
 		heartbeatCount:    0,
@@ -103,7 +106,7 @@ func (w *WebSocket) SendAck(cmd events.Opcode, data json.RawMessage) error {
 	return w.Write(msg.ToRaw())
 }
 
-func (w *WebSocket) Close(code events.CloseCode) {
+func (w *WebSocket) Close(code events.CloseCode, after time.Duration) {
 	if w.closed {
 		return
 	}
@@ -119,12 +122,19 @@ func (w *WebSocket) Close(code events.CloseCode) {
 	}
 
 	// Write close frame
-	err := w.c.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(int(code), code.String()))
+	err := w.c.WriteControl(websocket.CloseMessage, websocket.FormatCloseMessage(int(code), code.String()), time.Now().Add(5*time.Second))
 	err = multierror.Append(err, w.c.Close()).ErrorOrNil()
 	if err != nil {
 		zap.S().Errorw("failed to close connection", "error", err)
 	}
 
+	select {
+	case <-w.ctx.Done():
+	case <-w.close:
+	case <-time.After(after):
+	}
+
+	w.cancel()
 	w.closed = true
 }
 
@@ -180,9 +190,12 @@ func (w *WebSocket) SendError(txt string, fields map[string]any) {
 	}
 }
 
-// Ready implements client.Connection
-func (w *WebSocket) Ready() <-chan bool {
+func (w *WebSocket) OnReady() <-chan struct{} {
 	return w.ready
+}
+
+func (w *WebSocket) OnClose() <-chan struct{} {
+	return w.close
 }
 
 func (*WebSocket) SetWriter(w *bufio.Writer) {

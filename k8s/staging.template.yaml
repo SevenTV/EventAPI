@@ -12,6 +12,7 @@ spec:
       labels:
         app: eventapi
     spec:
+      terminationGracePeriodSeconds: 60
       volumes:
         - name: config
           configMap:
@@ -42,6 +43,14 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                  - "sh"
+                  - "-c"
+                  - |
+                    sleep 5 && echo "1" >> shutdown
           resources:
             limits:
               cpu: "2"
@@ -56,20 +65,20 @@ spec:
           livenessProbe:
             tcpSocket:
               port: health
-            initialDelaySeconds: 30
+            initialDelaySeconds: 3
             timeoutSeconds: 5
-            periodSeconds: 10
+            periodSeconds: 5
             successThreshold: 1
             failureThreshold: 6
           readinessProbe:
             tcpSocket:
               port: health
-            initialDelaySeconds: 5
+            initialDelaySeconds: 3
             timeoutSeconds: 5
-            periodSeconds: 10
+            periodSeconds: 5
             successThreshold: 1
             failureThreshold: 6
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
 ---
 apiVersion: v1
 kind: Service
@@ -102,7 +111,7 @@ metadata:
   namespace: app
 data:
   config.yaml: |
-    level: info
+    level: debug
 
     api:
       enabled: true
