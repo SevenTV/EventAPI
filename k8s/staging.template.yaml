@@ -50,9 +50,7 @@ spec:
                   - "sh"
                   - "-c"
                   - |
-                    sleep 5 &&
-                    pkill -15 eventapi &&
-                    sleep 30
+                    pkill -15 eventapi & sleep 30
           resources:
             limits:
               cpu: "2"
