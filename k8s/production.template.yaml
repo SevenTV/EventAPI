@@ -35,11 +35,11 @@ spec:
             - secretRef:
                 name: eventapi-secret
           env:
-            - name: API_K8S_POD_NAME
+            - name: EVENTS_K8S_POD_NAME
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.name
-            - name: API_K8S_NODE_NAME
+            - name: EVENTS_K8S_NODE_NAME
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
@@ -52,7 +52,7 @@ spec:
                   - |
                     sleep 5 &&
                     pkill -15 eventapi &&
-                    sleep 5
+                    sleep 30
           resources:
             limits:
               cpu: "1"
