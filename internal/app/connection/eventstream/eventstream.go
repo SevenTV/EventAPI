@@ -108,14 +108,19 @@ func (es *EventStream) Close(code events.CloseCode, after time.Duration) {
 		zap.S().Errorw("failed to write end of stream event to closing connection", "error", err)
 	}
 
-	select {
-	case <-es.ctx.Done():
-	case <-es.close:
-	case <-time.After(after):
-	}
+	go func() {
+		select {
+		case <-time.After(after):
+			zap.S().Debug("connection end: delayed EOS timeout")
+		case <-es.ctx.Done():
+			zap.S().Debug("connection end: context cancelled")
+		case <-es.close:
+			zap.S().Debug("connection end: close signal received")
+		}
 
-	es.cancel()
-	es.closed = true
+		es.cancel()
+		es.closed = true
+	}()
 }
 
 func (es *EventStream) Events() client.EventMap {
