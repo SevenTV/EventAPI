@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/fasthttp/websocket"
+	"github.com/seventv/api/data/events"
 	"github.com/seventv/common/utils"
 	client "github.com/seventv/eventapi/internal/app/connection"
 	v1 "github.com/seventv/eventapi/internal/app/v1"
@@ -14,7 +15,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func (s Server) HandleConnect(gctx global.Context) {
+func (s Server) HandleConnect(gctx global.Context, shutdown <-chan struct{}) {
 	v3Fn := func(ctx *fasthttp.RequestCtx) {
 		var (
 			con client.Connection
@@ -59,7 +60,7 @@ func (s Server) HandleConnect(gctx global.Context) {
 				return
 			}
 
-			s.TrackConnection(gctx, ctx, con)
+			s.TrackConnection(gctx, ctx, con, shutdown)
 		}()
 	}
 
@@ -81,7 +82,7 @@ func (s Server) HandleConnect(gctx global.Context) {
 	})
 }
 
-func (s Server) TrackConnection(gctx global.Context, ctx *fasthttp.RequestCtx, con client.Connection) {
+func (s Server) TrackConnection(gctx global.Context, ctx *fasthttp.RequestCtx, con client.Connection, shutdown <-chan struct{}) {
 	if con == nil {
 		return
 	}
@@ -100,6 +101,12 @@ func (s Server) TrackConnection(gctx global.Context, ctx *fasthttp.RequestCtx, c
 		"client_addr", ctx.RemoteAddr().String(),
 		"connection_count", atomic.LoadInt32(s.activeConns),
 	)
+
+	go func() {
+		<-shutdown
+
+		con.Close(events.CloseCodeRestart, time.Second*2)
+	}()
 
 	<-con.OnClose() // wait for connection to end
 

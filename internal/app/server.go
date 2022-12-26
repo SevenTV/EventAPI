@@ -2,11 +2,13 @@ package app
 
 import (
 	"encoding/json"
+	"os"
 	"sync/atomic"
 	"time"
 
 	"github.com/fasthttp/router"
 	"github.com/fasthttp/websocket"
+	"github.com/fsnotify/fsnotify"
 	"github.com/seventv/api/data/events"
 	"github.com/seventv/common/errors"
 	"github.com/seventv/common/redis"
@@ -48,7 +50,9 @@ func New(gctx global.Context) (Server, <-chan struct{}) {
 		activeConns: new(int32),
 	}
 
-	srv.HandleConnect(gctx)
+	shutdown := make(chan struct{})
+
+	srv.HandleConnect(gctx, shutdown)
 	srv.HandleHealth(gctx)
 	srv.HandleSessionMutation(gctx)
 
@@ -83,8 +87,28 @@ func New(gctx global.Context) (Server, <-chan struct{}) {
 		}
 	}()
 
+	// Watch for file-based shutdown signal
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		zap.S().Fatal("failed to create file watcher: ", err)
+	}
+
+	if _, err := os.Create("shutdown"); err != nil {
+		zap.S().Fatal("failed to create kill file: ", err)
+	}
+
+	if err = watcher.Add("shutdown"); err != nil {
+		zap.S().Fatal("failed to add file to watcher: ", err)
+	}
+
 	go func() {
-		<-gctx.Done()
+		select {
+		case <-gctx.Done():
+		case <-watcher.Events:
+			zap.S().Infof("received api shutdown signal via file system. closing %d connections and shuttering", atomic.LoadInt32(srv.activeConns))
+		}
+
+		close(shutdown)
 
 		timeout := time.After(time.Second * 30)
 		ticker := time.NewTicker(time.Millisecond * 100)
@@ -104,6 +128,7 @@ func New(gctx global.Context) (Server, <-chan struct{}) {
 	shutdown:
 		_ = server.Shutdown()
 
+		watcher.Close()
 		close(done)
 	}()
 
