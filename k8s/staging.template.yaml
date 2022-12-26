@@ -50,7 +50,7 @@ spec:
                   - "sh"
                   - "-c"
                   - |
-                    echo "1" >> shutdown
+                    sleep 5 && echo "1" >> shutdown
           resources:
             limits:
               cpu: "2"
