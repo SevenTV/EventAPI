@@ -44,11 +44,11 @@ spec:
                   fieldPath: spec.nodeName
           resources:
             limits:
-              cpu: "2"
+              cpu: "1"
               memory: 3Gi
             requests:
-              cpu: 300m
-              memory: 2Gi
+              cpu: 100m
+              memory: 1.75Gi
           volumeMounts:
             - name: config
               mountPath: /app/config.yaml
