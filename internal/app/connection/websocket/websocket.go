@@ -119,6 +119,7 @@ func (w *WebSocket) Close(code events.CloseCode, after time.Duration) {
 
 	if err := w.Write(msg.ToRaw()); err != nil {
 		zap.S().Errorw("failed to close connection", "error", err)
+		return
 	}
 
 	// Write close frame
@@ -126,6 +127,7 @@ func (w *WebSocket) Close(code events.CloseCode, after time.Duration) {
 	err = multierror.Append(err, w.c.Close()).ErrorOrNil()
 	if err != nil {
 		zap.S().Errorw("failed to close connection", "error", err)
+		return
 	}
 
 	select {

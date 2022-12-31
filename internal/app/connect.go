@@ -104,7 +104,11 @@ func (s Server) TrackConnection(gctx global.Context, ctx *fasthttp.RequestCtx, c
 
 	// Handle shutdown
 	go func() {
-		<-shutdown
+		select {
+		case <-shutdown:
+		case <-con.Context().Done():
+			return
+		}
 
 		con.Close(events.CloseCodeRestart, 0)
 	}()
