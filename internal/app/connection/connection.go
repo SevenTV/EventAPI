@@ -101,18 +101,26 @@ func (e EventMap) Subscribe(gctx global.Context, t events.EventType, cond map[st
 		return ec, ErrAlreadySubscribed
 	}
 
+	dupedKeys := 0
+
 	for k, v := range cond {
 		if _, ok := ec[k]; !ok {
 			ec[k] = make(utils.Set[string])
 		}
 
 		if ec[k].Has(v) {
-			return ec, ErrAlreadySubscribed
+			dupedKeys++
+
+			continue
 		}
 
 		ec[k].Add(v)
 
 		atomic.AddInt32(e.count, 1)
+	}
+
+	if dupedKeys == len(cond) {
+		return ec, ErrAlreadySubscribed
 	}
 
 	// Create channel
