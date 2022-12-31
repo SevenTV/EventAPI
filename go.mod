@@ -9,8 +9,8 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/json-iterator/go v1.1.12
 	github.com/prometheus/client_golang v1.14.0
-	github.com/seventv/api v0.0.0-20221219041942-3a9b0e4b71ef
-	github.com/seventv/common v0.0.0-20221216114333-e0974fa07f8d
+	github.com/seventv/api v0.0.0-20221228213352-e8c585947fd8
+	github.com/seventv/common v0.0.0-20221228160040-bcf96a9f11bd
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.14.0
 	github.com/valyala/fasthttp v1.43.0
@@ -31,7 +31,7 @@ require (
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/fasthttp/router v1.4.14
-	github.com/fsnotify/fsnotify v1.6.0 // indirect
+	github.com/fsnotify/fsnotify v1.6.0
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect

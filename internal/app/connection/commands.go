@@ -122,6 +122,8 @@ func (h handler) Subscribe(gctx global.Context, m events.Message[json.RawMessage
 		switch err {
 		case ErrAlreadySubscribed:
 			h.conn.SendError("Already subscribed to this event", nil)
+			h.conn.Close(events.CloseCodeAlreadySubscribed, 0)
+
 			return nil, false
 		default:
 			return err, false

@@ -34,6 +34,10 @@ func (w *WebSocket) Read(gctx global.Context) {
 			err  error
 		)
 
+		defer func() {
+			w.cancel()
+		}()
+
 		// Listen for incoming messages sent by the client
 		for {
 			_, data, err = w.c.ReadMessage()
@@ -86,13 +90,10 @@ func (w *WebSocket) Read(gctx global.Context) {
 
 	for {
 		select {
-		case <-gctx.Done(): // App is shutting down
-			heartbeat.Stop()
-
-			w.Close(events.CloseCodeRestart, time.Second)
 		case <-w.ctx.Done():
-			heartbeat.Stop()
-
+			return
+		case <-gctx.Done(): // App is shutting down
+			w.Close(events.CloseCodeRestart, 0)
 			return
 		case <-heartbeat.C: // Send a heartbeat
 			if err := w.SendHeartbeat(); err != nil {
