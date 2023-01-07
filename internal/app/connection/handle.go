@@ -118,7 +118,7 @@ func (h handler) Subscribe(gctx global.Context, m events.Message[json.RawMessage
 	}
 
 	// Add the event subscription
-	_, err = h.conn.Events().Subscribe(gctx, t, msg.Data.Condition)
+	_, id, err := h.conn.Events().Subscribe(gctx, t, msg.Data.Condition)
 	if err != nil {
 		switch err {
 		case ErrAlreadySubscribed:
@@ -132,9 +132,11 @@ func (h handler) Subscribe(gctx global.Context, m events.Message[json.RawMessage
 	}
 
 	_ = h.conn.SendAck(events.OpcodeSubscribe, utils.ToJSON(struct {
+		ID        uint32            `json:"id"`
 		Type      string            `json:"type"`
 		Condition map[string]string `json:"condition"`
 	}{
+		ID:        id,
 		Type:      string(msg.Data.Type),
 		Condition: msg.Data.Condition,
 	}))
@@ -149,7 +151,7 @@ func (h handler) Unsubscribe(gctx global.Context, m events.Message[json.RawMessa
 	}
 
 	t := msg.Data.Type
-	if err = h.conn.Events().Unsubscribe(t, msg.Data.Condition); err != nil {
+	if _, err = h.conn.Events().Unsubscribe(t, msg.Data.Condition); err != nil {
 		if err == ErrNotSubscribed {
 			h.conn.Close(events.CloseCodeNotSubscribed, 0)
 			return nil
@@ -175,7 +177,8 @@ func (h handler) OnDispatch(gctx global.Context, msg events.Message[events.Dispa
 		return false // skip if not subscribed to this
 	}
 
-	if !ev.Match(msg.Data.Conditions) {
+	matches, ok := ev.Match(msg.Data.Conditions)
+	if !ok {
 		return false
 	}
 
@@ -193,7 +196,7 @@ func (h handler) OnDispatch(gctx global.Context, msg events.Message[events.Dispa
 	// Handle effect
 	if msg.Data.Effect != nil {
 		for _, e := range msg.Data.Effect.AddSubscriptions {
-			_, err := h.conn.Events().Subscribe(gctx, e.Type, e.Condition)
+			_, _, err := h.conn.Events().Subscribe(gctx, e.Type, e.Condition)
 			if err != nil && !errors.Is(err, ErrAlreadySubscribed) {
 				zap.S().Errorw("failed to add subscription from dispatch",
 					"error", err,
@@ -202,7 +205,7 @@ func (h handler) OnDispatch(gctx global.Context, msg events.Message[events.Dispa
 		}
 
 		for _, e := range msg.Data.Effect.RemoveSubscriptions {
-			err := h.conn.Events().Unsubscribe(e.Type, e.Condition)
+			_, err := h.conn.Events().Unsubscribe(e.Type, e.Condition)
 			if err != nil && !errors.Is(err, ErrNotSubscribed) {
 				zap.S().Errorw("failed to remove subscription from dispatch",
 					"error", err,
@@ -217,6 +220,7 @@ func (h handler) OnDispatch(gctx global.Context, msg events.Message[events.Dispa
 
 	msg.Data.Conditions = nil
 	msg.Data.Effect = nil
+	msg.Data.Matches = matches
 
 	if err := h.conn.Write(msg.ToRaw()); err != nil {
 		zap.S().Errorw("failed to write dispatch to connection",

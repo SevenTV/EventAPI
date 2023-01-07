@@ -3,10 +3,9 @@ package client
 import (
 	"bufio"
 	"context"
-	"crypto/rand"
 	"encoding/json"
 	"fmt"
-	"sync/atomic"
+	"math/rand"
 	"time"
 
 	"github.com/seventv/api/data/events"
@@ -91,91 +90,80 @@ type EventMap struct {
 }
 
 // Subscribe sets up a subscription to dispatch events with the specified type
-func (e EventMap) Subscribe(gctx global.Context, t events.EventType, cond map[string]string) (EventChannel, error) {
+func (e EventMap) Subscribe(gctx global.Context, t events.EventType, cond events.EventCondition) (EventChannel, uint32, error) {
+	id := rand.Uint32()
+
 	ec, exists := e.m.Load(t)
 	if !exists {
-		ec = make(EventChannel)
+		ec = EventChannel{
+			ID:         []uint32{},
+			Conditions: []events.EventCondition{},
+		}
 	}
 
-	if exists && len(ec) == 0 && len(cond) == 0 {
-		return ec, ErrAlreadySubscribed
+	if exists && len(ec.Conditions) == 0 && len(cond) == 0 {
+		return ec, id, ErrAlreadySubscribed
 	}
 
-	dupedKeys := 0
-
-	for k, v := range cond {
-		if _, ok := ec[k]; !ok {
-			ec[k] = make(utils.Set[string])
+	for _, c := range ec.Conditions {
+		if c.Match(cond) {
+			return ec, id, ErrAlreadySubscribed
 		}
 
-		if ec[k].Has(v) {
-			dupedKeys++
-
-			continue
-		}
-
-		ec[k].Add(v)
-
-		atomic.AddInt32(e.count, 1)
 	}
 
-	if dupedKeys == len(cond) {
-		return ec, ErrAlreadySubscribed
-	}
+	ec.ID = append(ec.ID, id)
+	ec.Conditions = append(ec.Conditions, cond)
 
 	// Create channel
 	e.m.Store(t, ec)
 
-	return ec, nil
+	return ec, id, nil
 }
 
-func (e EventMap) Unsubscribe(t events.EventType, cond map[string]string) error {
+func (e EventMap) Unsubscribe(t events.EventType, cond map[string]string) (uint32, error) {
 	if len(cond) == 0 {
 		_, exists := e.m.LoadAndDelete(t)
 		if !exists {
-			return ErrNotSubscribed
+			return 0, ErrNotSubscribed
 		}
 
-		return nil
+		return 0, nil
 	}
 
 	ec, exists := e.m.Load(t)
 	if !exists {
-		return ErrNotSubscribed
+		return 0, ErrNotSubscribed
 	}
 
-	x := 0
-	for k, v := range cond {
-		if !ec[k].Has(v) {
-			continue
+	var id uint32
+
+	for i, c := range ec.Conditions {
+		if c.Match(cond) {
+			id = ec.ID[i]
+
+			utils.SliceRemove(ec.ID, i)
+			utils.SliceRemove(ec.Conditions, i)
+			break
 		}
-
-		ec[k].Delete(v)
-
-		atomic.AddInt32(e.count, -1)
-
-		x++
 	}
 
-	if x == 0 {
-		return ErrNotSubscribed
-	}
-
-	return nil
+	return id, nil
 }
 
 func (e EventMap) Count() int32 {
 	return *e.count
 }
 
-func (e EventMap) Get(t events.EventType) (EventChannel, bool) {
+func (e EventMap) Get(t events.EventType) (*EventChannel, bool) {
 	tWilcard := events.EventType(fmt.Sprintf("%s.*", t.ObjectName()))
 	if c, ok := e.m.Load(t); ok {
-		return c, true
+		return &c, true
 	}
 	if c, ok := e.m.Load(tWilcard); ok {
-		return c, true
+		return &c, true
 	}
+
 	return nil, false
 }
 
@@ -192,28 +180,27 @@ func (e EventMap) Destroy() {
 	close(e.ch)
 }
 
-type EventChannel map[string]utils.Set[string]
+type EventChannel struct {
+	ID         []uint32
+	Conditions []events.EventCondition
+}
 
-func (ec EventChannel) Match(cond []events.EventCondition) bool {
-	if len(ec) == 0 { // No condition
-		return true
+func (ec EventChannel) Match(cond []events.EventCondition) ([]uint32, bool) {
+	if len(ec.Conditions) == 0 { // No condition
+		return ec.ID, true
 	}
+
+	matches := make(utils.Set[uint32])
 
 	for _, c := range cond {
-		ok := 0
-
-		for k, v := range c {
-			if ec[k].Has(v) {
-				ok++
+		for i, e := range ec.Conditions {
+			if e.Match(c) {
+				matches.Add(ec.ID[i])
 			}
-		}
-
-		if ok == len(c) {
-			return true
 		}
 	}
 
-	return false
+	return matches.Values(), len(matches) > 0
 }
 
 var (
