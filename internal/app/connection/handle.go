@@ -2,6 +2,7 @@ package client
 
 import (
 	"encoding/json"
+	"errors"
 	"strings"
 
 	"github.com/seventv/api/data/events"
@@ -17,7 +18,7 @@ func NewHandler(conn Connection) Handler {
 type Handler interface {
 	Subscribe(gctx global.Context, m events.Message[json.RawMessage]) (error, bool)
 	Unsubscribe(gctx global.Context, m events.Message[json.RawMessage]) error
-	OnDispatch(msg events.Message[events.DispatchPayload]) bool
+	OnDispatch(gctx global.Context, msg events.Message[events.DispatchPayload]) bool
 }
 
 type handler struct {
@@ -167,7 +168,7 @@ func (h handler) Unsubscribe(gctx global.Context, m events.Message[json.RawMessa
 	return nil
 }
 
-func (h handler) OnDispatch(msg events.Message[events.DispatchPayload]) bool {
+func (h handler) OnDispatch(gctx global.Context, msg events.Message[events.DispatchPayload]) bool {
 	// Filter by subscribed event types
 	ev, ok := h.conn.Events().Get(msg.Data.Type)
 	if !ok {
@@ -189,7 +190,33 @@ func (h handler) OnDispatch(msg events.Message[events.DispatchPayload]) bool {
 		msg.Data.Hash = nil
 	}
 
+	// Handle effect
+	if msg.Data.Effect != nil {
+		for _, e := range msg.Data.Effect.AddSubscriptions {
+			_, err := h.conn.Events().Subscribe(gctx, e.Type, e.Condition)
+			if err != nil && !errors.Is(err, ErrAlreadySubscribed) {
+				zap.S().Errorw("failed to add subscription from dispatch",
+					"error", err,
+				)
+			}
+		}
+
+		for _, e := range msg.Data.Effect.RemoveSubscriptions {
+			err := h.conn.Events().Unsubscribe(e.Type, e.Condition)
+			if err != nil && !errors.Is(err, ErrNotSubscribed) {
+				zap.S().Errorw("failed to remove subscription from dispatch",
+					"error", err,
+				)
+			}
+		}
+
+		for _, ha := range msg.Data.Effect.RemoveHashes {
+			h.conn.Cache().ExpireDispatch(ha)
+		}
+	}
+
 	msg.Data.Conditions = nil
+	msg.Data.Effect = nil
 
 	if err := h.conn.Write(msg.ToRaw()); err != nil {
 		zap.S().Errorw("failed to write dispatch to connection",

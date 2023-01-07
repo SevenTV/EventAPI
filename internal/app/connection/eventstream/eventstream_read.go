@@ -57,7 +57,7 @@ func (es *EventStream) Read(gctx global.Context) {
 			}
 
 		case msg := <-dispatch:
-			_ = es.handler.OnDispatch(msg)
+			_ = es.handler.OnDispatch(gctx, msg)
 
 		// Listen for acks (i.e in response to a session mutation)
 		case msg := <-ack:

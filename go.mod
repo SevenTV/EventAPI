@@ -9,7 +9,7 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/json-iterator/go v1.1.12
 	github.com/prometheus/client_golang v1.14.0
-	github.com/seventv/api v0.0.0-20221228213352-e8c585947fd8
+	github.com/seventv/api v0.0.0-20230107174207-b94bf6b52c5d
 	github.com/seventv/common v0.0.0-20221228160040-bcf96a9f11bd
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.14.0
