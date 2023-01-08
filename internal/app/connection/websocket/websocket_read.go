@@ -101,7 +101,7 @@ func (w *WebSocket) Read(gctx global.Context) {
 			}
 		// Listen for incoming dispatches
 		case msg := <-dispatch:
-			_ = w.handler.OnDispatch(msg)
+			_ = w.handler.OnDispatch(gctx, msg)
 		}
 	}
 }
