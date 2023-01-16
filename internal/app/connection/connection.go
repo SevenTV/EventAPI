@@ -98,7 +98,7 @@ func (e EventMap) Subscribe(gctx global.Context, t events.EventType, cond events
 		ec = EventChannel{
 			ID:         []uint32{},
 			Conditions: []events.EventCondition{},
-			Properties: []EventSubscriptionProperties{props},
+			Properties: []EventSubscriptionProperties{},
 		}
 	}
 
@@ -203,7 +203,7 @@ func (ec EventChannel) Match(cond []events.EventCondition) ([]uint32, bool) {
 
 	for _, c := range cond {
 		for i, e := range ec.Conditions {
-			if e.Match(c) {
+			if e.Match(c) && len(ec.ID) >= i {
 				matches.Add(ec.ID[i])
 			}
 		}
