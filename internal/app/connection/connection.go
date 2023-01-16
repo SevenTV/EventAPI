@@ -90,7 +90,7 @@ type EventMap struct {
 }
 
 // Subscribe sets up a subscription to dispatch events with the specified type
-func (e EventMap) Subscribe(gctx global.Context, t events.EventType, cond events.EventCondition) (EventChannel, uint32, error) {
+func (e EventMap) Subscribe(gctx global.Context, t events.EventType, cond events.EventCondition, props EventSubscriptionProperties) (EventChannel, uint32, error) {
 	id := rand.Uint32()
 
 	ec, exists := e.m.Load(t)
@@ -98,6 +98,7 @@ func (e EventMap) Subscribe(gctx global.Context, t events.EventType, cond events
 		ec = EventChannel{
 			ID:         []uint32{},
 			Conditions: []events.EventCondition{},
+			Properties: []EventSubscriptionProperties{props},
 		}
 	}
 
@@ -114,6 +115,7 @@ func (e EventMap) Subscribe(gctx global.Context, t events.EventType, cond events
 
 	ec.ID = append(ec.ID, id)
 	ec.Conditions = append(ec.Conditions, cond)
+	ec.Properties = append(ec.Properties, props)
 
 	// Create channel
 	e.m.Store(t, ec)
@@ -183,6 +185,12 @@ func (e EventMap) Destroy() {
 type EventChannel struct {
 	ID         []uint32
 	Conditions []events.EventCondition
+	Properties []EventSubscriptionProperties
+}
+
+type EventSubscriptionProperties struct {
+	TTL  time.Time
+	Auto bool
 }
 
 func (ec EventChannel) Match(cond []events.EventCondition) ([]uint32, bool) {
