@@ -13,7 +13,7 @@ require (
 	github.com/seventv/common v0.0.0-20230116115249-f964594e763d
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.14.0
-	github.com/valyala/fasthttp v1.43.0
+	github.com/valyala/fasthttp v1.44.0
 	go.uber.org/zap v1.24.0
 )
 
