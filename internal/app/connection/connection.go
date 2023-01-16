@@ -146,6 +146,7 @@ func (e EventMap) Unsubscribe(t events.EventType, cond map[string]string) (uint3
 
 			utils.SliceRemove(ec.ID, i)
 			utils.SliceRemove(ec.Conditions, i)
+			utils.SliceRemove(ec.Properties, i)
 			break
 		}
 	}
