@@ -40,6 +40,10 @@ func (w *WebSocket) Read(gctx global.Context) {
 
 		// Listen for incoming messages sent by the client
 		for {
+			if w.c == nil {
+				return
+			}
+
 			_, data, err = w.c.ReadMessage()
 			if websocket.IsUnexpectedCloseError(err) {
 				return
