@@ -3,7 +3,9 @@ package client
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
+	"time"
 
 	"github.com/seventv/api/data/events"
 	"github.com/seventv/common/utils"
@@ -31,6 +33,95 @@ const (
 	SUBSCRIPTION_CONDITION_KEY_MAX_LENGTH   = 64
 	SUBSCRIPTION_CONDITION_VALUE_MAX_LENGTH = 128
 )
+
+func (h handler) OnDispatch(gctx global.Context, msg events.Message[events.DispatchPayload]) bool {
+	// Filter by subscribed event types
+	ev, ok := h.conn.Events().Get(msg.Data.Type)
+	if !ok {
+		return false // skip if not subscribed to this
+	}
+
+	matches, ok := ev.Match(msg.Data.Conditions)
+	if !ok {
+		return false
+	}
+
+	// Dedupe
+	if msg.Data.Hash != nil {
+		ha := *msg.Data.Hash
+
+		if !h.conn.Cache().AddDispatch(ha) {
+			return false // skip if already dispatched
+		}
+
+		msg.Data.Hash = nil
+	}
+
+	// Handle effect
+	if msg.Data.Effect != nil {
+		for _, e := range msg.Data.Effect.AddSubscriptions {
+			_, _, err := h.conn.Events().Subscribe(gctx, e.Type, e.Condition, EventSubscriptionProperties{
+				TTL:  utils.Ternary(e.TTL > 0, time.Now().Add(e.TTL), time.Time{}),
+				Auto: true,
+			})
+			if err != nil && !errors.Is(err, ErrAlreadySubscribed) {
+				zap.S().Errorw("failed to add subscription from dispatch",
+					"error", err,
+				)
+			}
+
+			// Handle TTL: remove the subscription after TTL
+			if e.TTL > 0 {
+				go func(ttl time.Duration, typ events.EventType, cond events.EventCondition) {
+					select {
+					case <-h.conn.Context().Done():
+						return
+					case <-time.After(ttl):
+					}
+
+					fmt.Println("remove subscription after TTL expire", ttl, typ, cond)
+
+					_, err := h.conn.Events().Unsubscribe(typ, cond)
+					if err != nil && !errors.Is(err, ErrNotSubscribed) {
+						zap.S().Errorw("failed to remove subscription from dispatch after TTL expire",
+							"error", err,
+							"ttl", ttl.Milliseconds(),
+							"type", typ,
+							"condition", cond,
+						)
+					}
+				}(e.TTL, e.Type, e.Condition)
+			}
+		}
+
+		for _, e := range msg.Data.Effect.RemoveSubscriptions {
+			_, err := h.conn.Events().Unsubscribe(e.Type, e.Condition)
+			if err != nil && !errors.Is(err, ErrNotSubscribed) {
+				zap.S().Errorw("failed to remove subscription from dispatch",
+					"error", err,
+				)
+			}
+		}
+
+		for _, ha := range msg.Data.Effect.RemoveHashes {
+			h.conn.Cache().ExpireDispatch(ha)
+		}
+	}
+
+	msg.Data.Conditions = nil
+	msg.Data.Effect = nil
+	msg.Data.Matches = matches
+
+	if err := h.conn.Write(msg.ToRaw()); err != nil {
+		zap.S().Errorw("failed to write dispatch to connection",
+			"error", err,
+		)
+
+		return false
+	}
+
+	return true
+}
 
 func (h handler) Subscribe(gctx global.Context, m events.Message[json.RawMessage]) (error, bool) {
 	msg, err := events.ConvertMessage[events.SubscribePayload](m)
@@ -118,7 +209,7 @@ func (h handler) Subscribe(gctx global.Context, m events.Message[json.RawMessage
 	}
 
 	// Add the event subscription
-	_, id, err := h.conn.Events().Subscribe(gctx, t, msg.Data.Condition)
+	_, id, err := h.conn.Events().Subscribe(gctx, t, msg.Data.Condition, EventSubscriptionProperties{})
 	if err != nil {
 		switch err {
 		case ErrAlreadySubscribed:
@@ -168,67 +259,4 @@ func (h handler) Unsubscribe(gctx global.Context, m events.Message[json.RawMessa
 	}))
 
 	return nil
-}
-
-func (h handler) OnDispatch(gctx global.Context, msg events.Message[events.DispatchPayload]) bool {
-	// Filter by subscribed event types
-	ev, ok := h.conn.Events().Get(msg.Data.Type)
-	if !ok {
-		return false // skip if not subscribed to this
-	}
-
-	matches, ok := ev.Match(msg.Data.Conditions)
-	if !ok {
-		return false
-	}
-
-	// Dedupe
-	if msg.Data.Hash != nil {
-		ha := *msg.Data.Hash
-
-		if !h.conn.Cache().AddDispatch(ha) {
-			return false // skip if already dispatched
-		}
-
-		msg.Data.Hash = nil
-	}
-
-	// Handle effect
-	if msg.Data.Effect != nil {
-		for _, e := range msg.Data.Effect.AddSubscriptions {
-			_, _, err := h.conn.Events().Subscribe(gctx, e.Type, e.Condition)
-			if err != nil && !errors.Is(err, ErrAlreadySubscribed) {
-				zap.S().Errorw("failed to add subscription from dispatch",
-					"error", err,
-				)
-			}
-		}
-
-		for _, e := range msg.Data.Effect.RemoveSubscriptions {
-			_, err := h.conn.Events().Unsubscribe(e.Type, e.Condition)
-			if err != nil && !errors.Is(err, ErrNotSubscribed) {
-				zap.S().Errorw("failed to remove subscription from dispatch",
-					"error", err,
-				)
-			}
-		}
-
-		for _, ha := range msg.Data.Effect.RemoveHashes {
-			h.conn.Cache().ExpireDispatch(ha)
-		}
-	}
-
-	msg.Data.Conditions = nil
-	msg.Data.Effect = nil
-	msg.Data.Matches = matches
-
-	if err := h.conn.Write(msg.ToRaw()); err != nil {
-		zap.S().Errorw("failed to write dispatch to connection",
-			"error", err,
-		)
-
-		return false
-	}
-
-	return true
 }
