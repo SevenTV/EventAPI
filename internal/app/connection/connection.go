@@ -154,6 +154,33 @@ func (e EventMap) Unsubscribe(t events.EventType, cond map[string]string) (uint3
 	return id, nil
 }
 
+func (e EventMap) UnsubscribeWithID(id ...uint32) error {
+	var found bool
+
+	e.m.Range(func(key events.EventType, value EventChannel) bool {
+		for i, v := range value.ID {
+			for _, id := range id {
+				if v == id {
+					utils.SliceRemove(value.ID, i)
+					utils.SliceRemove(value.Conditions, i)
+					utils.SliceRemove(value.Properties, i)
+
+					found = true
+					break
+				}
+			}
+		}
+
+		return true
+	})
+
+	if !found {
+		return ErrNotSubscribed
+	}
+
+	return nil
+}
+
 func (e EventMap) Count() int32 {
 	return *e.count
 }
