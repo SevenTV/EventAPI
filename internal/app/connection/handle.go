@@ -3,7 +3,6 @@ package client
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"strings"
 	"time"
 
@@ -78,8 +77,6 @@ func (h handler) OnDispatch(gctx global.Context, msg events.Message[events.Dispa
 						return
 					case <-time.After(ttl):
 					}
-
-					fmt.Println("remove subscription after TTL expire", ttl, typ, cond)
 
 					_, err := h.conn.Events().Unsubscribe(typ, cond)
 					if err != nil && !errors.Is(err, ErrNotSubscribed) {
