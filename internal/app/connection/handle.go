@@ -40,8 +40,8 @@ func (h handler) OnDispatch(gctx global.Context, msg events.Message[events.Dispa
 		return false // skip if not subscribed to this
 	}
 
-	matches, ok := ev.Match(msg.Data.Conditions)
-	if !ok {
+	matches := ev.Match(msg.Data.Conditions)
+	if len(matches) == 0 {
 		return false
 	}
 

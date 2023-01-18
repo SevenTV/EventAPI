@@ -140,16 +140,26 @@ func (e EventMap) Unsubscribe(t events.EventType, cond map[string]string) (uint3
 
 	var id uint32
 
+	matched := false
+
 	for i, c := range ec.Conditions {
 		if c.Match(cond) {
 			id = ec.ID[i]
 
-			utils.SliceRemove(ec.ID, i)
-			utils.SliceRemove(ec.Conditions, i)
-			utils.SliceRemove(ec.Properties, i)
+			ec.ID = utils.SliceRemove(ec.ID, i)
+			ec.Conditions = utils.SliceRemove(ec.Conditions, i)
+			ec.Properties = utils.SliceRemove(ec.Properties, i)
+
+			matched = true
 			break
 		}
 	}
+
+	if !matched {
+		return 0, ErrNotSubscribed
+	}
+
+	e.m.Store(t, ec)
 
 	return id, nil
 }
@@ -161,9 +171,9 @@ func (e EventMap) UnsubscribeWithID(id ...uint32) error {
 		for i, v := range value.ID {
 			for _, id := range id {
 				if v == id {
-					utils.SliceRemove(value.ID, i)
-					utils.SliceRemove(value.Conditions, i)
-					utils.SliceRemove(value.Properties, i)
+					value.ID = utils.SliceRemove(value.ID, i)
+					value.Conditions = utils.SliceRemove(value.Conditions, i)
+					value.Properties = utils.SliceRemove(value.Properties, i)
 
 					found = true
 					break
@@ -234,12 +244,12 @@ type EventSubscriptionProperties struct {
 	Auto bool
 }
 
-func (ec EventChannel) Match(cond []events.EventCondition) ([]uint32, bool) {
+func (ec EventChannel) Match(cond []events.EventCondition) []uint32 {
 	if len(ec.Conditions) == 0 { // No condition
-		return ec.ID, true
+		return ec.ID
 	}
 
-	matches := make(utils.Set[uint32])
+	matches := make(utils.Set[uint32], 0)
 
 	for _, c := range cond {
 		for i, e := range ec.Conditions {
@@ -249,7 +259,7 @@ func (ec EventChannel) Match(cond []events.EventCondition) ([]uint32, bool) {
 		}
 	}
 
-	return matches.Values(), len(matches) > 0
+	return matches.Values()
 }
 
 var (

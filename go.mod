@@ -18,19 +18,10 @@ require (
 )
 
 require (
-	github.com/99designs/gqlgen v0.17.22 // indirect
-	github.com/agnivade/levenshtein v1.1.1 // indirect
-	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
 	github.com/go-redsync/redsync/v4 v4.7.1 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.6 // indirect
-	github.com/russross/blackfriday/v2 v2.1.0 // indirect
-	github.com/urfave/cli/v2 v2.23.7 // indirect
-	github.com/vektah/gqlparser/v2 v2.5.1 // indirect
-	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
 	go.uber.org/atomic v1.10.0 // indirect
 	go.uber.org/multierr v1.9.0 // indirect
-	golang.org/x/mod v0.7.0 // indirect
-	golang.org/x/tools v0.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
