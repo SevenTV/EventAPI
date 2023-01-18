@@ -186,16 +186,28 @@ func (e EventMap) Count() int32 {
 }
 
 func (e EventMap) Get(t events.EventType) (*EventChannel, bool) {
-	tWilcard := events.EventType(fmt.Sprintf("%s.*", t.ObjectName()))
-	if c, ok := e.m.Load(tWilcard); ok {
-		return &c, true
-	}
+	var ec *EventChannel
 
 	if c, ok := e.m.Load(t); ok {
-		return &c, true
+		ec = &c
 	}
 
-	return nil, false
+	tWilcard := events.EventType(fmt.Sprintf("%s.*", t.ObjectName()))
+	if c, ok := e.m.Load(tWilcard); ok {
+		if ec == nil {
+			ec = &EventChannel{
+				ID:         []uint32{},
+				Conditions: []events.EventCondition{},
+				Properties: []EventSubscriptionProperties{},
+			}
+		}
+
+		ec.ID = append(ec.ID, c.ID...)
+		ec.Conditions = append(ec.Conditions, c.Conditions...)
+		ec.Properties = append(ec.Properties, c.Properties...)
+	}
+
+	return ec, ec != nil
 }
 
 func (e EventMap) DispatchChannel() chan string {
