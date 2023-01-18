@@ -59,7 +59,7 @@ func (h handler) OnDispatch(gctx global.Context, msg events.Message[events.Dispa
 	// Handle effect
 	if msg.Data.Effect != nil {
 		for _, e := range msg.Data.Effect.AddSubscriptions {
-			ec, _, err := h.conn.Events().Subscribe(gctx, e.Type, e.Condition, EventSubscriptionProperties{
+			_, _, err := h.conn.Events().Subscribe(gctx, e.Type, e.Condition, EventSubscriptionProperties{
 				TTL:  utils.Ternary(e.TTL > 0, time.Now().Add(e.TTL), time.Time{}),
 				Auto: true,
 			})
@@ -78,7 +78,7 @@ func (h handler) OnDispatch(gctx global.Context, msg events.Message[events.Dispa
 					case <-time.After(ttl):
 					}
 
-					err := h.conn.Events().UnsubscribeWithID(ec.ID...)
+					_, err = h.conn.Events().Unsubscribe(typ, cond)
 					if err != nil && !errors.Is(err, ErrNotSubscribed) {
 						zap.S().Errorw("failed to remove subscription from dispatch after TTL expire",
 							"error", err,

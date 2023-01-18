@@ -187,10 +187,11 @@ func (e EventMap) Count() int32 {
 
 func (e EventMap) Get(t events.EventType) (*EventChannel, bool) {
 	tWilcard := events.EventType(fmt.Sprintf("%s.*", t.ObjectName()))
-	if c, ok := e.m.Load(t); ok {
+	if c, ok := e.m.Load(tWilcard); ok {
 		return &c, true
 	}
-	if c, ok := e.m.Load(tWilcard); ok {
+
+	if c, ok := e.m.Load(t); ok {
 		return &c, true
 	}
 
