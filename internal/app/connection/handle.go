@@ -247,7 +247,7 @@ func (h handler) Unsubscribe(gctx global.Context, m events.Message[json.RawMessa
 		return err
 	}
 
-	_ = h.conn.SendAck(events.OpcodeSubscribe, utils.ToJSON(struct {
+	_ = h.conn.SendAck(events.OpcodeUnsubscribe, utils.ToJSON(struct {
 		Type      string            `json:"type"`
 		Condition map[string]string `json:"condition"`
 	}{
