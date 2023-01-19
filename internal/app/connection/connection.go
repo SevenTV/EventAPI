@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/rand"
+	"sync"
 	"time"
 
 	"github.com/seventv/api/data/events"
@@ -80,6 +81,7 @@ func NewEventMap(ch chan string) EventMap {
 		ch:    ch,
 		count: utils.PointerOf(int32(0)),
 		m:     &sync_map.Map[events.EventType, EventChannel]{},
+		mx:    &sync.Mutex{},
 	}
 }
 
@@ -87,10 +89,14 @@ type EventMap struct {
 	ch    chan string
 	count *int32
 	m     *sync_map.Map[events.EventType, EventChannel]
+	mx    *sync.Mutex
 }
 
 // Subscribe sets up a subscription to dispatch events with the specified type
 func (e EventMap) Subscribe(gctx global.Context, t events.EventType, cond events.EventCondition, props EventSubscriptionProperties) (EventChannel, uint32, error) {
+	e.mx.Lock()
+	defer e.mx.Unlock()
+
 	id := rand.Uint32()
 
 	ec, exists := e.m.Load(t)
@@ -106,8 +112,12 @@ func (e EventMap) Subscribe(gctx global.Context, t events.EventType, cond events
 		return ec, id, ErrAlreadySubscribed
 	}
 
-	for _, c := range ec.Conditions {
+	for i, c := range ec.Conditions {
 		if c.Match(cond) {
+			if ec.Properties[i].Auto {
+				return ec, id, nil
+			}
+
 			return ec, id, ErrAlreadySubscribed
 		}
 
@@ -124,6 +134,9 @@ func (e EventMap) Subscribe(gctx global.Context, t events.EventType, cond events
 }
 
 func (e EventMap) Unsubscribe(t events.EventType, cond map[string]string) (uint32, error) {
+	e.mx.Lock()
+	defer e.mx.Unlock()
+
 	if len(cond) == 0 {
 		_, exists := e.m.LoadAndDelete(t)
 		if !exists {
