@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/rand"
+	"sync"
 	"time"
 
 	"github.com/seventv/api/data/events"
@@ -80,6 +81,7 @@ func NewEventMap(ch chan string) EventMap {
 		ch:    ch,
 		count: utils.PointerOf(int32(0)),
 		m:     &sync_map.Map[events.EventType, EventChannel]{},
+		mx:    &sync.Mutex{},
 	}
 }
 
@@ -87,10 +89,14 @@ type EventMap struct {
 	ch    chan string
 	count *int32
 	m     *sync_map.Map[events.EventType, EventChannel]
+	mx    *sync.Mutex
 }
 
 // Subscribe sets up a subscription to dispatch events with the specified type
 func (e EventMap) Subscribe(gctx global.Context, t events.EventType, cond events.EventCondition, props EventSubscriptionProperties) (EventChannel, uint32, error) {
+	e.mx.Lock()
+	defer e.mx.Unlock()
+
 	id := rand.Uint32()
 
 	ec, exists := e.m.Load(t)
@@ -98,7 +104,7 @@ func (e EventMap) Subscribe(gctx global.Context, t events.EventType, cond events
 		ec = EventChannel{
 			ID:         []uint32{},
 			Conditions: []events.EventCondition{},
-			Properties: []EventSubscriptionProperties{props},
+			Properties: []EventSubscriptionProperties{},
 		}
 	}
 
@@ -106,8 +112,12 @@ func (e EventMap) Subscribe(gctx global.Context, t events.EventType, cond events
 		return ec, id, ErrAlreadySubscribed
 	}
 
-	for _, c := range ec.Conditions {
+	for i, c := range ec.Conditions {
 		if c.Match(cond) {
+			if ec.Properties[i].Auto {
+				return ec, id, nil
+			}
+
 			return ec, id, ErrAlreadySubscribed
 		}
 
@@ -124,6 +134,9 @@ func (e EventMap) Subscribe(gctx global.Context, t events.EventType, cond events
 }
 
 func (e EventMap) Unsubscribe(t events.EventType, cond map[string]string) (uint32, error) {
+	e.mx.Lock()
+	defer e.mx.Unlock()
+
 	if len(cond) == 0 {
 		_, exists := e.m.LoadAndDelete(t)
 		if !exists {
@@ -140,17 +153,55 @@ func (e EventMap) Unsubscribe(t events.EventType, cond map[string]string) (uint3
 
 	var id uint32
 
+	matched := false
+
 	for i, c := range ec.Conditions {
 		if c.Match(cond) {
 			id = ec.ID[i]
 
-			utils.SliceRemove(ec.ID, i)
-			utils.SliceRemove(ec.Conditions, i)
+			ec.ID = utils.SliceRemove(ec.ID, i)
+			ec.Conditions = utils.SliceRemove(ec.Conditions, i)
+			ec.Properties = utils.SliceRemove(ec.Properties, i)
+
+			matched = true
 			break
 		}
 	}
 
+	if !matched {
+		return 0, ErrNotSubscribed
+	}
+
+	e.m.Store(t, ec)
+
 	return id, nil
+}
+
+func (e EventMap) UnsubscribeWithID(id ...uint32) error {
+	var found bool
+
+	e.m.Range(func(key events.EventType, value EventChannel) bool {
+		for _, id := range id {
+			for i, v := range value.ID {
+				if v == id {
+					value.ID = utils.SliceRemove(value.ID, i)
+					value.Conditions = utils.SliceRemove(value.Conditions, i)
+					value.Properties = utils.SliceRemove(value.Properties, i)
+
+					found = true
+					break
+				}
+			}
+		}
+
+		return true
+	})
+
+	if !found {
+		return ErrNotSubscribed
+	}
+
+	return nil
 }
 
 func (e EventMap) Count() int32 {
@@ -158,15 +209,28 @@ func (e EventMap) Count() int32 {
 }
 
 func (e EventMap) Get(t events.EventType) (*EventChannel, bool) {
-	tWilcard := events.EventType(fmt.Sprintf("%s.*", t.ObjectName()))
+	var ec *EventChannel
+
 	if c, ok := e.m.Load(t); ok {
-		return &c, true
-	}
-	if c, ok := e.m.Load(tWilcard); ok {
-		return &c, true
+		ec = &c
 	}
 
-	return nil, false
+	tWilcard := events.EventType(fmt.Sprintf("%s.*", t.ObjectName()))
+	if c, ok := e.m.Load(tWilcard); ok {
+		if ec == nil {
+			ec = &EventChannel{
+				ID:         []uint32{},
+				Conditions: []events.EventCondition{},
+				Properties: []EventSubscriptionProperties{},
+			}
+		}
+
+		ec.ID = append(ec.ID, c.ID...)
+		ec.Conditions = append(ec.Conditions, c.Conditions...)
+		ec.Properties = append(ec.Properties, c.Properties...)
+	}
+
+	return ec, ec != nil
 }
 
 func (e EventMap) DispatchChannel() chan string {
@@ -193,22 +257,22 @@ type EventSubscriptionProperties struct {
 	Auto bool
 }
 
-func (ec EventChannel) Match(cond []events.EventCondition) ([]uint32, bool) {
+func (ec EventChannel) Match(cond []events.EventCondition) []uint32 {
 	if len(ec.Conditions) == 0 { // No condition
-		return ec.ID, true
+		return ec.ID
 	}
 
-	matches := make(utils.Set[uint32])
+	matches := make(utils.Set[uint32], 0)
 
 	for _, c := range cond {
 		for i, e := range ec.Conditions {
-			if e.Match(c) {
+			if e.Match(c) && len(ec.ID) >= i {
 				matches.Add(ec.ID[i])
 			}
 		}
 	}
 
-	return matches.Values(), len(matches) > 0
+	return matches.Values()
 }
 
 var (

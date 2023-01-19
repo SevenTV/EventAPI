@@ -8,6 +8,7 @@ import (
 	"github.com/seventv/api/data/events"
 	client "github.com/seventv/eventapi/internal/app/connection"
 	"github.com/seventv/eventapi/internal/global"
+	"go.uber.org/zap"
 )
 
 func (w *WebSocket) Read(gctx global.Context) {
@@ -28,6 +29,12 @@ func (w *WebSocket) Read(gctx global.Context) {
 	go func() {
 		<-w.OnReady() // wait for the connection to be ready before accepting input
 
+		defer func() {
+			if r := recover(); r != nil {
+				zap.S().Errorw("websocket read panic", "error", r)
+			}
+		}()
+
 		var (
 			data []byte
 			msg  events.Message[json.RawMessage]
@@ -40,6 +47,10 @@ func (w *WebSocket) Read(gctx global.Context) {
 
 		// Listen for incoming messages sent by the client
 		for {
+			if w.c == nil {
+				return
+			}
+
 			_, data, err = w.c.ReadMessage()
 			if websocket.IsUnexpectedCloseError(err) {
 				return

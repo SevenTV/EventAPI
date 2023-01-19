@@ -40,8 +40,8 @@ func (h handler) OnDispatch(gctx global.Context, msg events.Message[events.Dispa
 		return false // skip if not subscribed to this
 	}
 
-	matches, ok := ev.Match(msg.Data.Conditions)
-	if !ok {
+	matches := ev.Match(msg.Data.Conditions)
+	if len(matches) == 0 {
 		return false
 	}
 
@@ -59,7 +59,7 @@ func (h handler) OnDispatch(gctx global.Context, msg events.Message[events.Dispa
 	// Handle effect
 	if msg.Data.Effect != nil {
 		for _, e := range msg.Data.Effect.AddSubscriptions {
-			_, _, err := h.conn.Events().Subscribe(gctx, e.Type, e.Condition, EventSubscriptionProperties{
+			_, ids, err := h.conn.Events().Subscribe(gctx, e.Type, e.Condition, EventSubscriptionProperties{
 				TTL:  utils.Ternary(e.TTL > 0, time.Now().Add(e.TTL), time.Time{}),
 				Auto: true,
 			})
@@ -78,7 +78,7 @@ func (h handler) OnDispatch(gctx global.Context, msg events.Message[events.Dispa
 					case <-time.After(ttl):
 					}
 
-					_, err := h.conn.Events().Unsubscribe(typ, cond)
+					err = h.conn.Events().UnsubscribeWithID(ids)
 					if err != nil && !errors.Is(err, ErrNotSubscribed) {
 						zap.S().Errorw("failed to remove subscription from dispatch after TTL expire",
 							"error", err,
@@ -247,7 +247,7 @@ func (h handler) Unsubscribe(gctx global.Context, m events.Message[json.RawMessa
 		return err
 	}
 
-	_ = h.conn.SendAck(events.OpcodeSubscribe, utils.ToJSON(struct {
+	_ = h.conn.SendAck(events.OpcodeUnsubscribe, utils.ToJSON(struct {
 		Type      string            `json:"type"`
 		Condition map[string]string `json:"condition"`
 	}{

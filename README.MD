@@ -190,9 +190,11 @@ Close codes provide a reason for the closure of a connection to help clients und
 ```jsonc
 {
   "op": 36, 
-  "type": "emote_set.update",
-  "condition": {
-    "object_id": "62cdd34e72a832540de95857"
+  "d": {
+    "type": "emote_set.update",
+    "condition": {
+      "object_id": "62cdd34e72a832540de95857"
+    }
   }
 }
 ```
