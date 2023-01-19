@@ -53,7 +53,15 @@ func (w *WebSocket) Read(gctx global.Context) {
 		defer func() {
 			// if grace timeout is set, wait for it to expire
 			if w.Buffer() != nil {
-				w.Buffer().Start(gctx) // begin capturing events
+				// begin capturing events
+				err := w.Buffer().Start(gctx)
+				if err != nil {
+					zap.S().Errorw("event buffer start error", "error", err)
+
+					w.cancel()
+					return
+				}
+
 				<-w.Buffer().Done()
 			}
 
