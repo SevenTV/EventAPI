@@ -279,7 +279,7 @@ func (h handler) OnResume(gctx global.Context, m events.Message[json.RawMessage]
 	}
 
 	// Set up a new event buffer with the specified session ID
-	buf := NewEventBuffer(h.conn, msg.Data.SessionID, 0)
+	buf := NewEventBuffer(h.conn, msg.Data.SessionID, time.Minute)
 
 	messages, subs, err := buf.Recover(gctx)
 	subCount := 0

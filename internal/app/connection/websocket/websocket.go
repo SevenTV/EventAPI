@@ -137,6 +137,10 @@ func (w *WebSocket) Close(code events.CloseCode, after time.Duration) {
 	case <-time.After(after):
 	}
 
+	if w.Buffer() != nil {
+		<-w.Buffer().Context().Done()
+	}
+
 	w.cancel()
 	w.closed = true
 }

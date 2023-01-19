@@ -14,9 +14,8 @@ import (
 var ResumableCloseCodes = []int{
 	websocket.CloseNormalClosure,
 	websocket.CloseGoingAway,
-	websocket.CloseServiceRestart,
-	int(events.CloseCodeRestart),
 	int(events.OpcodeReconnect),
+	int(events.CloseCodeRestart),
 }
 
 func (w *WebSocket) Read(gctx global.Context) {
@@ -44,13 +43,11 @@ func (w *WebSocket) Read(gctx global.Context) {
 			}
 		}()
 
-		var (
-			data []byte
-			msg  events.Message[json.RawMessage]
-			err  error
-		)
+		var msg events.Message[json.RawMessage]
 
 		defer func() {
+			w.closed = true
+
 			// if grace timeout is set, wait for it to expire
 			if w.Buffer() != nil {
 				// begin capturing events
@@ -62,7 +59,7 @@ func (w *WebSocket) Read(gctx global.Context) {
 					return
 				}
 
-				<-w.Buffer().Done()
+				<-w.Buffer().Context().Done()
 			}
 
 			w.cancel()
@@ -70,16 +67,13 @@ func (w *WebSocket) Read(gctx global.Context) {
 
 		// Listen for incoming messages sent by the client
 		for {
-			if w.c == nil {
-				return
-			}
-
-			_, data, err = w.c.ReadMessage()
+			err := w.c.ReadJSON(&msg)
 
 			if websocket.IsCloseError(err, ResumableCloseCodes...) {
 				hbi := time.Duration(w.heartbeatInterval) * time.Millisecond
 
 				w.evbuf = client.NewEventBuffer(w, w.SessionID(), hbi)
+				return
 			}
 
 			if websocket.IsUnexpectedCloseError(err) {
@@ -87,12 +81,6 @@ func (w *WebSocket) Read(gctx global.Context) {
 			}
 
 			if err != nil {
-				w.Close(events.CloseCodeInvalidPayload, 0)
-				return
-			}
-
-			// Decode the payload
-			if err := json.Unmarshal(data, &msg); err != nil {
 				w.SendError(err.Error(), nil)
 				w.Close(events.CloseCodeInvalidPayload, 0)
 				return
@@ -137,9 +125,6 @@ func (w *WebSocket) Read(gctx global.Context) {
 	for {
 		select {
 		case <-w.ctx.Done():
-			return
-		case <-gctx.Done(): // App is shutting down
-			w.Close(events.CloseCodeRestart, time.Second*5)
 			return
 		case <-heartbeat.C: // Send a heartbeat
 			if err := w.SendHeartbeat(); err != nil {
