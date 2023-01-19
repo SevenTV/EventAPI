@@ -40,6 +40,8 @@ type Connection interface {
 	Events() EventMap
 	// Cache returns the connection's cache utility
 	Cache() Cache
+	// Buffer returns the connection's event buffer utility for resuming the session
+	Buffer() EventBuffer
 	// Ready returns a channel that is closed when the connection is ready
 	OnReady() <-chan struct{}
 	// OnClose returns a channel that is closed when the connection is closed
@@ -247,9 +249,9 @@ func (e EventMap) Destroy() {
 }
 
 type EventChannel struct {
-	ID         []uint32
-	Conditions []events.EventCondition
-	Properties []EventSubscriptionProperties
+	ID         []uint32                      `json:"id"`
+	Conditions []events.EventCondition       `json:"conditions"`
+	Properties []EventSubscriptionProperties `json:"properties"`
 }
 
 type EventSubscriptionProperties struct {

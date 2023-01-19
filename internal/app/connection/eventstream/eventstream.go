@@ -30,6 +30,7 @@ type EventStream struct {
 	handler           client.Handler
 	evm               client.EventMap
 	cache             client.Cache
+	evbuf             client.EventBuffer
 	dig               client.EventDigest
 	writeMtx          *sync.Mutex
 	writer            *bufio.Writer
@@ -124,6 +125,11 @@ func (es *EventStream) Events() client.EventMap {
 
 func (es *EventStream) Cache() client.Cache {
 	return es.cache
+}
+
+// Buffer implements client.Connection
+func (es *EventStream) Buffer() client.EventBuffer {
+	return es.evbuf
 }
 
 func (es *EventStream) Digest() client.EventDigest {
