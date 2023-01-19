@@ -168,8 +168,8 @@ func (e EventMap) UnsubscribeWithID(id ...uint32) error {
 	var found bool
 
 	e.m.Range(func(key events.EventType, value EventChannel) bool {
-		for i, v := range value.ID {
-			for _, id := range id {
+		for _, id := range id {
+			for i, v := range value.ID {
 				if v == id {
 					value.ID = utils.SliceRemove(value.ID, i)
 					value.Conditions = utils.SliceRemove(value.Conditions, i)
