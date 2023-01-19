@@ -17,6 +17,7 @@ The Event API allows developers to receive real-time updates on 7TV data and imp
       - [Hello (1)](#hello-1)
       - [Heartbeat](#heartbeat)
       - [Ack (5)](#ack-5)
+      - [Resume (34)](#resume-34)
       - [Subscribe (35)](#subscribe-35)
       - [Unsubscribe (36)](#unsubscribe-36)
       - [End of Stream (7)](#end-of-stream-7)
@@ -33,6 +34,7 @@ The Event API allows developers to receive real-time updates on 7TV data and imp
       - [Message Structure (WebSocket)](#message-structure-websocket)
       - [Connection (WebSocket)](#connection-websocket)
       - [Heartbeat (WebSocket)](#heartbeat-websocket)
+      - [Resuming (WebSocket)](#resuming-websocket)
       - [Managing subscriptions (WebSocket)](#managing-subscriptions-websocket)
         - [Subscribing (WebSocket)](#subscribing-websocket)
         - [Unsubscribing (WebSocket)](#unsubscribing-websocket)
@@ -155,6 +157,12 @@ Close codes provide a reason for the closure of a connection to help clients und
 | :-----: | :----: | :---------------------------------------: |
 | command | string | the acknowledged sent opcode in text form |
 |  data   |  echo  |        the data sent by the client        |
+
+#### Resume (34)
+
+|    Key     |  Type  |          Description           |
+| :--------: | :----: | :----------------------------: |
+| session_id | string | the id of the previous session |
 
 #### Subscribe (35)
 
@@ -322,6 +330,13 @@ Upon establishing a connection, you will receive a [`[1] HELLO`](#hello-1) event
 #### Heartbeat (WebSocket)
 
 The server will send periodic heartbeats at the interval specified in the Hello payload. If heartbeats are missed for 3 cycles, the connection can be considered dead (i.e due to an error or network issue) and you should reconnect.
+
+#### Resuming (WebSocket)
+
+When a connection is dropped with a non-normal, non-error closure, it is possible to resume the session to restore subscriptions and replay missed events.
+
+To initiate a resume, send the opcode [`[34] RESUME`](#resume-34) and pass the session ID from the previous connection.
+If successful, the server will acknowledge the resume with an [`[5] ACK`](#ack-5). Previous subscriptions will be restored, and missed [`[0] DISPATCH`](#dispatch-0) events will replay in sequence.
 
 #### Managing subscriptions (WebSocket)
 

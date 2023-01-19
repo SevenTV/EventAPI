@@ -26,6 +26,7 @@ type WebSocket struct {
 	handler           client.Handler
 	evm               client.EventMap
 	cache             client.Cache
+	evbuf             client.EventBuffer
 	dig               client.EventDigest
 	writeMtx          *sync.Mutex
 	ready             chan struct{}
@@ -161,6 +162,11 @@ func (w *WebSocket) Events() client.EventMap {
 
 func (w *WebSocket) Cache() client.Cache {
 	return w.cache
+}
+
+// Buffer implements client.Connection
+func (w *WebSocket) Buffer() client.EventBuffer {
+	return w.evbuf
 }
 
 func (w *WebSocket) Digest() client.EventDigest {

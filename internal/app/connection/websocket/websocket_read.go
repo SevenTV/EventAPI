@@ -11,6 +11,14 @@ import (
 	"go.uber.org/zap"
 )
 
+var ResumableCloseCodes = []int{
+	websocket.CloseNormalClosure,
+	websocket.CloseGoingAway,
+	websocket.CloseServiceRestart,
+	int(events.CloseCodeRestart),
+	int(events.OpcodeReconnect),
+}
+
 func (w *WebSocket) Read(gctx global.Context) {
 	heartbeat := time.NewTicker(time.Duration(w.heartbeatInterval) * time.Millisecond)
 	dispatch := make(chan events.Message[events.DispatchPayload], 128)
@@ -19,6 +27,7 @@ func (w *WebSocket) Read(gctx global.Context) {
 
 	defer func() {
 		heartbeat.Stop()
+
 		dispatchSub.Close()
 		w.cancel()
 		w.evm.Destroy()
@@ -42,6 +51,12 @@ func (w *WebSocket) Read(gctx global.Context) {
 		)
 
 		defer func() {
+			// if grace timeout is set, wait for it to expire
+			if w.Buffer() != nil {
+				w.Buffer().Start(gctx) // begin capturing events
+				<-w.Buffer().Done()
+			}
+
 			w.cancel()
 		}()
 
@@ -52,6 +67,13 @@ func (w *WebSocket) Read(gctx global.Context) {
 			}
 
 			_, data, err = w.c.ReadMessage()
+
+			if websocket.IsCloseError(err, ResumableCloseCodes...) {
+				hbi := time.Duration(w.heartbeatInterval) * time.Millisecond
+
+				w.evbuf = client.NewEventBuffer(w, w.SessionID(), hbi)
+			}
+
 			if websocket.IsUnexpectedCloseError(err) {
 				return
 			}
@@ -76,6 +98,11 @@ func (w *WebSocket) Read(gctx global.Context) {
 
 			handler := client.NewHandler(w)
 			switch msg.Op {
+			// Handle command - RESUME
+			case events.OpcodeResume:
+				if err = handler.OnResume(gctx, msg); err != nil {
+					return
+				}
 			// Handle command - SUBSCRIBE
 			case events.OpcodeSubscribe:
 				if err, _ = handler.Subscribe(gctx, msg); err != nil {
@@ -112,6 +139,7 @@ func (w *WebSocket) Read(gctx global.Context) {
 			}
 		// Listen for incoming dispatches
 		case msg := <-dispatch:
+			// Dispatch the event to the client
 			_ = w.handler.OnDispatch(gctx, msg)
 		}
 	}
