@@ -56,6 +56,8 @@ func New(gctx global.Context) (Server, <-chan struct{}) {
 	srv.HandleHealth(gctx)
 	srv.HandleSessionMutation(gctx)
 
+	locked := false
+
 	server := fasthttp.Server{
 		Handler: func(ctx *fasthttp.RequestCtx) {
 			start := time.Now()
@@ -75,6 +77,12 @@ func New(gctx global.Context) (Server, <-chan struct{}) {
 				}
 			}()
 			ctx.Response.Header.Set("X-Pod-Name", gctx.Config().Pod.Name)
+
+			if locked {
+				ctx.SetStatusCode(fasthttp.StatusLocked)
+				ctx.SetBodyString("This server is going down for restart!")
+				return
+			}
 
 			r.Handler(ctx)
 		},
@@ -109,6 +117,8 @@ func New(gctx global.Context) (Server, <-chan struct{}) {
 		}
 
 		close(shutdown)
+
+		locked = true
 
 		timeout := time.After(time.Second * 30)
 		ticker := time.NewTicker(time.Millisecond * 100)
