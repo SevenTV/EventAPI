@@ -131,7 +131,7 @@ func (w *WebSocket) Read(gctx global.Context) {
 		case <-w.ctx.Done():
 			return
 		case <-gctx.Done(): // App is shutting down
-			w.Close(events.CloseCodeRestart, 0)
+			w.Close(events.CloseCodeRestart, time.Second*5)
 			return
 		case <-heartbeat.C: // Send a heartbeat
 			if err := w.SendHeartbeat(); err != nil {

@@ -281,7 +281,7 @@ func (h handler) OnResume(gctx global.Context, m events.Message[json.RawMessage]
 	// Set up a new event buffer with the specified session ID
 	buf := NewEventBuffer(h.conn, msg.Data.SessionID, 0)
 
-	messages, _, err := buf.Recover(gctx)
+	messages, subs, err := buf.Recover(gctx)
 	if err != nil {
 		h.conn.SendError("Resume Failed", map[string]any{
 			"error": err.Error(),
@@ -289,10 +289,35 @@ func (h handler) OnResume(gctx global.Context, m events.Message[json.RawMessage]
 		return nil
 	}
 
+	// Reinstate subscriptions
+	subCount := 0
+	for _, s := range subs {
+		for i := range s.Channel.ID {
+			cond := s.Channel.Conditions[i]
+			props := s.Channel.Properties[i]
+
+			_, _, err := h.conn.Events().Subscribe(gctx, s.Type, cond, props)
+			if err != nil {
+				return err
+			}
+
+			subCount++
+		}
+	}
+
 	// Replay dispatches
 	for _, m := range messages {
 		_ = h.OnDispatch(gctx, m)
 	}
+
+	// Send ACK
+	_ = h.conn.SendAck(events.OpcodeResume, utils.ToJSON(struct {
+		DispatchesReplayed    int `json:"dispatches_replayed"`
+		SubscriptionsRestored int `json:"subscriptions_restored"`
+	}{
+		DispatchesReplayed:    len(messages),
+		SubscriptionsRestored: subCount,
+	}))
 
 	return nil
 }

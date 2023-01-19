@@ -9,6 +9,7 @@ import (
 	"github.com/seventv/api/data/events"
 	"github.com/seventv/common/utils"
 	"github.com/seventv/eventapi/internal/global"
+	"go.uber.org/zap"
 )
 
 // EventBuffer handles the buffering of events
@@ -54,6 +55,31 @@ func (b *eventBuffer) Start(gctx global.Context) error {
 
 	// Define session as recoverable
 	if _, err := gctx.Inst().Redis.RawClient().Set(b.conn.Context(), b.stateKey, "1", time.Until(b.ttl)).Result(); err != nil {
+		return err
+	}
+
+	// Store session's subscriptions
+	b.conn.Events().m.Range(func(key events.EventType, value EventChannel) bool {
+		sub, err := json.Marshal(StoredSubscription{
+			Type:    key,
+			Channel: value,
+		})
+		if err != nil {
+			zap.S().Errorw("failed to marshal subscription for buffered storage", "error", err)
+
+			return false
+		}
+
+		if _, err = gctx.Inst().Redis.RawClient().LPush(b.conn.Context(), b.subStoreKey, utils.B2S(sub)).Result(); err != nil {
+			zap.S().Errorw("failed to store subscription for buffered storage", "error", err)
+
+			return false
+		}
+
+		return true
+	})
+
+	if _, err := gctx.Inst().Redis.RawClient().ExpireAt(b.conn.Context(), b.subStoreKey, b.ttl).Result(); err != nil {
 		return err
 	}
 
@@ -131,8 +157,8 @@ func (b *eventBuffer) Done() <-chan time.Time {
 }
 
 type StoredSubscription struct {
-	Type    events.EventType
-	Channel EventChannel
+	Type    events.EventType `json:"type"`
+	Channel EventChannel     `json:"channel"`
 }
 
 var (
