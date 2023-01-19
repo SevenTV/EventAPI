@@ -282,42 +282,49 @@ func (h handler) OnResume(gctx global.Context, m events.Message[json.RawMessage]
 	buf := NewEventBuffer(h.conn, msg.Data.SessionID, 0)
 
 	messages, subs, err := buf.Recover(gctx)
-	if err != nil {
+	subCount := 0
+
+	if err == nil {
+		// Reinstate subscriptions
+		for _, s := range subs {
+			for i := range s.Channel.ID {
+				cond := s.Channel.Conditions[i]
+				props := s.Channel.Properties[i]
+
+				_, _, err := h.conn.Events().Subscribe(gctx, s.Type, cond, props)
+				if err != nil {
+					return err
+				}
+
+				subCount++
+			}
+		}
+
+		// Replay dispatches
+		for _, m := range messages {
+			_ = h.OnDispatch(gctx, m)
+		}
+	} else {
 		h.conn.SendError("Resume Failed", map[string]any{
 			"error": err.Error(),
 		})
-		return nil
-	}
-
-	// Reinstate subscriptions
-	subCount := 0
-	for _, s := range subs {
-		for i := range s.Channel.ID {
-			cond := s.Channel.Conditions[i]
-			props := s.Channel.Properties[i]
-
-			_, _, err := h.conn.Events().Subscribe(gctx, s.Type, cond, props)
-			if err != nil {
-				return err
-			}
-
-			subCount++
-		}
-	}
-
-	// Replay dispatches
-	for _, m := range messages {
-		_ = h.OnDispatch(gctx, m)
 	}
 
 	// Send ACK
 	_ = h.conn.SendAck(events.OpcodeResume, utils.ToJSON(struct {
-		DispatchesReplayed    int `json:"dispatches_replayed"`
-		SubscriptionsRestored int `json:"subscriptions_restored"`
+		Success               bool `json:"success"`
+		DispatchesReplayed    int  `json:"dispatches_replayed"`
+		SubscriptionsRestored int  `json:"subscriptions_restored"`
 	}{
+		Success:               err == nil,
 		DispatchesReplayed:    len(messages),
 		SubscriptionsRestored: subCount,
 	}))
+
+	// Cleanup the redis data
+	if err = buf.Cleanup(gctx); err != nil {
+		zap.S().Errorw("failed to cleanup event buffer", "error", err)
+	}
 
 	return nil
 }

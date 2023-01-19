@@ -20,10 +20,12 @@ import (
 type EventBuffer interface {
 	// Start begins tracking events and subscriptions
 	Start(gctx global.Context) error
+	// Push messages to the buffer
+	Push(gctx global.Context, msg events.Message[events.DispatchPayload]) error
 	// Recover retrieves the buffer from the previous session
 	Recover(gctx global.Context) (eventList []events.Message[events.DispatchPayload], subList []StoredSubscription, err error)
-	Push(gctx global.Context, msg events.Message[events.DispatchPayload]) error
-
+	// Cleanup clears out redis keys
+	Cleanup(gctx global.Context) error
 	Done() <-chan time.Time
 }
 
@@ -150,6 +152,14 @@ func (b *eventBuffer) Push(gctx global.Context, msg events.Message[events.Dispat
 	}
 
 	return nil
+}
+
+func (b *eventBuffer) Cleanup(gctx global.Context) (err error) {
+	for _, key := range []string{b.stateKey, b.eventStoreKey, b.subStoreKey} {
+		_, err = gctx.Inst().Redis.RawClient().Del(b.conn.Context(), key).Result()
+	}
+
+	return err
 }
 
 func (b *eventBuffer) Done() <-chan time.Time {
