@@ -247,6 +247,8 @@ github.com/seventv/api v0.0.0-20230119111251-c94219e81025 h1:Jn+tjjIlICC/FwZ18d8
 github.com/seventv/api v0.0.0-20230119111251-c94219e81025/go.mod h1:fdtp7pGA5Oe/LizR/QVwrDcXQjfNWRQJYSuiZjXStx0=
 github.com/seventv/common v0.0.0-20230116115249-f964594e763d h1:ZdWCERo0DafeXbl+6vuh7qb8C4alVxBJSoiZoQrJOMs=
 github.com/seventv/common v0.0.0-20230116115249-f964594e763d/go.mod h1:jHHFe3uNMyzb/ReDqMvaI/A1euvV/PW/G+2PhcWQqWw=
+github.com/seventv/common v0.0.0-20230130214444-1abfdcd7d4ce h1:+BxMGEJlfwsAI1TrkyButyGU1j2X+4JDMROJwL1qkj4=
+github.com/seventv/common v0.0.0-20230130214444-1abfdcd7d4ce/go.mod h1:jHHFe3uNMyzb/ReDqMvaI/A1euvV/PW/G+2PhcWQqWw=
 github.com/spf13/afero v1.9.3 h1:41FoI0fD7OR7mGcKE/aOiLkGreyf8ifIOQmJANWogMk=
 github.com/spf13/afero v1.9.3/go.mod h1:iUV7ddyEEZPO5gA3zD4fJt6iStLlL+Lg4m2cihcDf8Y=
 github.com/spf13/cast v1.5.0 h1:rj3WzYc11XZaIZMPKmwP96zkFEnnAmV8s6XbB2aY32w=

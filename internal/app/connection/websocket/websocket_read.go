@@ -14,6 +14,8 @@ import (
 var ResumableCloseCodes = []int{
 	websocket.CloseNormalClosure,
 	websocket.CloseGoingAway,
+	websocket.CloseAbnormalClosure,
+	int(events.CloseCodeTimeout),
 	int(events.OpcodeReconnect),
 	int(events.CloseCodeRestart),
 }
@@ -65,14 +67,14 @@ func (w *WebSocket) Read(gctx global.Context) {
 			w.cancel()
 		}()
 
+		var err error
+
 		// Listen for incoming messages sent by the client
 		for {
-			err := w.c.ReadJSON(&msg)
+			err = w.c.ReadJSON(&msg)
 
 			if websocket.IsCloseError(err, ResumableCloseCodes...) {
-				hbi := time.Duration(w.heartbeatInterval) * time.Millisecond
-
-				w.evbuf = client.NewEventBuffer(w, w.SessionID(), hbi)
+				w.evbuf = client.NewEventBuffer(w, w.SessionID(), time.Duration(w.heartbeatInterval)*time.Millisecond)
 				return
 			}
 
@@ -107,6 +109,11 @@ func (w *WebSocket) Read(gctx global.Context) {
 			// Handle command - UNSUBSCRIBE
 			case events.OpcodeUnsubscribe:
 				if err = handler.Unsubscribe(gctx, msg); err != nil {
+					return
+				}
+			// Handle command - BRIDGE
+			case events.OpcodeBridge:
+				if err = handler.OnBridge(gctx, msg); err != nil {
 					return
 				}
 			}

@@ -61,7 +61,8 @@ func IsClientSentOp(op events.Opcode) bool {
 		events.OpcodeResume,
 		events.OpcodeSubscribe,
 		events.OpcodeUnsubscribe,
-		events.OpcodeSignal:
+		events.OpcodeSignal,
+		events.OpcodeBridge:
 		return true
 	default:
 		return false
