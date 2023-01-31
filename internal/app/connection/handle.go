@@ -3,7 +3,6 @@ package client
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"strings"
 	"time"
 
@@ -358,6 +357,5 @@ func (h handler) OnBridge(gctx global.Context, m events.Message[json.RawMessage]
 		return err
 	}
 
-	fmt.Println(s.String())
 	return nil
 }

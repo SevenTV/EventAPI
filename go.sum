@@ -243,8 +243,8 @@ github.com/rogpeppe/go-internal v1.9.0 h1:73kH8U+JUqXU8lRuOHeVHaa/SZPifC7BkcraZV
 github.com/savsgio/gotils v0.0.0-20211223103454-d0aaa54c5899/go.mod h1:oejLrk1Y/5zOF+c/aHtXqn3TFlzzbAgPWg8zBiAHDas=
 github.com/savsgio/gotils v0.0.0-20220530130905-52f3993e8d6d h1:Q+gqLBOPkFGHyCJxXMRqtUgUbTjI8/Ze8vu8GGyNFwo=
 github.com/savsgio/gotils v0.0.0-20220530130905-52f3993e8d6d/go.mod h1:Gy+0tqhJvgGlqnTF8CVGP0AaGRjwBtXs/a5PA0Y3+A4=
-github.com/seventv/api v0.0.0-20230130214532-f36b3079b9ec h1:vYFAvpbKMxyQWm5waFMYyKCK8tuNiWy/9n6ITActniI=
-github.com/seventv/api v0.0.0-20230130214532-f36b3079b9ec/go.mod h1:7Y9w8DSYElO8St+mTheYHNb0ZPfZAvIbzQR9k5qD6Ks=
+github.com/seventv/api v0.0.0-20230131021733-a02cbb22416e h1:4CVG7HX4vcVC3mdD0x4GqjCDqOAWeOIFPRllB3owGRU=
+github.com/seventv/api v0.0.0-20230131021733-a02cbb22416e/go.mod h1:7Y9w8DSYElO8St+mTheYHNb0ZPfZAvIbzQR9k5qD6Ks=
 github.com/seventv/common v0.0.0-20230130214444-1abfdcd7d4ce h1:+BxMGEJlfwsAI1TrkyButyGU1j2X+4JDMROJwL1qkj4=
 github.com/seventv/common v0.0.0-20230130214444-1abfdcd7d4ce/go.mod h1:jHHFe3uNMyzb/ReDqMvaI/A1euvV/PW/G+2PhcWQqWw=
 github.com/spf13/afero v1.9.3 h1:41FoI0fD7OR7mGcKE/aOiLkGreyf8ifIOQmJANWogMk=
