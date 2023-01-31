@@ -21,6 +21,7 @@ type Handler interface {
 	Unsubscribe(gctx global.Context, m events.Message[json.RawMessage]) error
 	OnDispatch(gctx global.Context, msg events.Message[events.DispatchPayload]) bool
 	OnResume(gctx global.Context, msg events.Message[json.RawMessage]) error
+	OnBridge(gctx global.Context, msg events.Message[json.RawMessage]) error
 }
 
 type handler struct {
@@ -35,15 +36,19 @@ const (
 )
 
 func (h handler) OnDispatch(gctx global.Context, msg events.Message[events.DispatchPayload]) bool {
-	// Filter by subscribed event types
-	ev, ok := h.conn.Events().Get(msg.Data.Type)
-	if !ok {
-		return false // skip if not subscribed to this
-	}
+	var matches []uint32
 
-	matches := ev.Match(msg.Data.Conditions)
-	if len(matches) == 0 {
-		return false
+	if msg.Data.Whisper == "" || msg.Data.Whisper != h.conn.SessionID() {
+		// Filter by subscribed event types
+		ev, ok := h.conn.Events().Get(msg.Data.Type)
+		if !ok {
+			return false // skip if not subscribed to this
+		}
+
+		matches = ev.Match(msg.Data.Conditions)
+		if len(matches) == 0 {
+			return false
+		}
 	}
 
 	// Dedupe
@@ -121,6 +126,7 @@ func (h handler) OnDispatch(gctx global.Context, msg events.Message[events.Dispa
 	msg.Data.Conditions = nil
 	msg.Data.Effect = nil
 	msg.Data.Hash = nil
+	msg.Data.Whisper = ""
 	msg.Data.Matches = matches
 
 	if err := h.conn.Write(msg.ToRaw()); err != nil {
@@ -324,6 +330,31 @@ func (h handler) OnResume(gctx global.Context, m events.Message[json.RawMessage]
 	// Cleanup the redis data
 	if err = buf.Cleanup(gctx); err != nil {
 		zap.S().Errorw("failed to cleanup event buffer", "error", err)
+	}
+
+	return nil
+}
+
+func (h handler) OnBridge(gctx global.Context, m events.Message[json.RawMessage]) error {
+	msg, err := events.ConvertMessage[events.BridgedCommandPayload[json.RawMessage]](m)
+	if err != nil {
+		return err
+	}
+
+	msg.Data.SessionID = h.conn.SessionID()
+
+	b, err := json.Marshal(msg.Data)
+	if err != nil {
+		return err
+	}
+
+	s := strings.Builder{}
+	s.WriteString(msg.Data.Command)
+	s.WriteString(":")
+	s.WriteString(utils.B2S(b))
+
+	if _, err := gctx.Inst().Redis.RawClient().Publish(gctx, "eventapi:bridge", s.String()).Result(); err != nil {
+		return err
 	}
 
 	return nil
