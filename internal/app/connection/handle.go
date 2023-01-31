@@ -353,7 +353,7 @@ func (h handler) OnBridge(gctx global.Context, m events.Message[json.RawMessage]
 	s.WriteString(":")
 	s.WriteString(utils.B2S(b))
 
-	if gctx.Inst().Redis.RawClient().Publish(gctx, "eventapi:bridge", s.String()).Result(); err != nil {
+	if _, err := gctx.Inst().Redis.RawClient().Publish(gctx, "eventapi:bridge", s.String()).Result(); err != nil {
 		return err
 	}
 
