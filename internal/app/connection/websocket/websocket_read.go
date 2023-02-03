@@ -26,6 +26,8 @@ func (w *WebSocket) Read(gctx global.Context) {
 
 	dispatchSub := w.Digest().Dispatch.Subscribe(w.ctx, w.sessionID, dispatch)
 
+	failed := false
+
 	defer func() {
 		heartbeat.Stop()
 
@@ -38,6 +40,9 @@ func (w *WebSocket) Read(gctx global.Context) {
 
 	go func() {
 		<-w.OnReady() // wait for the connection to be ready before accepting input
+		if failed {
+			return
+		}
 
 		defer func() {
 			if r := recover(); r != nil {
@@ -123,6 +128,7 @@ func (w *WebSocket) Read(gctx global.Context) {
 
 	if err := w.Greet(); err != nil {
 		close(w.ready)
+		failed = true
 
 		return
 	}
