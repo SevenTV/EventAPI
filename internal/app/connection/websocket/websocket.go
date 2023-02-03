@@ -9,7 +9,6 @@ import (
 	"time"
 
 	websocket "github.com/fasthttp/websocket"
-	"github.com/hashicorp/go-multierror"
 	"github.com/seventv/api/data/events"
 	"github.com/seventv/common/structures/v3"
 	client "github.com/seventv/eventapi/internal/app/connection"
@@ -125,7 +124,6 @@ func (w *WebSocket) Close(code events.CloseCode, after time.Duration) {
 
 	// Write close frame
 	err := w.c.WriteControl(websocket.CloseMessage, websocket.FormatCloseMessage(int(code), code.String()), time.Now().Add(5*time.Second))
-	err = multierror.Append(err, w.c.Close()).ErrorOrNil()
 	if err != nil {
 		zap.S().Errorw("failed to close connection", "error", err)
 		return
@@ -136,6 +134,8 @@ func (w *WebSocket) Close(code events.CloseCode, after time.Duration) {
 	case <-w.close:
 	case <-time.After(after):
 	}
+
+	_ = w.c.Close()
 
 	if w.Buffer() != nil {
 		<-w.Buffer().Context().Done()
