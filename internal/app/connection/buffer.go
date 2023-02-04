@@ -22,8 +22,6 @@ type EventBuffer interface {
 	Context() context.Context
 	// Start begins tracking events and subscriptions
 	Start(gctx global.Context) error
-	// Stop stops tracking events and subscriptions
-	Stop(gctx global.Context)
 	// Push messages to the buffer
 	Push(gctx global.Context, msg events.Message[events.DispatchPayload]) error
 	// Recover retrieves the buffer from the previous session
@@ -97,11 +95,6 @@ func (b *eventBuffer) Start(gctx global.Context) error {
 	}
 
 	return nil
-}
-
-func (b *eventBuffer) Stop(gctx global.Context) {
-	b.open = false
-	b.cancel()
 }
 
 func (b *eventBuffer) Recover(gctx global.Context) (eventList []events.Message[events.DispatchPayload], subList []StoredSubscription, err error) {

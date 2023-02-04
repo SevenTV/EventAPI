@@ -98,6 +98,8 @@ func (es *EventStream) SendClose(code events.CloseCode, after time.Duration) {
 		return
 	}
 
+	defer es.Destory()
+
 	msg := events.NewMessage(events.OpcodeEndOfStream, events.EndOfStreamPayload{
 		Code:    code,
 		Message: code.String(),
@@ -111,10 +113,7 @@ func (es *EventStream) SendClose(code events.CloseCode, after time.Duration) {
 	case <-es.ctx.Done():
 	case <-time.After(after):
 	}
-}
 
-func (es *EventStream) ForceClose() {
-	es.cancel()
 }
 
 func (es *EventStream) Events() *client.EventMap {

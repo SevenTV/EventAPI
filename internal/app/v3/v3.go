@@ -45,6 +45,9 @@ func SSE(gctx global.Context, ctx *fasthttp.RequestCtx, dig client.EventDigest, 
 
 	go func() {
 		<-es.OnReady() // wait for the connection to be ready
+		if es.Context().Err() != nil {
+			return
+		}
 
 		// Parse subscriptions
 		sub := ctx.UserValue("sub")

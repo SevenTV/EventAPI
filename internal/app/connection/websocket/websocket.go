@@ -216,7 +216,7 @@ func (w *WebSocket) SetReady() {
 }
 
 func (w *WebSocket) Destory() {
+	w.ForceClose()
 	w.SetReady()
 	w.evm.Destroy()
-	w.cancel()
 }

@@ -106,13 +106,9 @@ func (s Server) TrackConnection(gctx global.Context, ctx *fasthttp.RequestCtx, c
 	go func() {
 		select {
 		case <-shutdown:
+			con.SendClose(events.CloseCodeRestart, 0)
 		case <-con.Context().Done():
 			return
-		}
-
-		con.SendClose(events.CloseCodeRestart, 0)
-		if con.Buffer() != nil {
-			con.Buffer().Stop(gctx)
 		}
 	}()
 
