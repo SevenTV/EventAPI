@@ -215,7 +215,7 @@ func (w *WebSocket) SetReady() {
 	})
 }
 
-func (w *WebSocket) Destory() {
+func (w *WebSocket) Destroy() {
 	w.ForceClose()
 	w.SetReady()
 	w.evm.Destroy()

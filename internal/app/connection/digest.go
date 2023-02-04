@@ -76,8 +76,8 @@ func (d *Digest[P]) Subscribe(ctx context.Context, sessionID []byte, size int) <
 
 	go func() {
 		<-ctx.Done()
-		ds.close()
 		d.subs.Delete(sid)
+		ds.close()
 	}()
 
 	return ds.ch

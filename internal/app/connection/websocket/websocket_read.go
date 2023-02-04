@@ -2,6 +2,7 @@ package websocket
 
 import (
 	"encoding/json"
+	"sync"
 	"time"
 
 	"github.com/fasthttp/websocket"
@@ -26,17 +27,18 @@ func (w *WebSocket) Read(gctx global.Context) {
 
 	defer heartbeat.Stop()
 
-	readDone := make(chan struct{})
-	defer close(readDone)
+	readMtx := sync.Mutex{}
 
-	go func() {
-		<-readDone
+	defer func() {
+		readMtx.Lock()
+		defer readMtx.Unlock()
+
 		buf := w.Buffer()
 		if buf != nil {
 			<-buf.Context().Done()
 		}
 
-		w.Destory()
+		w.Destroy()
 	}()
 
 	go func() {
@@ -46,6 +48,9 @@ func (w *WebSocket) Read(gctx global.Context) {
 		if w.ctx.Err() != nil {
 			return
 		}
+
+		readMtx.Lock()
+		defer readMtx.Unlock()
 
 		defer func() {
 			if r := recover(); r != nil {
