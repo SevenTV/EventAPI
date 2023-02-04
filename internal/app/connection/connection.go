@@ -93,6 +93,7 @@ type EventMap struct {
 	count *int32
 	m     sync_map.Map[events.EventType, EventChannel]
 	mx    sync.Mutex
+	once  sync.Once
 }
 
 // Subscribe sets up a subscription to dispatch events with the specified type
@@ -241,12 +242,14 @@ func (e *EventMap) DispatchChannel() chan string {
 }
 
 func (e *EventMap) Destroy() {
-	e.m.Range(func(key events.EventType, value EventChannel) bool {
-		e.m.Delete(key)
-		return true
-	})
+	e.once.Do(func() {
+		e.m.Range(func(key events.EventType, value EventChannel) bool {
+			e.m.Delete(key)
+			return true
+		})
 
-	close(e.ch)
+		close(e.ch)
+	})
 }
 
 type EventChannel struct {
