@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
+	"runtime/debug"
 	"strconv"
 	"syscall"
 	"time"
@@ -32,10 +33,20 @@ func init() {
 	if i, err := strconv.Atoi(Unix); err == nil {
 		Time = time.Unix(int64(i), 0).Format(time.RFC3339)
 	}
+
+	debug.SetMemoryLimit(1.75 * 1024 * 1024 * 1024) // 1.75GB
+}
+
+func memory() {
+	// Force freeing memory
+	debug.FreeOSMemory()
+
+	time.AfterFunc(time.Second, memory)
 }
 
 func main() {
 	config := configure.New()
+	memory()
 
 	exitStatus, err := panicwrap.BasicWrap(func(s string) {
 		zap.S().Error(s)
