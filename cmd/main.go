@@ -5,7 +5,6 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
-	"runtime/debug"
 	"strconv"
 	"syscall"
 	"time"
@@ -35,26 +34,8 @@ func init() {
 	}
 }
 
-func memory() {
-	var m runtime.MemStats
-	runtime.ReadMemStats(&m)
-
-	zap.S().Warnw("memory usage",
-		"alloc", m.Alloc,
-		"totalAlloc", m.TotalAlloc,
-		"sys", m.Sys,
-		"numGC", m.NumGC,
-	)
-
-	// Force freeing memory
-	debug.FreeOSMemory()
-
-	time.AfterFunc(time.Second*10, memory)
-}
-
 func main() {
 	config := configure.New()
-	memory()
 
 	exitStatus, err := panicwrap.BasicWrap(func(s string) {
 		zap.S().Error(s)
