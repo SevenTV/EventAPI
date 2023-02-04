@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
+	"sync"
 
 	"github.com/seventv/api/data/events"
 	"github.com/seventv/common/redis"
@@ -49,10 +50,6 @@ func NewDigest[P events.AnyPayload](gctx global.Context, key redis.Key) *Digest[
 					}
 
 					d.subs.Range(func(key string, value *DigestSub[P]) bool {
-						if value.closed {
-							return true
-						}
-
 						select {
 						case value.ch <- o:
 						default:
@@ -69,34 +66,21 @@ func NewDigest[P events.AnyPayload](gctx global.Context, key redis.Key) *Digest[
 	return d
 }
 
-func (d *Digest[P]) Publish(ctx context.Context, msg events.Message[P], filter []string) {
-	m, err := events.ConvertMessage[P](msg.ToRaw())
-	if err == nil {
-		d.subs.Range(func(key string, value *DigestSub[P]) bool {
-			if len(filter) >= 0 && !utils.Contains(filter, key) {
-				return true
-			}
-
-			value.ch <- m
-			return true
-		})
-	}
-}
-
 // Dispatch implements Digest
-func (d *Digest[P]) Subscribe(ctx context.Context, sessionID []byte) (*DigestSub[P], <-chan events.Message[P]) {
+func (d *Digest[P]) Subscribe(ctx context.Context, sessionID []byte, size int) <-chan events.Message[P] {
 	sid := hex.EncodeToString(sessionID)
 
-	ds := &DigestSub[P]{make(chan events.Message[P], 128), false}
+	ds := &DigestSub[P]{make(chan events.Message[P], size), sync.Once{}}
 
 	d.subs.Store(sid, ds)
 
 	go func() {
 		<-ctx.Done()
+		ds.close()
 		d.subs.Delete(sid)
 	}()
 
-	return ds, ds.ch
+	return ds.ch
 }
 
 type EventDigest struct {
@@ -105,13 +89,12 @@ type EventDigest struct {
 }
 
 type DigestSub[P events.AnyPayload] struct {
-	ch     chan events.Message[P]
-	closed bool
+	ch   chan events.Message[P]
+	once sync.Once
 }
 
-func (ds *DigestSub[P]) Close() {
-	if !ds.closed {
+func (ds *DigestSub[P]) close() {
+	ds.once.Do(func() {
 		close(ds.ch)
-		ds.closed = true
-	}
+	})
 }

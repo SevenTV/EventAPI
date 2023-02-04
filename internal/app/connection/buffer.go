@@ -41,8 +41,6 @@ type eventBuffer struct {
 	subStoreKey   string
 
 	ttl time.Time
-
-	open bool
 }
 
 func NewEventBuffer(conn Connection, sessionID string, ttl time.Duration) EventBuffer {
@@ -141,7 +139,7 @@ func (b *eventBuffer) Recover(gctx global.Context) (eventList []events.Message[e
 }
 
 func (b *eventBuffer) Push(gctx global.Context, msg events.Message[events.DispatchPayload]) error {
-	if !b.open {
+	if b.ctx.Err() != nil {
 		return ErrBufferClosed
 	}
 

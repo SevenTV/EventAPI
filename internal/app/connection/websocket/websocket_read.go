@@ -22,7 +22,7 @@ var ResumableCloseCodes = []int{
 
 func (w *WebSocket) Read(gctx global.Context) {
 	heartbeat := time.NewTicker(time.Duration(w.heartbeatInterval) * time.Millisecond)
-	dispatchSub, dispatch := w.Digest().Dispatch.Subscribe(w.ctx, w.sessionID)
+	dispatch := w.Digest().Dispatch.Subscribe(w.ctx, w.sessionID, 128)
 
 	defer heartbeat.Stop()
 
@@ -36,7 +36,6 @@ func (w *WebSocket) Read(gctx global.Context) {
 			<-buf.Context().Done()
 		}
 
-		dispatchSub.Close()
 		w.Destory()
 	}()
 
