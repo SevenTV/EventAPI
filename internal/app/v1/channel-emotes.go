@@ -52,9 +52,12 @@ func ChannelEmotesSSE(gCtx global.Context, ctx *fasthttp.RequestCtx) {
 	gCtx.Inst().Monitoring.EventV1().ChannelEmotes.TotalConnections.Observe(1)
 
 	once := sync.Once{}
+	wg := sync.WaitGroup{}
+
 	shutdown := func() {
 		once.Do(func() {
 			cancel()
+			wg.Wait()
 			close(subCh)
 			gCtx.Inst().Monitoring.EventV1().ChannelEmotes.CurrentConnections.Dec()
 			gCtx.Inst().Monitoring.EventV1().ChannelEmotes.TotalConnectionDurationSeconds.Observe(float64(time.Since(start)/time.Millisecond) / 1000)
@@ -71,7 +74,7 @@ func ChannelEmotesSSE(gCtx global.Context, ctx *fasthttp.RequestCtx) {
 	}()
 
 	for channel := range uniqueChannels {
-		gCtx.Inst().Redis.EventsSubscribe(localCtx, subCh, fmt.Sprintf("events-v1:channel-emotes:%v", channel))
+		gCtx.Inst().Redis.EventsSubscribe(localCtx, subCh, &wg, fmt.Sprintf("events-v1:channel-emotes:%v", channel))
 	}
 
 	events.NewEventStream(ctx, func(w *bufio.Writer) {
@@ -130,6 +133,7 @@ type WsMessage struct {
 func ChannelEmotesWS(gCtx global.Context, conn *websocket.Conn) {
 	localCtx, cancel := context.WithCancel(gCtx)
 	subCh := make(chan string, 10)
+	wg := sync.WaitGroup{}
 
 	start := time.Now()
 
@@ -137,6 +141,7 @@ func ChannelEmotesWS(gCtx global.Context, conn *websocket.Conn) {
 	shutdown := func() {
 		once.Do(func() {
 			cancel()
+			wg.Wait()
 			close(subCh)
 			_ = conn.Close()
 			gCtx.Inst().Monitoring.EventV1().ChannelEmotes.CurrentConnections.Dec()
@@ -213,7 +218,7 @@ func ChannelEmotesWS(gCtx global.Context, conn *websocket.Conn) {
 				for v := range uniqueChannels {
 					if _, ok := joinedChannels[v]; !ok {
 						ctx, cancel := context.WithCancel(localCtx)
-						gCtx.Inst().Redis.EventsSubscribe(ctx, subCh, fmt.Sprintf("events-v1:channel-emotes:%v", v))
+						gCtx.Inst().Redis.EventsSubscribe(ctx, subCh, &wg, fmt.Sprintf("events-v1:channel-emotes:%v", v))
 						joinedChannels[v] = cancel
 					}
 				}

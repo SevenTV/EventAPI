@@ -2,7 +2,6 @@ package websocket
 
 import (
 	"encoding/json"
-	"sync"
 	"time"
 
 	"github.com/fasthttp/websocket"
@@ -25,20 +24,14 @@ func (w *WebSocket) Read(gctx global.Context) {
 	heartbeat := time.NewTicker(time.Duration(w.heartbeatInterval) * time.Millisecond)
 	dispatch := w.Digest().Dispatch.Subscribe(w.ctx, w.sessionID, 128)
 
-	defer heartbeat.Stop()
-
-	readMtx := sync.Mutex{}
+	deferred := false
 
 	defer func() {
-		readMtx.Lock()
-		defer readMtx.Unlock()
+		heartbeat.Stop()
 
-		buf := w.Buffer()
-		if buf != nil {
-			<-buf.Context().Done()
+		if !deferred {
+			w.Destroy()
 		}
-
-		w.Destroy()
 	}()
 
 	go func() {
@@ -49,13 +42,19 @@ func (w *WebSocket) Read(gctx global.Context) {
 			return
 		}
 
-		readMtx.Lock()
-		defer readMtx.Unlock()
-
 		defer func() {
+			deferred = true
+
 			if r := recover(); r != nil {
 				zap.S().Errorw("websocket read panic", "error", r)
 			}
+
+			buf := w.Buffer()
+			if buf != nil {
+				<-buf.Context().Done()
+			}
+
+			w.Destroy()
 		}()
 
 		var msg events.Message[json.RawMessage]
@@ -130,8 +129,10 @@ func (w *WebSocket) Read(gctx global.Context) {
 			w.SendClose(events.CloseCodeRestart, time.Second*5)
 			return
 		case <-heartbeat.C: // Send a heartbeat
-			if err := w.SendHeartbeat(); err != nil {
-				return
+			if !deferred {
+				if err := w.SendHeartbeat(); err != nil {
+					return
+				}
 			}
 		// Listen for incoming dispatches
 		case msg := <-dispatch:

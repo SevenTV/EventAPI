@@ -98,7 +98,7 @@ func (es *EventStream) SendClose(code events.CloseCode, after time.Duration) {
 		return
 	}
 
-	defer es.Destory()
+	defer es.Destroy()
 
 	msg := events.NewMessage(events.OpcodeEndOfStream, events.EndOfStreamPayload{
 		Code:    code,
@@ -226,7 +226,7 @@ func (es *EventStream) SetReady() {
 	})
 }
 
-func (es *EventStream) Destory() {
+func (es *EventStream) Destroy() {
 	es.cancel()
 	es.SetReady()
 	es.evm.Destroy()
