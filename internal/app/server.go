@@ -89,7 +89,7 @@ func New(gctx global.Context) (Server, <-chan struct{}) {
 		ReadTimeout:       time.Second * 30,
 		WriteTimeout:      time.Second * 30,
 		IdleTimeout:       time.Second * 30,
-		ReduceMemoryUsage: true,
+		ReduceMemoryUsage: false,
 		CloseOnShutdown:   true,
 	}
 
