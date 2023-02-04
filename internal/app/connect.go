@@ -97,8 +97,10 @@ func (s Server) TrackConnection(gctx global.Context, ctx *fasthttp.RequestCtx, c
 	gctx.Inst().Monitoring.EventV3().CurrentConnections.Inc()
 	gctx.Inst().Monitoring.EventV3().TotalConnections.Observe(1)
 
+	clientAddr := ctx.RemoteAddr().String()
+
 	zap.S().Debugw("new connection",
-		"client_addr", ctx.RemoteAddr().String(),
+		"client_addr", clientAddr,
 		"connection_count", atomic.LoadInt32(s.activeConns),
 	)
 
@@ -121,7 +123,7 @@ func (s Server) TrackConnection(gctx global.Context, ctx *fasthttp.RequestCtx, c
 	gctx.Inst().Monitoring.EventV3().TotalConnections.Observe(float64(time.Since(start)/time.Millisecond) / 1000)
 
 	zap.S().Debugw("connection ended",
-		"client_addr", ctx.RemoteAddr().String(),
+		"client_addr", clientAddr,
 		"connection_count", atomic.LoadInt32(s.activeConns),
 	)
 }
