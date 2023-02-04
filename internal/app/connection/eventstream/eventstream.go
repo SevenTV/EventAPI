@@ -25,17 +25,16 @@ type EventStream struct {
 	c                 *fasthttp.RequestCtx
 	ctx               context.Context
 	cancel            context.CancelFunc
-	closed            bool
 	seq               int64
 	handler           client.Handler
-	evm               client.EventMap
+	evm               *client.EventMap
 	cache             client.Cache
 	evbuf             client.EventBuffer
 	dig               client.EventDigest
 	writeMtx          *sync.Mutex
 	writer            *bufio.Writer
 	ready             chan struct{}
-	close             chan struct{}
+	readyOnce         sync.Once
 	sessionID         []byte
 	heartbeatInterval uint32
 	heartbeatCount    uint64
@@ -64,8 +63,7 @@ func NewEventStream(gctx global.Context, c *fasthttp.RequestCtx, dig client.Even
 		dig:               dig,
 		writeMtx:          &sync.Mutex{},
 		writer:            nil,
-		ready:             make(chan struct{}, 1),
-		close:             make(chan struct{}),
+		ready:             make(chan struct{}),
 		sessionID:         sessionID,
 		heartbeatInterval: hbi,
 		heartbeatCount:    0,
@@ -95,8 +93,8 @@ func (es *EventStream) Handler() client.Handler {
 	return es.handler
 }
 
-func (es *EventStream) Close(code events.CloseCode, after time.Duration) {
-	if es.closed {
+func (es *EventStream) SendClose(code events.CloseCode, after time.Duration) {
+	if es.ctx.Err() != nil {
 		return
 	}
 
@@ -111,15 +109,15 @@ func (es *EventStream) Close(code events.CloseCode, after time.Duration) {
 
 	select {
 	case <-es.ctx.Done():
-	case <-es.close:
 	case <-time.After(after):
 	}
-
-	es.cancel()
-	es.closed = true
 }
 
-func (es *EventStream) Events() client.EventMap {
+func (es *EventStream) ForceClose() {
+	es.cancel()
+}
+
+func (es *EventStream) Events() *client.EventMap {
 	return es.evm
 }
 
@@ -220,7 +218,19 @@ func (es *EventStream) OnReady() <-chan struct{} {
 
 // Ready implements client.Connection
 func (es *EventStream) OnClose() <-chan struct{} {
-	return es.close
+	return es.ctx.Done()
+}
+
+func (es *EventStream) SetReady() {
+	es.readyOnce.Do(func() {
+		close(es.ready)
+	})
+}
+
+func (es *EventStream) Destory() {
+	es.cancel()
+	es.SetReady()
+	es.evm.Destroy()
 }
 
 func SetupEventStream(ctx *fasthttp.RequestCtx, writer fasthttp.StreamWriter) {

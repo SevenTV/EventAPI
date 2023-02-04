@@ -84,10 +84,10 @@ func (d *Digest[P]) Publish(ctx context.Context, msg events.Message[P], filter [
 }
 
 // Dispatch implements Digest
-func (d *Digest[P]) Subscribe(ctx context.Context, sessionID []byte, ch chan events.Message[P]) *DigestSub[P] {
+func (d *Digest[P]) Subscribe(ctx context.Context, sessionID []byte) (*DigestSub[P], <-chan events.Message[P]) {
 	sid := hex.EncodeToString(sessionID)
 
-	ds := &DigestSub[P]{ch, false}
+	ds := &DigestSub[P]{make(chan events.Message[P], 128), false}
 
 	d.subs.Store(sid, ds)
 
@@ -96,7 +96,7 @@ func (d *Digest[P]) Subscribe(ctx context.Context, sessionID []byte, ch chan eve
 		d.subs.Delete(sid)
 	}()
 
-	return ds
+	return ds, ds.ch
 }
 
 type EventDigest struct {

@@ -86,6 +86,13 @@ func New(gctx global.Context) (Server, <-chan struct{}) {
 
 			r.Handler(ctx)
 		},
+		WriteBufferSize:   16 * 1024 * 1024, // 16KB
+		ReadBufferSize:    8 * 1024 * 1024,  // 8KB
+		ReadTimeout:       time.Second * 30,
+		WriteTimeout:      time.Second * 30,
+		IdleTimeout:       time.Second * 30,
+		ReduceMemoryUsage: true,
+		CloseOnShutdown:   true,
 	}
 
 	done := make(chan struct{})

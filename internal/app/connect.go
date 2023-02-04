@@ -110,7 +110,7 @@ func (s Server) TrackConnection(gctx global.Context, ctx *fasthttp.RequestCtx, c
 			return
 		}
 
-		con.Close(events.CloseCodeRestart, 0)
+		con.SendClose(events.CloseCodeRestart, 0)
 		if con.Buffer() != nil {
 			con.Buffer().Stop(gctx)
 		}

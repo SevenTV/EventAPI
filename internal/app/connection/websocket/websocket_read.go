@@ -22,25 +22,29 @@ var ResumableCloseCodes = []int{
 
 func (w *WebSocket) Read(gctx global.Context) {
 	heartbeat := time.NewTicker(time.Duration(w.heartbeatInterval) * time.Millisecond)
-	dispatch := make(chan events.Message[events.DispatchPayload], 128)
+	dispatchSub, dispatch := w.Digest().Dispatch.Subscribe(w.ctx, w.sessionID)
 
-	dispatchSub := w.Digest().Dispatch.Subscribe(w.ctx, w.sessionID, dispatch)
+	defer heartbeat.Stop()
 
-	failed := false
+	readDone := make(chan struct{})
+	defer close(readDone)
 
-	defer func() {
-		heartbeat.Stop()
+	go func() {
+		<-readDone
+		buf := w.Buffer()
+		if buf != nil {
+			<-buf.Context().Done()
+		}
 
 		dispatchSub.Close()
-		w.cancel()
-		w.evm.Destroy()
-
-		close(w.close)
+		w.Destory()
 	}()
 
 	go func() {
 		<-w.OnReady() // wait for the connection to be ready before accepting input
-		if failed {
+
+		// If the connection is closed before it's ready, close it
+		if w.ctx.Err() != nil {
 			return
 		}
 
@@ -53,23 +57,15 @@ func (w *WebSocket) Read(gctx global.Context) {
 		var msg events.Message[json.RawMessage]
 
 		defer func() {
-			w.closed = true
-
 			// if grace timeout is set, wait for it to expire
 			if w.Buffer() != nil {
 				// begin capturing events
 				err := w.Buffer().Start(gctx)
 				if err != nil {
 					zap.S().Errorw("event buffer start error", "error", err)
-
-					w.cancel()
 					return
 				}
-
-				<-w.Buffer().Context().Done()
 			}
-
-			w.cancel()
 		}()
 
 		var err error
@@ -77,7 +73,6 @@ func (w *WebSocket) Read(gctx global.Context) {
 		// Listen for incoming messages sent by the client
 		for {
 			err = w.c.ReadJSON(&msg)
-
 			if websocket.IsCloseError(err, ResumableCloseCodes...) {
 				w.evbuf = client.NewEventBuffer(w, w.SessionID(), time.Duration(w.heartbeatInterval)*time.Millisecond)
 				return
@@ -89,13 +84,13 @@ func (w *WebSocket) Read(gctx global.Context) {
 
 			if err != nil {
 				w.SendError(err.Error(), nil)
-				w.Close(events.CloseCodeInvalidPayload, 0)
+				w.SendClose(events.CloseCodeInvalidPayload, 0)
 				return
 			}
 
 			// Verify the opcode
 			if !client.IsClientSentOp(msg.Op) {
-				w.Close(events.CloseCodeUnknownOperation, 0)
+				w.SendClose(events.CloseCodeUnknownOperation, 0)
 				return
 			}
 
@@ -122,22 +117,21 @@ func (w *WebSocket) Read(gctx global.Context) {
 					return
 				}
 			}
-
 		}
 	}()
 
 	if err := w.Greet(); err != nil {
-		close(w.ready)
-		failed = true
-
 		return
 	}
 
-	close(w.ready) // mark the connection as ready
+	w.SetReady() // mark the connection as ready
 
 	for {
 		select {
-		case <-w.ctx.Done():
+		case <-w.OnClose():
+			return
+		case <-gctx.Done():
+			w.SendClose(events.CloseCodeRestart, time.Second*5)
 			return
 		case <-heartbeat.C: // Send a heartbeat
 			if err := w.SendHeartbeat(); err != nil {

@@ -20,16 +20,15 @@ type WebSocket struct {
 	c                 *websocket.Conn
 	ctx               context.Context
 	cancel            context.CancelFunc
-	closed            bool
 	seq               int64
 	handler           client.Handler
-	evm               client.EventMap
+	evm               *client.EventMap
 	cache             client.Cache
 	evbuf             client.EventBuffer
 	dig               client.EventDigest
 	writeMtx          *sync.Mutex
 	ready             chan struct{}
-	close             chan struct{}
+	readyOnce         sync.Once
 	sessionID         []byte
 	heartbeatInterval uint32
 	heartbeatCount    uint64
@@ -57,8 +56,7 @@ func NewWebSocket(gctx global.Context, conn *websocket.Conn, dig client.EventDig
 		cache:             client.NewCache(),
 		dig:               dig,
 		writeMtx:          &sync.Mutex{},
-		ready:             make(chan struct{}, 1),
-		close:             make(chan struct{}),
+		ready:             make(chan struct{}),
 		sessionID:         sessionID,
 		heartbeatInterval: hbi,
 		heartbeatCount:    0,
@@ -106,10 +104,12 @@ func (w *WebSocket) SendAck(cmd events.Opcode, data json.RawMessage) error {
 	return w.Write(msg.ToRaw())
 }
 
-func (w *WebSocket) Close(code events.CloseCode, after time.Duration) {
-	if w.closed {
+func (w *WebSocket) SendClose(code events.CloseCode, after time.Duration) {
+	if w.ctx.Err() != nil {
 		return
 	}
+
+	defer w.ForceClose()
 
 	// Send "end of stream" message
 	msg := events.NewMessage(events.OpcodeEndOfStream, events.EndOfStreamPayload{
@@ -131,22 +131,17 @@ func (w *WebSocket) Close(code events.CloseCode, after time.Duration) {
 
 	select {
 	case <-w.ctx.Done():
-	case <-w.close:
 	case <-time.After(after):
 	}
+}
 
+func (w *WebSocket) ForceClose() {
 	_ = w.c.Close()
-
-	if w.Buffer() != nil {
-		<-w.Buffer().Context().Done()
-	}
-
 	w.cancel()
-	w.closed = true
 }
 
 func (w *WebSocket) Write(msg events.Message[json.RawMessage]) error {
-	if w.closed {
+	if w.ctx.Err() != nil {
 		return nil
 	}
 
@@ -160,7 +155,7 @@ func (w *WebSocket) Write(msg events.Message[json.RawMessage]) error {
 	return nil
 }
 
-func (w *WebSocket) Events() client.EventMap {
+func (w *WebSocket) Events() *client.EventMap {
 	return w.evm
 }
 
@@ -207,9 +202,21 @@ func (w *WebSocket) OnReady() <-chan struct{} {
 }
 
 func (w *WebSocket) OnClose() <-chan struct{} {
-	return w.close
+	return w.ctx.Done()
 }
 
 func (*WebSocket) SetWriter(w *bufio.Writer) {
 	zap.S().Fatalw("called SetWriter() on a WebSocket connection")
+}
+
+func (w *WebSocket) SetReady() {
+	w.readyOnce.Do(func() {
+		close(w.ready)
+	})
+}
+
+func (w *WebSocket) Destory() {
+	w.SetReady()
+	w.evm.Destroy()
+	w.cancel()
 }

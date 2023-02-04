@@ -51,13 +51,18 @@ func ChannelEmotesSSE(gCtx global.Context, ctx *fasthttp.RequestCtx) {
 	gCtx.Inst().Monitoring.EventV1().ChannelEmotes.CurrentConnections.Inc()
 	gCtx.Inst().Monitoring.EventV1().ChannelEmotes.TotalConnections.Observe(1)
 
-	go func() {
-		defer func() {
+	once := sync.Once{}
+	shutdown := func() {
+		once.Do(func() {
 			cancel()
 			close(subCh)
 			gCtx.Inst().Monitoring.EventV1().ChannelEmotes.CurrentConnections.Dec()
 			gCtx.Inst().Monitoring.EventV1().ChannelEmotes.TotalConnectionDurationSeconds.Observe(float64(time.Since(start)/time.Millisecond) / 1000)
-		}()
+		})
+	}
+
+	go func() {
+		defer shutdown()
 		select {
 		case <-ctx.Done():
 		case <-gCtx.Done():
@@ -74,7 +79,7 @@ func ChannelEmotesSSE(gCtx global.Context, ctx *fasthttp.RequestCtx) {
 
 		tick := time.NewTicker(time.Second * 30)
 		defer func() {
-			defer cancel()
+			defer shutdown()
 			tick.Stop()
 		}()
 		var (
@@ -128,14 +133,19 @@ func ChannelEmotesWS(gCtx global.Context, conn *websocket.Conn) {
 
 	start := time.Now()
 
-	go func() {
-		defer func() {
+	once := sync.Once{}
+	shutdown := func() {
+		once.Do(func() {
 			cancel()
 			close(subCh)
 			_ = conn.Close()
 			gCtx.Inst().Monitoring.EventV1().ChannelEmotes.CurrentConnections.Dec()
 			gCtx.Inst().Monitoring.EventV1().ChannelEmotes.TotalConnectionDurationSeconds.Observe(float64(time.Since(start)/time.Millisecond) / 1000)
-		}()
+		})
+	}
+
+	go func() {
+		defer shutdown()
 		select {
 		case <-gCtx.Done():
 		case <-localCtx.Done():
@@ -146,7 +156,6 @@ func ChannelEmotesWS(gCtx global.Context, conn *websocket.Conn) {
 	gCtx.Inst().Monitoring.EventV1().ChannelEmotes.TotalConnections.Observe(1)
 
 	joinedChannels := map[string]context.CancelFunc{}
-	joinedChannelsMtx := sync.Mutex{}
 
 	writeMtx := sync.Mutex{}
 	write := func(msg WsMessage) error {
@@ -161,14 +170,12 @@ func ChannelEmotesWS(gCtx global.Context, conn *websocket.Conn) {
 			err  error
 			msg  WsMessage
 		)
-		defer func() {
-			cancel()
-		}()
+		defer shutdown()
+
 	loop:
 		for {
 			_, data, err = conn.ReadMessage()
 			if err != nil {
-				cancel()
 				return
 			}
 
@@ -191,16 +198,16 @@ func ChannelEmotesWS(gCtx global.Context, conn *websocket.Conn) {
 					uniqueChannels[strings.ToLower(c)] = true
 				}
 
-				joinedChannelsMtx.Lock()
 				if len(uniqueChannels)+len(joinedChannels) > 100 || len(uniqueChannels)+len(joinedChannels) == 0 {
 					msg.Payload = "too many channels joined"
 					msg.Action = "error"
-					joinedChannelsMtx.Unlock()
 					if err := write(msg); err != nil {
 						return
 					}
+
 					continue loop
 				}
+
 				msg.Payload = strings.ToLower(msg.Payload)
 
 				for v := range uniqueChannels {
@@ -211,7 +218,6 @@ func ChannelEmotesWS(gCtx global.Context, conn *websocket.Conn) {
 					}
 				}
 
-				joinedChannelsMtx.Unlock()
 				msg.Payload = msg.Action
 				msg.Action = "success"
 				if err := write(msg); err != nil {
@@ -232,7 +238,6 @@ func ChannelEmotesWS(gCtx global.Context, conn *websocket.Conn) {
 					uniqueChannels[strings.ToLower(c)] = true
 				}
 
-				joinedChannelsMtx.Lock()
 				msg.Payload = strings.ToLower(msg.Payload)
 
 				for v := range uniqueChannels {
@@ -242,12 +247,12 @@ func ChannelEmotesWS(gCtx global.Context, conn *websocket.Conn) {
 					}
 				}
 
-				joinedChannelsMtx.Unlock()
 				msg.Payload = msg.Action
 				msg.Action = "success"
 				if err := write(msg); err != nil {
 					return
 				}
+
 				continue loop
 			default:
 				msg.Payload = msg.Action
@@ -255,6 +260,7 @@ func ChannelEmotesWS(gCtx global.Context, conn *websocket.Conn) {
 				if err := write(msg); err != nil {
 					return
 				}
+
 				continue loop
 			}
 		}
