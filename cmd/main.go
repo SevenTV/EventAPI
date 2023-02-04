@@ -5,6 +5,8 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
+	"runtime/debug"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -26,6 +28,29 @@ var (
 	Time    = "unknown"
 	User    = "unknown"
 )
+
+func init() {
+	if i, err := strconv.Atoi(Unix); err == nil {
+		Time = time.Unix(int64(i), 0).Format(time.RFC3339)
+	}
+}
+
+func memory() {
+	var m runtime.MemStats
+	runtime.ReadMemStats(&m)
+
+	zap.S().Warnw("memory usage",
+		"alloc", m.Alloc,
+		"totalAlloc", m.TotalAlloc,
+		"sys", m.Sys,
+		"numGC", m.NumGC,
+	)
+
+	// Force freeing memory
+	debug.FreeOSMemory()
+
+	time.AfterFunc(time.Second*10, memory)
+}
 
 func main() {
 	config := configure.New()

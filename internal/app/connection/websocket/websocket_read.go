@@ -59,19 +59,6 @@ func (w *WebSocket) Read(gctx global.Context) {
 		}()
 
 		var msg events.Message[json.RawMessage]
-
-		defer func() {
-			// if grace timeout is set, wait for it to expire
-			if w.Buffer() != nil {
-				// begin capturing events
-				err := w.Buffer().Start(gctx)
-				if err != nil {
-					zap.S().Errorw("event buffer start error", "error", err)
-					return
-				}
-			}
-		}()
-
 		var err error
 
 		// Listen for incoming messages sent by the client
@@ -79,6 +66,11 @@ func (w *WebSocket) Read(gctx global.Context) {
 			err = w.c.ReadJSON(&msg)
 			if websocket.IsCloseError(err, ResumableCloseCodes...) {
 				w.evbuf = client.NewEventBuffer(w, w.SessionID(), time.Duration(w.heartbeatInterval)*time.Millisecond)
+				err := w.evbuf.Start(gctx)
+				if err != nil {
+					zap.S().Errorw("event buffer start error", "error", err)
+				}
+
 				return
 			}
 
