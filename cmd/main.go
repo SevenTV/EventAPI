@@ -54,6 +54,7 @@ func memory() {
 
 func main() {
 	config := configure.New()
+	memory()
 
 	exitStatus, err := panicwrap.BasicWrap(func(s string) {
 		zap.S().Error(s)
