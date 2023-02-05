@@ -41,7 +41,7 @@ func memory() {
 	// Force freeing memory
 	debug.FreeOSMemory()
 
-	time.AfterFunc(time.Second, memory)
+	time.AfterFunc(time.Second*30, memory)
 }
 
 func main() {
