@@ -34,19 +34,12 @@ func init() {
 		Time = time.Unix(int64(i), 0).Format(time.RFC3339)
 	}
 
+	debug.SetGCPercent(50)
 	debug.SetMemoryLimit(1.75 * 1024 * 1024 * 1024) // 1.75GB
-}
-
-func memory() {
-	// Force freeing memory
-	debug.FreeOSMemory()
-
-	time.AfterFunc(time.Second*30, memory)
 }
 
 func main() {
 	config := configure.New()
-	memory()
 
 	exitStatus, err := panicwrap.BasicWrap(func(s string) {
 		zap.S().Error(s)
