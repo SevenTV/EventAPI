@@ -31,6 +31,9 @@ spec:
             - name: health
               containerPort: 9200
               protocol: TCP
+            - name: pprof
+              containerPort: 9300
+              protocol: TCP
           envFrom:
             - secretRef:
                 name: eventapi-secret
@@ -54,10 +57,10 @@ spec:
           resources:
             limits:
               cpu: "1"
-              memory: 3Gi
+              memory: 2Gi
             requests:
               cpu: 100m
-              memory: 1.75Gi
+              memory: 2Gi
           volumeMounts:
             - name: config
               mountPath: /app/config.yaml
@@ -101,6 +104,10 @@ spec:
       protocol: TCP
       port: 9200
       targetPort: health
+    - name: pprof
+      protocol: TCP
+      port: 9300
+      targetPort: pprof
   selector:
     app: eventapi
 ---
@@ -126,6 +133,10 @@ data:
     monitoring:
       enabled: true
       bind: 0.0.0.0:9100
+
+    pprof:
+      enabled: false
+      bind: 0.0.0.0:9300
 
 ---
 apiVersion: networking.k8s.io/v1

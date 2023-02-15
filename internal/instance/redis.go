@@ -11,7 +11,7 @@ import (
 
 type Redis interface {
 	redis.Instance
-	EventsSubscribe(ctx context.Context, ch chan string, subscribeTo ...string)
+	EventsSubscribe(ctx context.Context, ch chan string, wg *sync.WaitGroup, subscribeTo ...string)
 }
 
 type RedisInst struct {
@@ -58,7 +58,9 @@ type redisSub struct {
 }
 
 // Subscribe to a channel on Redis
-func (r *RedisInst) EventsSubscribe(ctx context.Context, ch chan string, subscribeTo ...string) {
+func (r *RedisInst) EventsSubscribe(ctx context.Context, ch chan string, wg *sync.WaitGroup, subscribeTo ...string) {
+	wg.Add(1)
+
 	r.subsMtx.Lock()
 	defer r.subsMtx.Unlock()
 	localSub := &redisSub{ch}
@@ -73,6 +75,7 @@ func (r *RedisInst) EventsSubscribe(ctx context.Context, ch chan string, subscri
 		<-ctx.Done()
 		r.subsMtx.Lock()
 		defer r.subsMtx.Unlock()
+		defer wg.Done()
 		for _, e := range subscribeTo {
 			for i, v := range r.subs[e] {
 				if v == localSub {

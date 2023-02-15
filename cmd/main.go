@@ -30,10 +30,12 @@ var (
 )
 
 func init() {
-	debug.SetGCPercent(2000)
 	if i, err := strconv.Atoi(Unix); err == nil {
 		Time = time.Unix(int64(i), 0).Format(time.RFC3339)
 	}
+
+	debug.SetGCPercent(70)
+	debug.SetMemoryLimit(1.75 * 1024 * 1024 * 1024) // 1.75GB
 }
 
 func main() {

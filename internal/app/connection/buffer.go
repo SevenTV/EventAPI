@@ -22,8 +22,6 @@ type EventBuffer interface {
 	Context() context.Context
 	// Start begins tracking events and subscriptions
 	Start(gctx global.Context) error
-	// Stop stops tracking events and subscriptions
-	Stop(gctx global.Context)
 	// Push messages to the buffer
 	Push(gctx global.Context, msg events.Message[events.DispatchPayload]) error
 	// Recover retrieves the buffer from the previous session
@@ -43,15 +41,12 @@ type eventBuffer struct {
 	subStoreKey   string
 
 	ttl time.Time
-
-	// whether or not the buffer is open
-	open bool
 }
 
 func NewEventBuffer(conn Connection, sessionID string, ttl time.Duration) EventBuffer {
 	ttlAt := time.Now().Add(ttl)
 
-	ctx, cancel := context.WithDeadline(conn.Context(), ttlAt)
+	ctx, cancel := context.WithTimeout(context.Background(), ttl)
 
 	return &eventBuffer{
 		ctx:           ctx,
@@ -69,12 +64,10 @@ func (b *eventBuffer) Context() context.Context {
 }
 
 func (b *eventBuffer) Start(gctx global.Context) error {
-	b.open = true
-
 	// Define session as recoverable
-	if _, err := gctx.Inst().Redis.RawClient().Set(b.ctx, b.stateKey, "1", time.Until(b.ttl)).Result(); err != nil {
-		return err
-	}
+	pipe := gctx.Inst().Redis.RawClient().Pipeline()
+
+	pipe.Set(b.ctx, b.stateKey, "1", time.Until(b.ttl))
 
 	// Store session's subscriptions
 	b.conn.Events().m.Range(func(key events.EventType, value EventChannel) bool {
@@ -88,25 +81,18 @@ func (b *eventBuffer) Start(gctx global.Context) error {
 			return false
 		}
 
-		if _, err = gctx.Inst().Redis.RawClient().LPush(b.ctx, b.subStoreKey, utils.B2S(sub)).Result(); err != nil {
-			zap.S().Errorw("failed to store subscription for buffered storage", "error", err)
-
-			return false
-		}
+		pipe.LPush(b.ctx, b.subStoreKey, utils.B2S(sub))
 
 		return true
 	})
 
-	if _, err := gctx.Inst().Redis.RawClient().ExpireAt(b.ctx, b.subStoreKey, b.ttl).Result(); err != nil {
+	pipe.ExpireAt(b.ctx, b.subStoreKey, b.ttl)
+
+	if _, err := pipe.Exec(b.ctx); err != nil {
 		return err
 	}
 
 	return nil
-}
-
-func (b *eventBuffer) Stop(gctx global.Context) {
-	b.open = false
-	b.cancel()
 }
 
 func (b *eventBuffer) Recover(gctx global.Context) (eventList []events.Message[events.DispatchPayload], subList []StoredSubscription, err error) {
@@ -153,7 +139,7 @@ func (b *eventBuffer) Recover(gctx global.Context) (eventList []events.Message[e
 }
 
 func (b *eventBuffer) Push(gctx global.Context, msg events.Message[events.DispatchPayload]) error {
-	if !b.open {
+	if b.ctx.Err() != nil {
 		return ErrBufferClosed
 	}
 
@@ -162,23 +148,27 @@ func (b *eventBuffer) Push(gctx global.Context, msg events.Message[events.Dispat
 		return err
 	}
 
+	pipe := gctx.Inst().Redis.RawClient().Pipeline()
+
 	// push the event to the redis list
-	if _, err = gctx.Inst().Redis.RawClient().LPush(b.ctx, b.eventStoreKey, utils.B2S(s)).Result(); err != nil {
-		return err
-	}
+	pipe.LPush(b.ctx, b.eventStoreKey, utils.B2S(s))
 
 	// set the TTL on the key to expire at the buffer's expire
-	if _, err = gctx.Inst().Redis.RawClient().ExpireAt(b.ctx, b.eventStoreKey, b.ttl).Result(); err != nil {
-		return err
-	}
+	pipe.ExpireAt(b.ctx, b.eventStoreKey, b.ttl)
 
-	return nil
+	_, err = pipe.Exec(b.ctx)
+
+	return err
 }
 
-func (b *eventBuffer) Cleanup(gctx global.Context) (err error) {
+func (b *eventBuffer) Cleanup(gctx global.Context) error {
+	pipe := gctx.Inst().Redis.RawClient().Pipeline()
+
 	for _, key := range []string{b.stateKey, b.eventStoreKey, b.subStoreKey} {
-		_, err = gctx.Inst().Redis.RawClient().Del(b.ctx, key).Result()
+		pipe.Del(b.ctx, key)
 	}
+
+	_, err := pipe.Exec(b.ctx)
 
 	return err
 }

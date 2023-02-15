@@ -9,7 +9,7 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/json-iterator/go v1.1.12
 	github.com/prometheus/client_golang v1.14.0
-	github.com/seventv/api v0.0.0-20230131021733-a02cbb22416e
+	github.com/seventv/api v0.0.0-20230131131525-6e19d966a0e9
 	github.com/seventv/common v0.0.0-20230130214444-1abfdcd7d4ce
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.15.0
@@ -45,7 +45,7 @@ require (
 	github.com/prometheus/client_model v0.3.0 // indirect
 	github.com/prometheus/common v0.39.0 // indirect
 	github.com/prometheus/procfs v0.9.0 // indirect
-	github.com/savsgio/gotils v0.0.0-20220530130905-52f3993e8d6d // indirect
+	github.com/savsgio/gotils v0.0.0-20230203094617-bcbc01813b4f // indirect
 	github.com/spf13/afero v1.9.3 // indirect
 	github.com/spf13/cast v1.5.0 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect

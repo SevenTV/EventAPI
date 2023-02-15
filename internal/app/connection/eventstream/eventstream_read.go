@@ -15,29 +15,20 @@ func (es *EventStream) Read(gctx global.Context) {
 	conn := es.c.Conn().(*net.TCPConn)
 
 	heartbeat := time.NewTicker(time.Duration(es.heartbeatInterval) * time.Millisecond)
-	dispatch := make(chan events.Message[events.DispatchPayload], 128)
 
-	ack := make(chan events.Message[events.AckPayload])
-
-	subDispatch := es.Digest().Dispatch.Subscribe(es.ctx, es.sessionID, dispatch)
-	_ = es.Digest().Ack.Subscribe(es.ctx, es.sessionID, ack)
+	dispatch := es.Digest().Dispatch.Subscribe(es.ctx, es.sessionID, 128)
+	ack := es.Digest().Ack.Subscribe(es.ctx, es.sessionID, 5)
 
 	defer func() {
-		subDispatch.Close()
 		heartbeat.Stop()
-		es.cancel()
-		es.evm.Destroy()
-
-		close(es.close)
+		es.Destroy()
 	}()
 
 	if err := es.Greet(); err != nil {
-		close(es.ready)
-
 		return
 	}
 
-	close(es.ready) // mark the connection as ready
+	es.SetReady()
 
 	for {
 		if err := checkConn(conn); err != nil {
@@ -45,17 +36,15 @@ func (es *EventStream) Read(gctx global.Context) {
 		}
 
 		select {
-		case <-es.ctx.Done():
+		case <-es.OnClose():
 			return
 		case <-gctx.Done():
-			heartbeat.Stop()
-
-			es.Close(events.CloseCodeRestart, time.Second*5)
+			es.SendClose(events.CloseCodeRestart, time.Second*5)
+			return
 		case <-heartbeat.C:
 			if err := es.SendHeartbeat(); err != nil {
 				return
 			}
-
 		case msg := <-dispatch:
 			_ = es.handler.OnDispatch(gctx, msg)
 

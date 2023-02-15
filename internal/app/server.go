@@ -86,6 +86,9 @@ func New(gctx global.Context) (Server, <-chan struct{}) {
 
 			r.Handler(ctx)
 		},
+		IdleTimeout:       time.Second * 30,
+		ReduceMemoryUsage: false,
+		CloseOnShutdown:   true,
 	}
 
 	done := make(chan struct{})

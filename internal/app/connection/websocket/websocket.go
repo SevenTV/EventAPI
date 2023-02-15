@@ -9,7 +9,6 @@ import (
 	"time"
 
 	websocket "github.com/fasthttp/websocket"
-	"github.com/hashicorp/go-multierror"
 	"github.com/seventv/api/data/events"
 	"github.com/seventv/common/structures/v3"
 	client "github.com/seventv/eventapi/internal/app/connection"
@@ -21,16 +20,15 @@ type WebSocket struct {
 	c                 *websocket.Conn
 	ctx               context.Context
 	cancel            context.CancelFunc
-	closed            bool
 	seq               int64
 	handler           client.Handler
-	evm               client.EventMap
+	evm               *client.EventMap
 	cache             client.Cache
 	evbuf             client.EventBuffer
 	dig               client.EventDigest
 	writeMtx          *sync.Mutex
 	ready             chan struct{}
-	close             chan struct{}
+	readyOnce         sync.Once
 	sessionID         []byte
 	heartbeatInterval uint32
 	heartbeatCount    uint64
@@ -58,8 +56,7 @@ func NewWebSocket(gctx global.Context, conn *websocket.Conn, dig client.EventDig
 		cache:             client.NewCache(),
 		dig:               dig,
 		writeMtx:          &sync.Mutex{},
-		ready:             make(chan struct{}, 1),
-		close:             make(chan struct{}),
+		ready:             make(chan struct{}),
 		sessionID:         sessionID,
 		heartbeatInterval: hbi,
 		heartbeatCount:    0,
@@ -107,10 +104,12 @@ func (w *WebSocket) SendAck(cmd events.Opcode, data json.RawMessage) error {
 	return w.Write(msg.ToRaw())
 }
 
-func (w *WebSocket) Close(code events.CloseCode, after time.Duration) {
-	if w.closed {
+func (w *WebSocket) SendClose(code events.CloseCode, after time.Duration) {
+	if w.ctx.Err() != nil {
 		return
 	}
+
+	defer w.ForceClose()
 
 	// Send "end of stream" message
 	msg := events.NewMessage(events.OpcodeEndOfStream, events.EndOfStreamPayload{
@@ -125,7 +124,6 @@ func (w *WebSocket) Close(code events.CloseCode, after time.Duration) {
 
 	// Write close frame
 	err := w.c.WriteControl(websocket.CloseMessage, websocket.FormatCloseMessage(int(code), code.String()), time.Now().Add(5*time.Second))
-	err = multierror.Append(err, w.c.Close()).ErrorOrNil()
 	if err != nil {
 		zap.S().Errorw("failed to close connection", "error", err)
 		return
@@ -133,20 +131,17 @@ func (w *WebSocket) Close(code events.CloseCode, after time.Duration) {
 
 	select {
 	case <-w.ctx.Done():
-	case <-w.close:
 	case <-time.After(after):
 	}
+}
 
-	if w.Buffer() != nil {
-		<-w.Buffer().Context().Done()
-	}
-
+func (w *WebSocket) ForceClose() {
+	_ = w.c.Close()
 	w.cancel()
-	w.closed = true
 }
 
 func (w *WebSocket) Write(msg events.Message[json.RawMessage]) error {
-	if w.closed {
+	if w.ctx.Err() != nil {
 		return nil
 	}
 
@@ -160,7 +155,7 @@ func (w *WebSocket) Write(msg events.Message[json.RawMessage]) error {
 	return nil
 }
 
-func (w *WebSocket) Events() client.EventMap {
+func (w *WebSocket) Events() *client.EventMap {
 	return w.evm
 }
 
@@ -207,9 +202,21 @@ func (w *WebSocket) OnReady() <-chan struct{} {
 }
 
 func (w *WebSocket) OnClose() <-chan struct{} {
-	return w.close
+	return w.ctx.Done()
 }
 
 func (*WebSocket) SetWriter(w *bufio.Writer) {
 	zap.S().Fatalw("called SetWriter() on a WebSocket connection")
+}
+
+func (w *WebSocket) SetReady() {
+	w.readyOnce.Do(func() {
+		close(w.ready)
+	})
+}
+
+func (w *WebSocket) Destroy() {
+	w.ForceClose()
+	w.SetReady()
+	w.evm.Destroy()
 }
