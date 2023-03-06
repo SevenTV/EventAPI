@@ -67,8 +67,8 @@ github.com/envoyproxy/go-control-plane v0.9.4/go.mod h1:6rpuAdCZL397s3pYoYcLgu1m
 github.com/envoyproxy/go-control-plane v0.9.7/go.mod h1:cwu0lG7PUMfa9snN8LXBig5ynNVH9qI8YYLbd1fK2po=
 github.com/envoyproxy/go-control-plane v0.9.9-0.20201210154907-fd9021fe5dad/go.mod h1:cXg6YxExXjJnVBQHBLXeUAgxn2UodCpnH306RInaBQk=
 github.com/envoyproxy/protoc-gen-validate v0.1.0/go.mod h1:iSmxcyjqTsJpI2R4NaDN7+kN2VEUnK/pcBlmesArF7c=
-github.com/fasthttp/router v1.4.16 h1:faWJ9OtaHvAtodreyQLps58M80YFNzphMJtOJzeESXs=
-github.com/fasthttp/router v1.4.16/go.mod h1:NFNlTCilbRVkeLc+E5JDkcxUdkpiJGKDL8Zy7Ey2JTI=
+github.com/fasthttp/router v1.4.17 h1:Z8fndZotdwcPoYTt8BWwnRBts2UQPnKmOxbb94n0GUc=
+github.com/fasthttp/router v1.4.17/go.mod h1:EOMfK/dT1IMzbyPhzw6E2j90owHvY+/BY60bLxOye/8=
 github.com/fasthttp/websocket v1.5.1 h1:iZsMv5OtZ1E52hhCnlOm/feLCrPhutlrZgvEGcZa1FM=
 github.com/fasthttp/websocket v1.5.1/go.mod h1:s+gJkEn38QXLkNfOe/n75Yb8we+VEho1vYqeUYheomw=
 github.com/frankban/quicktest v1.14.3 h1:FJKSZTDHjyhriyC81FLQ0LY93eSai0ZyR/ZIkd3ZUKE=
@@ -238,8 +238,8 @@ github.com/prometheus/procfs v0.9.0/go.mod h1:+pB4zwohETzFnmlpe6yd2lSc+0/46IYZRB
 github.com/rogpeppe/go-internal v1.3.0/go.mod h1:M8bDsm7K2OlrFYOpmOWEs/qY81heoFRclV5y23lUDJ4=
 github.com/rogpeppe/go-internal v1.9.0 h1:73kH8U+JUqXU8lRuOHeVHaa/SZPifC7BkcraZVejAe8=
 github.com/savsgio/gotils v0.0.0-20220530130905-52f3993e8d6d/go.mod h1:Gy+0tqhJvgGlqnTF8CVGP0AaGRjwBtXs/a5PA0Y3+A4=
-github.com/savsgio/gotils v0.0.0-20230203094617-bcbc01813b4f h1:LKLq2MuL/uCGWS7BGo7yOeE/sj5wKxy2aQs69D8imsc=
-github.com/savsgio/gotils v0.0.0-20230203094617-bcbc01813b4f/go.mod h1:qwtSXrKuJh/zsFQ12yEE89xfCrGKK63Rr7ctU/uCo4g=
+github.com/savsgio/gotils v0.0.0-20230208104028-c358bd845dee h1:8Iv5m6xEo1NR1AvpV+7XmhI4r39LGNzwUL4YpMuL5vk=
+github.com/savsgio/gotils v0.0.0-20230208104028-c358bd845dee/go.mod h1:qwtSXrKuJh/zsFQ12yEE89xfCrGKK63Rr7ctU/uCo4g=
 github.com/seventv/api v0.0.0-20230131131525-6e19d966a0e9 h1:Xb7WTjdwqh7dJzIQOUnCbYu3dz9azeIfJWtO+DGMNzc=
 github.com/seventv/api v0.0.0-20230131131525-6e19d966a0e9/go.mod h1:7Y9w8DSYElO8St+mTheYHNb0ZPfZAvIbzQR9k5qD6Ks=
 github.com/seventv/common v0.0.0-20230130214444-1abfdcd7d4ce h1:+BxMGEJlfwsAI1TrkyButyGU1j2X+4JDMROJwL1qkj4=
