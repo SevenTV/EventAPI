@@ -1,6 +1,7 @@
 package app
 
 import (
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -24,7 +25,7 @@ func (s Server) HandleConnect(gctx global.Context, shutdown <-chan struct{}) {
 
 		connected := make(chan bool, 1)
 
-		if utils.B2S(ctx.Request.Header.Peek("upgrade")) == "websocket" {
+		if strings.ToLower(utils.B2S(ctx.Request.Header.Peek("upgrade"))) == "websocket" || strings.ToLower(utils.B2S(ctx.Request.Header.Peek("connection"))) == "upgrade" {
 			if err := s.upgrader.Upgrade(ctx, func(c *websocket.Conn) { // New WebSocket connection
 				con, err = v3.WebSocket(gctx, c, s.digest)
 				if err != nil {
@@ -68,7 +69,7 @@ func (s Server) HandleConnect(gctx global.Context, shutdown <-chan struct{}) {
 	s.router.GET("/v3", v3Fn)
 
 	s.router.GET("/v1/channel-emotes", func(ctx *fasthttp.RequestCtx) {
-		if utils.B2S(ctx.Request.Header.Peek("upgrade")) == "websocket" {
+		if strings.ToLower(utils.B2S(ctx.Request.Header.Peek("upgrade"))) == "websocket" || strings.ToLower(utils.B2S(ctx.Request.Header.Peek("connection"))) == "upgrade" {
 			if err := s.upgrader.Upgrade(ctx, func(c *websocket.Conn) {
 				v1.ChannelEmotesWS(gctx, c)
 			}); err != nil {

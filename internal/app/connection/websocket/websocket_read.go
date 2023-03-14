@@ -59,7 +59,12 @@ func (w *WebSocket) Read(gctx global.Context) {
 
 		// Listen for incoming messages sent by the client
 		for {
+			if w.c == nil {
+				break
+			}
+
 			err = w.c.ReadJSON(&msg)
+
 			if websocket.IsCloseError(err, ResumableCloseCodes...) {
 				w.evbuf = client.NewEventBuffer(w, w.SessionID(), time.Duration(w.heartbeatInterval)*time.Millisecond)
 				err := w.evbuf.Start(gctx)
