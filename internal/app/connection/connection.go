@@ -20,6 +20,8 @@ type Connection interface {
 	Context() context.Context
 	// Retrieve the hex-encoded ID of this session
 	SessionID() string
+	// The client's IP address
+	ClientIP() string
 	// Greet sends an Hello message to the client
 	Greet() error
 	// Listen for incoming and outgoing events

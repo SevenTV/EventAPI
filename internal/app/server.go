@@ -61,6 +61,15 @@ func New(gctx global.Context) (Server, <-chan struct{}) {
 	server := fasthttp.Server{
 		Handler: func(ctx *fasthttp.RequestCtx) {
 			start := time.Now()
+
+			// Add client IP to context
+			ip := utils.B2S(ctx.Request.Header.Peek("Cf-Connecting-IP"))
+			if ip == "" {
+				ip = ctx.RemoteIP().String()
+			}
+
+			ctx.SetUserValue("seventv-client-ip", ip)
+
 			defer func() {
 				l := zap.S().With(
 					"status", ctx.Response.StatusCode(),

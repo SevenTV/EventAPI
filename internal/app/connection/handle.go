@@ -345,6 +345,7 @@ func (h handler) OnBridge(gctx global.Context, m events.Message[json.RawMessage]
 	}
 
 	msg.Data.SessionID = h.conn.SessionID()
+	msg.Data.ClientIP = h.conn.ClientIP()
 
 	b, err := json.Marshal(msg.Data)
 	if err != nil {

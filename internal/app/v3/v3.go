@@ -16,8 +16,14 @@ import (
 	"github.com/valyala/fasthttp"
 )
 
-func WebSocket(gctx global.Context, conn *websocket.Conn, dig client.EventDigest) (client.Connection, error) {
-	w, err := client_websocket.NewWebSocket(gctx, conn, dig)
+func WebSocket(gctx global.Context, ctx *fasthttp.RequestCtx, conn *websocket.Conn, dig client.EventDigest) (client.Connection, error) {
+	var clientIP string
+	switch t := ctx.UserValue("seventv-client-ip").(type) {
+	case string:
+		clientIP = t
+	}
+
+	w, err := client_websocket.NewWebSocket(gctx, conn, dig, clientIP)
 	if err != nil {
 		return nil, err
 	}
