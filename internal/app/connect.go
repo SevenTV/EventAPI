@@ -27,7 +27,7 @@ func (s Server) HandleConnect(gctx global.Context, shutdown <-chan struct{}) {
 
 		if strings.ToLower(utils.B2S(ctx.Request.Header.Peek("upgrade"))) == "websocket" || strings.ToLower(utils.B2S(ctx.Request.Header.Peek("connection"))) == "upgrade" {
 			if err := s.upgrader.Upgrade(ctx, func(c *websocket.Conn) { // New WebSocket connection
-				con, err = v3.WebSocket(gctx, c, s.digest)
+				con, err = v3.WebSocket(gctx, ctx, c, s.digest)
 				if err != nil {
 					ctx.SetStatusCode(fasthttp.StatusBadRequest)
 					ctx.SetBody(utils.S2B(err.Error()))

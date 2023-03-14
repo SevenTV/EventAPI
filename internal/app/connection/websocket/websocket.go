@@ -30,12 +30,13 @@ type WebSocket struct {
 	ready             chan struct{}
 	readyOnce         sync.Once
 	sessionID         []byte
+	clientIP          string
 	heartbeatInterval uint32
 	heartbeatCount    uint64
 	subscriptionLimit int32
 }
 
-func NewWebSocket(gctx global.Context, conn *websocket.Conn, dig client.EventDigest) (client.Connection, error) {
+func NewWebSocket(gctx global.Context, conn *websocket.Conn, dig client.EventDigest, clientIP string) (client.Connection, error) {
 	hbi := gctx.Config().API.HeartbeatInterval
 	if hbi == 0 {
 		hbi = 45000
@@ -64,6 +65,7 @@ func NewWebSocket(gctx global.Context, conn *websocket.Conn, dig client.EventDig
 	}
 
 	ws.handler = client.NewHandler(ws)
+	ws.clientIP = clientIP
 
 	return ws, nil
 }
@@ -74,6 +76,10 @@ func (w *WebSocket) Context() context.Context {
 
 func (w *WebSocket) SessionID() string {
 	return hex.EncodeToString(w.sessionID)
+}
+
+func (w *WebSocket) ClientIP() string {
+	return w.clientIP
 }
 
 func (w *WebSocket) Greet() error {

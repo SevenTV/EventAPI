@@ -84,6 +84,10 @@ func (es *EventStream) SessionID() string {
 	return hex.EncodeToString(es.sessionID)
 }
 
+func (es *EventStream) ClientIP() string {
+	return ""
+}
+
 func (*EventStream) Actor() *structures.User {
 	return nil
 }
