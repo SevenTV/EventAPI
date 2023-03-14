@@ -38,17 +38,19 @@ const (
 func (h handler) OnDispatch(gctx global.Context, msg events.Message[events.DispatchPayload]) bool {
 	var matches []uint32
 
-	if msg.Data.Whisper == "" || msg.Data.Whisper != h.conn.SessionID() {
-		// Filter by subscribed event types
-		ev, ok := h.conn.Events().Get(msg.Data.Type)
-		if !ok {
-			return false // skip if not subscribed to this
-		}
+	if msg.Data.Whisper != "" && msg.Data.Whisper != h.conn.SessionID() {
+		return false // skip if event is whisper not for this session
+	}
 
-		matches = ev.Match(msg.Data.Conditions)
-		if len(matches) == 0 {
-			return false
-		}
+	// Filter by subscribed event types
+	ev, ok := h.conn.Events().Get(msg.Data.Type)
+	if !ok {
+		return false // skip if not subscribed to this
+	}
+
+	matches = ev.Match(msg.Data.Conditions)
+	if len(matches) == 0 {
+		return false
 	}
 
 	// Dedupe
