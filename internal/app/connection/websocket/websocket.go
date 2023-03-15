@@ -29,6 +29,7 @@ type WebSocket struct {
 	writeMtx          *sync.Mutex
 	ready             chan struct{}
 	readyOnce         sync.Once
+	closeOnce         sync.Once
 	sessionID         []byte
 	clientIP          string
 	heartbeatInterval uint32
@@ -115,30 +116,32 @@ func (w *WebSocket) SendClose(code events.CloseCode, after time.Duration) {
 		return
 	}
 
-	defer w.ForceClose()
+	w.closeOnce.Do(func() {
+		defer w.ForceClose()
 
-	// Send "end of stream" message
-	msg := events.NewMessage(events.OpcodeEndOfStream, events.EndOfStreamPayload{
-		Code:    code,
-		Message: code.String(),
+		// Send "end of stream" message
+		msg := events.NewMessage(events.OpcodeEndOfStream, events.EndOfStreamPayload{
+			Code:    code,
+			Message: code.String(),
+		})
+
+		if err := w.Write(msg.ToRaw()); err != nil {
+			zap.S().Errorw("failed to close connection", "error", err)
+			return
+		}
+
+		// Write close frame
+		err := w.c.WriteControl(websocket.CloseMessage, websocket.FormatCloseMessage(int(code), code.String()), time.Now().Add(5*time.Second))
+		if err != nil {
+			zap.S().Errorw("failed to close connection", "error", err)
+			return
+		}
+
+		select {
+		case <-w.ctx.Done():
+		case <-time.After(after):
+		}
 	})
-
-	if err := w.Write(msg.ToRaw()); err != nil {
-		zap.S().Errorw("failed to close connection", "error", err)
-		return
-	}
-
-	// Write close frame
-	err := w.c.WriteControl(websocket.CloseMessage, websocket.FormatCloseMessage(int(code), code.String()), time.Now().Add(5*time.Second))
-	if err != nil {
-		zap.S().Errorw("failed to close connection", "error", err)
-		return
-	}
-
-	select {
-	case <-w.ctx.Done():
-	case <-time.After(after):
-	}
 }
 
 func (w *WebSocket) ForceClose() {
