@@ -117,6 +117,10 @@ func (w *WebSocket) SendClose(code events.CloseCode, after time.Duration) {
 	}
 
 	w.closeOnce.Do(func() {
+		if w.c == nil {
+			return
+		}
+
 		defer w.ForceClose()
 
 		// Send "end of stream" message

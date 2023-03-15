@@ -55,17 +55,20 @@ func (w *WebSocket) Read(gctx global.Context) {
 		}()
 
 		var msg events.Message[json.RawMessage]
+		var data []byte
 		var err error
 
 		// Listen for incoming messages sent by the client
 		for {
-			if w.c == nil {
-				break
-			}
-
-			err = w.c.ReadJSON(&msg)
+			_, data, err = w.c.ReadMessage()
 
 			if websocket.IsUnexpectedCloseError(err) {
+				return
+			}
+
+			if parseErr := json.Unmarshal(data, &msg); parseErr != nil {
+				w.SendError(err.Error(), nil)
+				w.SendClose(events.CloseCodeInvalidPayload, 0)
 				return
 			}
 
