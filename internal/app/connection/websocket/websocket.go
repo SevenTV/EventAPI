@@ -17,7 +17,7 @@ import (
 )
 
 type WebSocket struct {
-	c                 *websocket.Conn
+	c                 websocket.Conn
 	ctx               context.Context
 	cancel            context.CancelFunc
 	seq               int64
@@ -50,7 +50,7 @@ func NewWebSocket(gctx global.Context, conn *websocket.Conn, dig client.EventDig
 
 	lctx, cancel := context.WithCancel(context.Background())
 	ws := &WebSocket{
-		c:                 conn,
+		c:                 *conn,
 		ctx:               lctx,
 		cancel:            cancel,
 		seq:               0,
@@ -117,10 +117,6 @@ func (w *WebSocket) SendClose(code events.CloseCode, after time.Duration) {
 	}
 
 	w.closeOnce.Do(func() {
-		if w.c == nil {
-			return
-		}
-
 		defer w.ForceClose()
 
 		// Send "end of stream" message
