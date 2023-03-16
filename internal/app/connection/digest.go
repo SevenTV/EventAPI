@@ -21,7 +21,7 @@ type Digest[P events.AnyPayload] struct {
 }
 
 func NewDigest[P events.AnyPayload](gctx global.Context, key redis.Key) *Digest[P] {
-	ch := make(chan string, 1024)
+	ch := make(chan string, 16384)
 	d := &Digest[P]{
 		gctx: gctx,
 		ch:   ch,
