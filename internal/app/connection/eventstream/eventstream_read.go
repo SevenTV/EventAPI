@@ -15,7 +15,7 @@ func (es *EventStream) Read(gctx global.Context) {
 
 	heartbeat := time.NewTicker(time.Duration(es.heartbeatInterval) * time.Millisecond)
 
-	dispatch := es.Digest().Dispatch.Subscribe(es.ctx, es.sessionID, 128)
+	dispatch := es.Digest().Dispatch.Subscribe(es.ctx, es.sessionID, 16)
 
 	defer func() {
 		heartbeat.Stop()
