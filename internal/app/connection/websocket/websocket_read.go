@@ -22,8 +22,7 @@ var ResumableCloseCodes = []int{
 
 func (w *WebSocket) Read(gctx global.Context) {
 	heartbeat := time.NewTicker(time.Duration(w.heartbeatInterval) * time.Millisecond)
-
-	w.Digest().Dispatch.Subscribe(w.ctx, w, w.sessionID)
+	dispatch := w.Digest().Dispatch.Subscribe(w.ctx, w.sessionID, 1024)
 
 	deferred := false
 
@@ -59,12 +58,7 @@ func (w *WebSocket) Read(gctx global.Context) {
 
 		// Listen for incoming messages sent by the client
 		for {
-			if w.c == nil {
-				break
-			}
-
 			err = w.c.ReadJSON(&msg)
-
 			if websocket.IsCloseError(err, ResumableCloseCodes...) {
 				w.evbuf = client.NewEventBuffer(w, w.SessionID(), time.Duration(w.heartbeatInterval)*time.Millisecond)
 				err := w.evbuf.Start(gctx)
@@ -136,6 +130,10 @@ func (w *WebSocket) Read(gctx global.Context) {
 					return
 				}
 			}
+		// Listen for incoming dispatches
+		case msg := <-dispatch:
+			// Dispatch the event to the client
+			_ = w.handler.OnDispatch(gctx, msg)
 		}
 	}
 }

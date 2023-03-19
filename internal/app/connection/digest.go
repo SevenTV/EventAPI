@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
+	"sync"
 
 	"github.com/seventv/api/data/events"
 	"github.com/seventv/common/redis"
@@ -41,62 +42,59 @@ func NewDigest[P events.AnyPayload](gctx global.Context, key redis.Key) *Digest[
 				case <-gctx.Done():
 					return
 				case s = <-ch:
-					var o events.Message[json.RawMessage]
+					o := events.Message[P]{}
 					if err = json.Unmarshal(utils.S2B(s), &o); err != nil {
-						zap.S().Warnw("got badly encoded payload",
-							"error", err.Error(),
-						)
-						continue
-					}
-
-					var asDispatch events.Message[events.DispatchPayload]
-
-					switch o.Op {
-					case events.OpcodeDispatch:
-						asDispatch, err = events.ConvertMessage[events.DispatchPayload](o)
-					}
-
-					if err != nil {
-						zap.S().Warnw("got badly encoded payload",
-							"opcode", o.Op,
+						zap.S().Warnw("got badly encoded message",
 							"error", err.Error(),
 						)
 					}
 
 					d.subs.Range(func(key string, value *DigestSub[P]) bool {
-						switch o.Op {
-						case events.OpcodeDispatch:
-							value.conn.Handler().OnDispatch(gctx, asDispatch)
+						select {
+						case value.ch <- o:
+						default:
+							zap.S().Warnw("channel blocked",
+								"channel", key,
+							)
 						}
-
 						return true
 					})
 				}
 			}
 		}()
 	}
-
 	return d
 }
 
 // Dispatch implements Digest
-func (d *Digest[P]) Subscribe(ctx context.Context, conn Connection, sessionID []byte) {
+func (d *Digest[P]) Subscribe(ctx context.Context, sessionID []byte, size int) <-chan events.Message[P] {
 	sid := hex.EncodeToString(sessionID)
 
-	ds := &DigestSub[P]{conn}
+	ds := &DigestSub[P]{make(chan events.Message[P], size), sync.Once{}}
 
 	d.subs.Store(sid, ds)
 
 	go func() {
 		<-ctx.Done()
 		d.subs.Delete(sid)
+		ds.close()
 	}()
+
+	return ds.ch
 }
 
 type EventDigest struct {
 	Dispatch *Digest[events.DispatchPayload]
+	Ack      *Digest[events.AckPayload]
 }
 
 type DigestSub[P events.AnyPayload] struct {
-	conn Connection
+	ch   chan events.Message[P]
+	once sync.Once
+}
+
+func (ds *DigestSub[P]) close() {
+	ds.once.Do(func() {
+		close(ds.ch)
+	})
 }
