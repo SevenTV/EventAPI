@@ -15,8 +15,6 @@ func (es *EventStream) Read(gctx global.Context) {
 
 	heartbeat := time.NewTicker(time.Duration(es.heartbeatInterval) * time.Millisecond)
 
-	dispatch := es.Digest().Dispatch.Subscribe(es.ctx, es.sessionID, 16)
-
 	defer func() {
 		heartbeat.Stop()
 		es.Destroy()
@@ -43,8 +41,8 @@ func (es *EventStream) Read(gctx global.Context) {
 			if err := es.SendHeartbeat(); err != nil {
 				return
 			}
-		case msg := <-dispatch:
-			_ = es.handler.OnDispatch(gctx, msg)
+			// case msg := <-dispatch:
+			// 	_ = es.handler.OnDispatch(gctx, msg)
 		}
 	}
 }

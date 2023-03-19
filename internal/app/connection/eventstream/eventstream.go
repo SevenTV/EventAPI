@@ -30,7 +30,6 @@ type EventStream struct {
 	evm               *client.EventMap
 	cache             client.Cache
 	evbuf             client.EventBuffer
-	dig               client.EventDigest
 	writeMtx          *sync.Mutex
 	writer            *bufio.Writer
 	ready             chan struct{}
@@ -41,7 +40,7 @@ type EventStream struct {
 	subscriptionLimit int32
 }
 
-func NewEventStream(gctx global.Context, c *fasthttp.RequestCtx, dig client.EventDigest, r *router.Router) (client.Connection, error) {
+func NewEventStream(gctx global.Context, c *fasthttp.RequestCtx, r *router.Router) (client.Connection, error) {
 	hbi := gctx.Config().API.HeartbeatInterval
 	if hbi == 0 {
 		hbi = 45000
@@ -60,7 +59,6 @@ func NewEventStream(gctx global.Context, c *fasthttp.RequestCtx, dig client.Even
 		seq:               0,
 		evm:               client.NewEventMap(make(chan string, 10)),
 		cache:             client.NewCache(),
-		dig:               dig,
 		writeMtx:          &sync.Mutex{},
 		writer:            nil,
 		ready:             make(chan struct{}),
@@ -127,10 +125,6 @@ func (es *EventStream) Cache() client.Cache {
 // Buffer implements client.Connection
 func (es *EventStream) Buffer() client.EventBuffer {
 	return es.evbuf
-}
-
-func (es *EventStream) Digest() client.EventDigest {
-	return es.dig
 }
 
 func (es *EventStream) Greet() error {

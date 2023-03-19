@@ -65,7 +65,7 @@ func (h handler) OnDispatch(gctx global.Context, msg events.Message[events.Dispa
 	// Handle effect
 	if msg.Data.Effect != nil {
 		for _, e := range msg.Data.Effect.AddSubscriptions {
-			_, ids, err := h.conn.Events().Subscribe(gctx, e.Type, e.Condition, EventSubscriptionProperties{
+			_, ids, err := h.conn.Events().Subscribe(gctx, h.conn.Context(), e.Type, e.Condition, EventSubscriptionProperties{
 				TTL:  utils.Ternary(e.TTL > 0, time.Now().Add(e.TTL), time.Time{}),
 				Auto: true,
 			})
@@ -98,7 +98,7 @@ func (h handler) OnDispatch(gctx global.Context, msg events.Message[events.Dispa
 		}
 
 		for _, e := range msg.Data.Effect.RemoveSubscriptions {
-			_, err := h.conn.Events().Unsubscribe(e.Type, e.Condition)
+			_, err := h.conn.Events().Unsubscribe(gctx, e.Type, e.Condition)
 			if err != nil && !errors.Is(err, ErrNotSubscribed) {
 				zap.S().Errorw("failed to remove subscription from dispatch",
 					"error", err,
@@ -228,7 +228,7 @@ func (h handler) Subscribe(gctx global.Context, m events.Message[json.RawMessage
 	}
 
 	// Add the event subscription
-	_, id, err := h.conn.Events().Subscribe(gctx, t, msg.Data.Condition, EventSubscriptionProperties{})
+	_, id, err := h.conn.Events().Subscribe(gctx, h.conn.Context(), t, msg.Data.Condition, EventSubscriptionProperties{})
 	if err != nil {
 		switch err {
 		case ErrAlreadySubscribed:
@@ -261,7 +261,7 @@ func (h handler) Unsubscribe(gctx global.Context, m events.Message[json.RawMessa
 	}
 
 	t := msg.Data.Type
-	if _, err = h.conn.Events().Unsubscribe(t, msg.Data.Condition); err != nil {
+	if _, err = h.conn.Events().Unsubscribe(gctx, t, msg.Data.Condition); err != nil {
 		if err == ErrNotSubscribed {
 			h.conn.SendClose(events.CloseCodeNotSubscribed, 0)
 			return nil
@@ -300,7 +300,7 @@ func (h handler) OnResume(gctx global.Context, m events.Message[json.RawMessage]
 				cond := s.Channel.Conditions[i]
 				props := s.Channel.Properties[i]
 
-				_, _, err := h.conn.Events().Subscribe(gctx, s.Type, cond, props)
+				_, _, err := h.conn.Events().Subscribe(gctx, h.conn.Context(), s.Type, cond, props)
 				if err != nil {
 					return err
 				}

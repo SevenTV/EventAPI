@@ -25,7 +25,6 @@ type WebSocket struct {
 	evm               *client.EventMap
 	cache             client.Cache
 	evbuf             client.EventBuffer
-	dig               client.EventDigest
 	writeMtx          *sync.Mutex
 	ready             chan struct{}
 	readyOnce         sync.Once
@@ -35,7 +34,7 @@ type WebSocket struct {
 	subscriptionLimit int32
 }
 
-func NewWebSocket(gctx global.Context, conn *websocket.Conn, dig client.EventDigest) (client.Connection, error) {
+func NewWebSocket(gctx global.Context, conn *websocket.Conn) (client.Connection, error) {
 	hbi := gctx.Config().API.HeartbeatInterval
 	if hbi == 0 {
 		hbi = 45000
@@ -54,7 +53,6 @@ func NewWebSocket(gctx global.Context, conn *websocket.Conn, dig client.EventDig
 		seq:               0,
 		evm:               client.NewEventMap(make(chan string, 10)),
 		cache:             client.NewCache(),
-		dig:               dig,
 		writeMtx:          &sync.Mutex{},
 		ready:             make(chan struct{}),
 		sessionID:         sessionID,
@@ -166,10 +164,6 @@ func (w *WebSocket) Cache() client.Cache {
 // Buffer implements client.Connection
 func (w *WebSocket) Buffer() client.EventBuffer {
 	return w.evbuf
-}
-
-func (w *WebSocket) Digest() client.EventDigest {
-	return w.dig
 }
 
 func (*WebSocket) Actor() *structures.User {

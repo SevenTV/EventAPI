@@ -6,6 +6,7 @@ import (
 
 	"github.com/fasthttp/websocket"
 	"github.com/seventv/api/data/events"
+	"github.com/seventv/common/utils"
 	client "github.com/seventv/eventapi/internal/app/connection"
 	"github.com/seventv/eventapi/internal/global"
 	"go.uber.org/zap"
@@ -22,7 +23,6 @@ var ResumableCloseCodes = []int{
 
 func (w *WebSocket) Read(gctx global.Context) {
 	heartbeat := time.NewTicker(time.Duration(w.heartbeatInterval) * time.Millisecond)
-	dispatch := w.Digest().Dispatch.Subscribe(w.ctx, w.sessionID, 16)
 
 	deferred := false
 
@@ -131,7 +131,15 @@ func (w *WebSocket) Read(gctx global.Context) {
 				}
 			}
 		// Listen for incoming dispatches
-		case msg := <-dispatch:
+		case s := <-w.Events().DispatchChannel():
+			var msg events.Message[events.DispatchPayload]
+
+			err := json.Unmarshal(utils.S2B(s), &msg)
+			if err != nil {
+				zap.S().Errorw("dispatch unmarshal error", "error", err)
+				continue
+			}
+
 			// Dispatch the event to the client
 			_ = w.handler.OnDispatch(gctx, msg)
 		}

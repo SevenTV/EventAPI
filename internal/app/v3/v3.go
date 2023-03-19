@@ -16,8 +16,8 @@ import (
 	"github.com/valyala/fasthttp"
 )
 
-func WebSocket(gctx global.Context, conn *websocket.Conn, dig client.EventDigest) (client.Connection, error) {
-	w, err := client_websocket.NewWebSocket(gctx, conn, dig)
+func WebSocket(gctx global.Context, conn *websocket.Conn) (client.Connection, error) {
+	w, err := client_websocket.NewWebSocket(gctx, conn)
 	if err != nil {
 		return nil, err
 	}
@@ -32,8 +32,8 @@ var (
 	SSE_SUBSCRIPTION_ITEM_I_CND = SSE_SUBSCRIPTION_ITEM.SubexpIndex("CND")
 )
 
-func SSE(gctx global.Context, ctx *fasthttp.RequestCtx, dig client.EventDigest, r *router.Router) (client.Connection, error) {
-	es, err := client_eventstream.NewEventStream(gctx, ctx, dig, r)
+func SSE(gctx global.Context, ctx *fasthttp.RequestCtx, r *router.Router) (client.Connection, error) {
+	es, err := client_eventstream.NewEventStream(gctx, ctx, r)
 	if err != nil {
 		return nil, err
 	}
