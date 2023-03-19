@@ -50,13 +50,7 @@ func NewDigest[P events.AnyPayload](gctx global.Context, key redis.Key) *Digest[
 					}
 
 					d.subs.Range(func(key string, value *DigestSub[P]) bool {
-						select {
-						case value.ch <- o:
-						default:
-							zap.S().Warnw("channel blocked",
-								"channel", key,
-							)
-						}
+						value.SafeSend(key, o)
 						return true
 					})
 				}
@@ -91,6 +85,24 @@ type EventDigest struct {
 type DigestSub[P events.AnyPayload] struct {
 	ch   chan events.Message[P]
 	once sync.Once
+}
+
+func (d *DigestSub[P]) SafeSend(key string, msg events.Message[P]) (closed bool) {
+	defer func() {
+		if recover() != nil {
+			closed = true
+		}
+	}()
+
+	select {
+	case d.ch <- msg:
+	default:
+		zap.S().Warnw("channel blocked",
+			"channel", key,
+		)
+	}
+
+	return
 }
 
 func (ds *DigestSub[P]) close() {
