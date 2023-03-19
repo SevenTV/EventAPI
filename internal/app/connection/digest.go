@@ -50,6 +50,10 @@ func NewDigest[P events.AnyPayload](gctx global.Context, key redis.Key) *Digest[
 					}
 
 					d.subs.Range(func(key string, value *DigestSub[P]) bool {
+						if value.mustClose {
+							return true
+						}
+
 						select {
 						case value.ch <- o:
 						default:
@@ -70,7 +74,11 @@ func NewDigest[P events.AnyPayload](gctx global.Context, key redis.Key) *Digest[
 func (d *Digest[P]) Subscribe(ctx context.Context, sessionID []byte, size int) <-chan events.Message[P] {
 	sid := hex.EncodeToString(sessionID)
 
-	ds := &DigestSub[P]{make(chan events.Message[P], size), sync.Once{}}
+	ds := &DigestSub[P]{
+		ch:        make(chan events.Message[P], size),
+		once:      sync.Once{},
+		mustClose: false,
+	}
 
 	d.subs.Store(sid, ds)
 
@@ -89,12 +97,14 @@ type EventDigest struct {
 }
 
 type DigestSub[P events.AnyPayload] struct {
-	ch   chan events.Message[P]
-	once sync.Once
+	mustClose bool
+	ch        chan events.Message[P]
+	once      sync.Once
 }
 
 func (ds *DigestSub[P]) close() {
 	ds.once.Do(func() {
+		ds.mustClose = true
 		close(ds.ch)
 	})
 }
