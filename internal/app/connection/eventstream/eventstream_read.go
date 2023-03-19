@@ -8,7 +8,6 @@ import (
 
 	"github.com/seventv/api/data/events"
 	"github.com/seventv/eventapi/internal/global"
-	"go.uber.org/zap"
 )
 
 func (es *EventStream) Read(gctx global.Context) {
@@ -16,8 +15,7 @@ func (es *EventStream) Read(gctx global.Context) {
 
 	heartbeat := time.NewTicker(time.Duration(es.heartbeatInterval) * time.Millisecond)
 
-	dispatch := es.Digest().Dispatch.Subscribe(es.ctx, es.sessionID, 1024)
-	ack := es.Digest().Ack.Subscribe(es.ctx, es.sessionID, 5)
+	es.Digest().Dispatch.Subscribe(es.ctx, es, es.sessionID)
 
 	defer func() {
 		heartbeat.Stop()
@@ -44,17 +42,6 @@ func (es *EventStream) Read(gctx global.Context) {
 		case <-heartbeat.C:
 			if err := es.SendHeartbeat(); err != nil {
 				return
-			}
-		case msg := <-dispatch:
-			_ = es.handler.OnDispatch(gctx, msg)
-
-		// Listen for acks (i.e in response to a session mutation)
-		case msg := <-ack:
-			if err := es.Write(msg.ToRaw()); err != nil {
-				zap.S().Errorw("failed to write ack to connection",
-					"error", err,
-				)
-				continue
 			}
 		}
 	}

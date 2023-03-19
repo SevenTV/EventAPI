@@ -38,7 +38,6 @@ func New(gctx global.Context) (Server, <-chan struct{}) {
 	// Connection map (v3 only)
 	dig := client.EventDigest{
 		Dispatch: client.NewDigest[events.DispatchPayload](gctx, redis.Key(events.OpcodeDispatch.PublishKey())),
-		Ack:      client.NewDigest[events.AckPayload](gctx, redis.Key(events.OpcodeAck.PublishKey())),
 	}
 
 	r := router.New()
