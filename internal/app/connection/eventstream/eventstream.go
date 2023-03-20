@@ -57,7 +57,7 @@ func NewEventStream(gctx global.Context, c *fasthttp.RequestCtx, r *router.Route
 		ctx:               lctx,
 		cancel:            cancel,
 		seq:               0,
-		evm:               client.NewEventMap(make(chan string, 10)),
+		evm:               client.NewEventMap(make(chan string, 16)),
 		cache:             client.NewCache(),
 		writeMtx:          &sync.Mutex{},
 		writer:            nil,
