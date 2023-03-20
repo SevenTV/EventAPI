@@ -18,7 +18,6 @@ var ResumableCloseCodes = []int{
 	websocket.CloseAbnormalClosure,
 	int(events.CloseCodeTimeout),
 	int(events.OpcodeReconnect),
-	int(events.CloseCodeRestart),
 }
 
 func (w *WebSocket) Read(gctx global.Context) {
