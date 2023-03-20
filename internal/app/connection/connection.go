@@ -119,8 +119,6 @@ func (e *EventMap) Subscribe(
 			Conditions: []events.EventCondition{},
 			Properties: []EventSubscriptionProperties{},
 		}
-
-		go gctx.Inst().Redis.Subscribe(ec.ctx, e.ch, redis.Key(events.CreateDispatchKey(t, ec.Conditions)))
 	}
 
 	if exists && len(ec.Conditions) == 0 && len(cond) == 0 {
@@ -144,6 +142,8 @@ func (e *EventMap) Subscribe(
 
 	// Create channel
 	e.m.Store(t, ec)
+
+	go gctx.Inst().Redis.Subscribe(ec.ctx, e.ch, redis.Key(events.CreateDispatchKey(t, cond)))
 
 	return ec, id, nil
 }
