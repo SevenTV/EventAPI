@@ -141,7 +141,10 @@ func (w *WebSocket) Read(gctx global.Context) {
 
 			err = json.Unmarshal(utils.S2B(s), &msg)
 			if err != nil {
-				zap.S().Errorw("dispatch unmarshal error", "error", err)
+				zap.S().Errorw("dispatch unmarshal error",
+					"error", err,
+					"data", s,
+				)
 				continue
 			}
 
