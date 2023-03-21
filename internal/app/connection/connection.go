@@ -11,7 +11,6 @@ import (
 
 	"github.com/seventv/api/data/events"
 	"github.com/seventv/common/structures/v3"
-	"github.com/seventv/common/sync_map"
 	"github.com/seventv/common/utils"
 	"github.com/seventv/eventapi/internal/global"
 )
@@ -81,7 +80,7 @@ func NewEventMap(ch chan *string) *EventMap {
 	return &EventMap{
 		ch:    ch,
 		count: utils.PointerOf(int32(0)),
-		m:     sync_map.Map[events.EventType, EventChannel]{},
+		m:     map[events.EventType]EventChannel{},
 		mx:    sync.Mutex{},
 	}
 }
@@ -90,7 +89,7 @@ type EventMap struct {
 	ch    chan *string
 	wg    sync.WaitGroup
 	count *int32
-	m     sync_map.Map[events.EventType, EventChannel]
+	m     map[events.EventType]EventChannel
 	mx    sync.Mutex
 	once  sync.Once
 }
@@ -108,7 +107,7 @@ func (e *EventMap) Subscribe(
 
 	id := rand.Uint32()
 
-	ec, exists := e.m.Load(t)
+	ec, exists := e.m[t]
 	if !exists {
 		lctx, cancel := context.WithCancel(ctx)
 
@@ -140,9 +139,9 @@ func (e *EventMap) Subscribe(
 	ec.Properties = append(ec.Properties, props)
 
 	// Create channel
-	e.m.Store(t, ec)
+	e.m[t] = ec
 
-	go gctx.Inst().Redis.EventsSubscribe(ec.ctx, e.ch, &e.wg, events.CreateDispatchKey(t, cond, false))
+	gctx.Inst().Redis.EventsSubscribe(ec.ctx, e.ch, &e.wg, events.CreateDispatchKey(t, cond, false))
 
 	return ec, id, nil
 }
@@ -152,7 +151,8 @@ func (e *EventMap) Unsubscribe(gctx global.Context, t events.EventType, cond map
 	defer e.mx.Unlock()
 
 	if len(cond) == 0 {
-		_, exists := e.m.LoadAndDelete(t)
+		_, exists := e.m[t]
+		delete(e.m, t)
 		if !exists {
 			return 0, ErrNotSubscribed
 		}
@@ -160,7 +160,7 @@ func (e *EventMap) Unsubscribe(gctx global.Context, t events.EventType, cond map
 		return 0, nil
 	}
 
-	ec, exists := e.m.Load(t)
+	ec, exists := e.m[t]
 	if !exists {
 		return 0, ErrNotSubscribed
 	}
@@ -188,9 +188,9 @@ func (e *EventMap) Unsubscribe(gctx global.Context, t events.EventType, cond map
 
 	if len(ec.ID) == 0 {
 		ec.cancel()
-		e.m.Delete(t)
+		delete(e.m, t)
 	} else {
-		e.m.Store(t, ec)
+		e.m[t] = ec
 	}
 
 	return id, nil
@@ -198,8 +198,11 @@ func (e *EventMap) Unsubscribe(gctx global.Context, t events.EventType, cond map
 
 func (e *EventMap) UnsubscribeWithID(id ...uint32) error {
 	var found bool
+	e.mx.Lock()
+	defer e.mx.Unlock()
 
-	e.m.Range(func(key events.EventType, value EventChannel) bool {
+outer:
+	for _, value := range e.m {
 		for _, id := range id {
 			for i, v := range value.ID {
 				if v == id {
@@ -208,13 +211,11 @@ func (e *EventMap) UnsubscribeWithID(id ...uint32) error {
 					value.Properties = utils.SliceRemove(value.Properties, i)
 
 					found = true
-					break
+					break outer
 				}
 			}
 		}
-
-		return true
-	})
+	}
 
 	if !found {
 		return ErrNotSubscribed
@@ -228,14 +229,17 @@ func (e *EventMap) Count() int32 {
 }
 
 func (e *EventMap) Get(t events.EventType) (*EventChannel, bool) {
+	e.mx.Lock()
+	defer e.mx.Unlock()
+
 	var ec *EventChannel
 
-	if c, ok := e.m.Load(t); ok {
+	if c, ok := e.m[t]; ok {
 		ec = &c
 	}
 
 	tWilcard := events.EventType(fmt.Sprintf("%s.*", t.ObjectName()))
-	if c, ok := e.m.Load(tWilcard); ok {
+	if c, ok := e.m[tWilcard]; ok {
 		if ec == nil {
 			ec = &EventChannel{
 				ID:         []uint32{},
@@ -258,11 +262,13 @@ func (e *EventMap) DispatchChannel() chan *string {
 
 func (e *EventMap) Destroy() {
 	e.once.Do(func() {
-		e.m.Range(func(key events.EventType, value EventChannel) bool {
+		e.mx.Lock()
+		defer e.mx.Unlock()
+
+		for key, value := range e.m {
 			value.cancel()
-			e.m.Delete(key)
-			return true
-		})
+			delete(e.m, key)
+		}
 
 		e.wg.Wait()
 		close(e.ch)
