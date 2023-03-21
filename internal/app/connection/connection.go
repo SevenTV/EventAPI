@@ -143,7 +143,7 @@ func (e *EventMap) Subscribe(
 	// Create channel
 	e.m.Store(t, ec)
 
-	go gctx.Inst().Redis.Subscribe(ec.ctx, e.ch, redis.Key(events.CreateDispatchKey(t, cond)))
+	go gctx.Inst().Redis.Subscribe(ctx, e.ch, redis.Key(events.CreateDispatchKey(t, cond)))
 
 	return ec, id, nil
 }
@@ -188,9 +188,6 @@ func (e *EventMap) Unsubscribe(gctx global.Context, t events.EventType, cond map
 	}
 
 	e.m.Store(t, ec)
-	if len(ec.ID) == 0 {
-		ec.cancel()
-	}
 
 	return id, nil
 }
