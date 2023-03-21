@@ -148,7 +148,7 @@ func (w *WebSocket) Read(gctx global.Context) {
 			}
 
 			// Dispatch the event to the client
-			_ = w.handler.OnDispatch(gctx, msg)
+			go w.handler.OnDispatch(gctx, msg)
 		}
 	}
 }

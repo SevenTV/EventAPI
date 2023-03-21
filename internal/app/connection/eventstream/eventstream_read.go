@@ -59,7 +59,7 @@ func (es *EventStream) Read(gctx global.Context) {
 			}
 
 			// Dispatch the event to the client
-			_ = es.handler.OnDispatch(gctx, msg)
+			go es.handler.OnDispatch(gctx, msg)
 		}
 	}
 }

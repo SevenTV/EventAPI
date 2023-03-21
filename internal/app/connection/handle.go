@@ -19,7 +19,7 @@ func NewHandler(conn Connection) Handler {
 type Handler interface {
 	Subscribe(gctx global.Context, m events.Message[json.RawMessage]) (error, bool)
 	Unsubscribe(gctx global.Context, m events.Message[json.RawMessage]) error
-	OnDispatch(gctx global.Context, msg events.Message[events.DispatchPayload]) bool
+	OnDispatch(gctx global.Context, msg events.Message[events.DispatchPayload])
 	OnResume(gctx global.Context, msg events.Message[json.RawMessage]) error
 	OnBridge(gctx global.Context, msg events.Message[json.RawMessage]) error
 }
@@ -35,22 +35,22 @@ const (
 	SUBSCRIPTION_CONDITION_VALUE_MAX_LENGTH = 128
 )
 
-func (h handler) OnDispatch(gctx global.Context, msg events.Message[events.DispatchPayload]) bool {
+func (h handler) OnDispatch(gctx global.Context, msg events.Message[events.DispatchPayload]) {
 	var matches []uint32
 
 	if msg.Data.Whisper == "" {
 		// Filter by subscribed event types
 		ev, ok := h.conn.Events().Get(msg.Data.Type)
 		if !ok {
-			return false // skip if not subscribed to this
+			return // skip if not subscribed to this
 		}
 
 		matches = ev.Match(msg.Data.Conditions)
 		if len(matches) == 0 {
-			return false
+			return
 		}
 	} else if msg.Data.Whisper != h.conn.SessionID() {
-		return false // skip if event is whisper not for this session
+		return // skip if event is whisper not for this session
 	}
 
 	// Dedupe
@@ -58,7 +58,7 @@ func (h handler) OnDispatch(gctx global.Context, msg events.Message[events.Dispa
 		ha := *msg.Data.Hash
 
 		if !h.conn.Cache().AddDispatch(ha) {
-			return false // skip if already dispatched
+			return // skip if already dispatched
 		}
 	}
 
@@ -119,10 +119,10 @@ func (h handler) OnDispatch(gctx global.Context, msg events.Message[events.Dispa
 				"error", err,
 			)
 
-			return false
+			return
 		}
 
-		return true
+		return
 	}
 
 	msg.Data.Conditions = nil
@@ -135,11 +135,7 @@ func (h handler) OnDispatch(gctx global.Context, msg events.Message[events.Dispa
 		zap.S().Errorw("failed to write dispatch to connection",
 			"error", err,
 		)
-
-		return false
 	}
-
-	return true
 }
 
 func (h handler) Subscribe(gctx global.Context, m events.Message[json.RawMessage]) (error, bool) {
@@ -311,7 +307,7 @@ func (h handler) OnResume(gctx global.Context, m events.Message[json.RawMessage]
 
 		// Replay dispatches
 		for _, m := range messages {
-			_ = h.OnDispatch(gctx, m)
+			h.OnDispatch(gctx, m)
 		}
 	} else {
 		h.conn.SendError("Resume Failed", map[string]any{
