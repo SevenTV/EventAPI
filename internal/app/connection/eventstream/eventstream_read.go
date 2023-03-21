@@ -30,7 +30,7 @@ func (es *EventStream) Read(gctx global.Context) {
 	es.SetReady()
 
 	var (
-		s   string
+		s   *string
 		err error
 	)
 
@@ -52,7 +52,7 @@ func (es *EventStream) Read(gctx global.Context) {
 		case s = <-es.evm.DispatchChannel():
 			var msg events.Message[events.DispatchPayload]
 
-			err = json.Unmarshal(utils.S2B(s), &msg)
+			err = json.Unmarshal(utils.S2B(*s), &msg)
 			if err != nil {
 				zap.S().Errorw("dispatch unmarshal error", "error", err)
 				continue

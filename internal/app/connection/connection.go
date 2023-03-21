@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/seventv/api/data/events"
-	"github.com/seventv/common/redis"
 	"github.com/seventv/common/structures/v3"
 	"github.com/seventv/common/sync_map"
 	"github.com/seventv/common/utils"
@@ -78,7 +77,7 @@ func GenerateSessionID(n int) ([]byte, error) {
 	return b, nil
 }
 
-func NewEventMap(ch chan string) *EventMap {
+func NewEventMap(ch chan *string) *EventMap {
 	return &EventMap{
 		ch:    ch,
 		count: utils.PointerOf(int32(0)),
@@ -88,7 +87,8 @@ func NewEventMap(ch chan string) *EventMap {
 }
 
 type EventMap struct {
-	ch    chan string
+	ch    chan *string
+	wg    sync.WaitGroup
 	count *int32
 	m     sync_map.Map[events.EventType, EventChannel]
 	mx    sync.Mutex
@@ -133,7 +133,6 @@ func (e *EventMap) Subscribe(
 
 			return ec, id, ErrAlreadySubscribed
 		}
-
 	}
 
 	ec.ID = append(ec.ID, id)
@@ -143,7 +142,7 @@ func (e *EventMap) Subscribe(
 	// Create channel
 	e.m.Store(t, ec)
 
-	go gctx.Inst().Redis.Subscribe(ec.ctx, e.ch, redis.Key(events.CreateDispatchKey(t, cond, false)))
+	go gctx.Inst().Redis.EventsSubscribe(ec.ctx, e.ch, &e.wg, events.CreateDispatchKey(t, cond, false))
 
 	return ec, id, nil
 }
@@ -253,17 +252,19 @@ func (e *EventMap) Get(t events.EventType) (*EventChannel, bool) {
 	return ec, ec != nil
 }
 
-func (e *EventMap) DispatchChannel() chan string {
+func (e *EventMap) DispatchChannel() chan *string {
 	return e.ch
 }
 
 func (e *EventMap) Destroy() {
 	e.once.Do(func() {
 		e.m.Range(func(key events.EventType, value EventChannel) bool {
+			value.cancel()
 			e.m.Delete(key)
 			return true
 		})
 
+		e.wg.Wait()
 		close(e.ch)
 	})
 }

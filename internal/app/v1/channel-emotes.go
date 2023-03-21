@@ -45,7 +45,7 @@ func ChannelEmotesSSE(gCtx global.Context, ctx *fasthttp.RequestCtx) {
 	}
 
 	localCtx, cancel := context.WithCancel(gCtx)
-	subCh := make(chan string, 10)
+	subCh := make(chan *string, 10)
 
 	start := time.Now()
 	gCtx.Inst().Monitoring.EventV1().ChannelEmotes.CurrentConnections.Inc()
@@ -86,7 +86,7 @@ func ChannelEmotesSSE(gCtx global.Context, ctx *fasthttp.RequestCtx) {
 			tick.Stop()
 		}()
 		var (
-			msg string
+			msg *string
 			err error
 		)
 
@@ -113,7 +113,7 @@ func ChannelEmotesSSE(gCtx global.Context, ctx *fasthttp.RequestCtx) {
 					return
 				}
 			case msg = <-subCh:
-				if _, err = w.Write(utils.S2B(fmt.Sprintf("event: update\ndata: %s\n\n", msg))); err != nil {
+				if _, err = w.Write(utils.S2B(fmt.Sprintf("event: update\ndata: %s\n\n", *msg))); err != nil {
 					return
 				}
 				if err := w.Flush(); err != nil {
@@ -132,7 +132,7 @@ type WsMessage struct {
 
 func ChannelEmotesWS(gCtx global.Context, conn *websocket.Conn) {
 	localCtx, cancel := context.WithCancel(gCtx)
-	subCh := make(chan string, 10)
+	subCh := make(chan *string, 10)
 	wg := sync.WaitGroup{}
 
 	start := time.Now()
@@ -273,7 +273,7 @@ func ChannelEmotesWS(gCtx global.Context, conn *websocket.Conn) {
 
 	tick := time.NewTicker(time.Second * 30)
 
-	var msg string
+	var msg *string
 	for {
 		select {
 		case <-localCtx.Done():
@@ -287,7 +287,7 @@ func ChannelEmotesWS(gCtx global.Context, conn *websocket.Conn) {
 		case msg = <-subCh:
 			if err := write(WsMessage{
 				Action:  "update",
-				Payload: msg,
+				Payload: *msg,
 			}); err != nil {
 				return
 			}

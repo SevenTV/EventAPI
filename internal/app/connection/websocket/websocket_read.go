@@ -120,7 +120,7 @@ func (w *WebSocket) Read(gctx global.Context) {
 	w.SetReady() // mark the connection as ready
 
 	var (
-		s   string
+		s   *string
 		err error
 	)
 
@@ -148,7 +148,7 @@ func (w *WebSocket) Read(gctx global.Context) {
 		case s = <-w.Events().DispatchChannel():
 			var msg events.Message[events.DispatchPayload]
 
-			err = json.Unmarshal(utils.S2B(s), &msg)
+			err = json.Unmarshal(utils.S2B(*s), &msg)
 			if err != nil {
 				zap.S().Errorw("dispatch unmarshal error",
 					"error", err,
