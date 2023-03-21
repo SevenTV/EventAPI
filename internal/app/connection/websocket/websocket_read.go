@@ -146,6 +146,10 @@ func (w *WebSocket) Read(gctx global.Context) {
 			}
 		// Listen for incoming dispatches
 		case s = <-w.Events().DispatchChannel():
+			if s == nil { // The channel is closed - stop listening
+				return
+			}
+
 			var msg events.Message[events.DispatchPayload]
 
 			err = json.Unmarshal(utils.S2B(*s), &msg)

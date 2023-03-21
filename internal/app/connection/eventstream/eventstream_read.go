@@ -50,6 +50,10 @@ func (es *EventStream) Read(gctx global.Context) {
 				return
 			}
 		case s = <-es.evm.DispatchChannel():
+			if s == nil { // channel closed
+				return
+			}
+
 			var msg events.Message[events.DispatchPayload]
 
 			err = json.Unmarshal(utils.S2B(*s), &msg)
