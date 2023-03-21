@@ -132,7 +132,7 @@ func (w *WebSocket) Read(gctx global.Context) {
 			w.SendClose(events.CloseCodeRestart, time.Second*5)
 			return
 		case <-ttl.C:
-			w.Write(events.NewMessage(events.OpcodeReconnect, events.ReconnectPayload{
+			_ = w.Write(events.NewMessage(events.OpcodeReconnect, events.ReconnectPayload{
 				Reason: "The server requested a reconnect",
 			}).ToRaw())
 			w.SendClose(events.CloseCodeReconnect, 0)
