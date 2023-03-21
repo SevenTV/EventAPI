@@ -131,11 +131,13 @@ func (h handler) OnDispatch(gctx global.Context, msg events.Message[events.Dispa
 	msg.Data.Whisper = ""
 	msg.Data.Matches = matches
 
-	if err := h.conn.Write(msg.ToRaw()); err != nil {
-		zap.S().Errorw("failed to write dispatch to connection",
-			"error", err,
-		)
-	}
+	go func() {
+		if err := h.conn.Write(msg.ToRaw()); err != nil {
+			zap.S().Errorw("failed to write dispatch to connection",
+				"error", err,
+			)
+		}
+	}()
 }
 
 func (h handler) Subscribe(gctx global.Context, m events.Message[json.RawMessage]) (error, bool) {
