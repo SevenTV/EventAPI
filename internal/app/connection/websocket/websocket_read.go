@@ -23,7 +23,7 @@ var ResumableCloseCodes = []int{
 func (w *WebSocket) Read(gctx global.Context) {
 	heartbeat := time.NewTicker(time.Duration(w.heartbeatInterval) * time.Millisecond)
 
-	ttl := time.NewTimer(time.Duration(gctx.Config().API.TTL) * time.Second)
+	ttl := time.NewTimer(time.Duration(gctx.Config().API.TTL) * time.Minute)
 
 	deferred := false
 
@@ -135,7 +135,7 @@ func (w *WebSocket) Read(gctx global.Context) {
 			w.Write(events.NewMessage(events.OpcodeReconnect, events.ReconnectPayload{
 				Reason: "The server requested a reconnect",
 			}).ToRaw())
-			w.SendClose(events.CloseCodeReconnect, time.Second*5)
+			w.SendClose(events.CloseCodeReconnect, 0)
 
 			return
 		case <-heartbeat.C: // Send a heartbeat
