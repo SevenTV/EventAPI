@@ -11,7 +11,7 @@ import (
 
 type Redis interface {
 	redis.Instance
-	EventsSubscribe(ctx context.Context, ch chan string, wg *sync.WaitGroup, subscribeTo ...string)
+	EventsSubscribe(ctx context.Context, ch chan *string, wg *sync.WaitGroup, subscribeTo ...string)
 }
 
 type RedisInst struct {
@@ -37,13 +37,13 @@ func WrapRedis(r redis.Instance) Redis {
 		var msg *goRedis.Message
 		for {
 			msg = <-ch
-			payload := msg.Payload // dont change we want to copy the memory due to concurrency.
+			payload := msg.Payload
 			inst.subsMtx.Lock()
 			for _, s := range inst.subs[msg.Channel] {
 				select {
-				case s.ch <- payload:
+				case s.ch <- &payload: // we do not want to copy the memory here so we pass a pointer
 				default:
-					zap.S().Warn("channel blocked dropping message: ", msg.Channel)
+					zap.S().Debug("channel blocked dropping message: ", msg.Channel)
 				}
 			}
 			inst.subsMtx.Unlock()
@@ -54,11 +54,11 @@ func WrapRedis(r redis.Instance) Redis {
 }
 
 type redisSub struct {
-	ch chan string
+	ch chan *string
 }
 
 // Subscribe to a channel on Redis
-func (r *RedisInst) EventsSubscribe(ctx context.Context, ch chan string, wg *sync.WaitGroup, subscribeTo ...string) {
+func (r *RedisInst) EventsSubscribe(ctx context.Context, ch chan *string, wg *sync.WaitGroup, subscribeTo ...string) {
 	wg.Add(1)
 
 	r.subsMtx.Lock()

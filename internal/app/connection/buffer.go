@@ -70,21 +70,22 @@ func (b *eventBuffer) Start(gctx global.Context) error {
 	pipe.Set(b.ctx, b.stateKey, "1", time.Until(b.ttl))
 
 	// Store session's subscriptions
-	b.conn.Events().m.Range(func(key events.EventType, value EventChannel) bool {
+	events := b.conn.Events()
+	events.mx.Lock()
+	defer events.mx.Unlock()
+
+	for key, value := range events.m {
 		sub, err := json.Marshal(StoredSubscription{
 			Type:    key,
 			Channel: value,
 		})
 		if err != nil {
 			zap.S().Errorw("failed to marshal subscription for buffered storage", "error", err)
-
-			return false
+			continue
 		}
 
 		pipe.LPush(b.ctx, b.subStoreKey, utils.B2S(sub))
-
-		return true
-	})
+	}
 
 	pipe.ExpireAt(b.ctx, b.subStoreKey, b.ttl)
 

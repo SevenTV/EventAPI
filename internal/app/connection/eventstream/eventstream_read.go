@@ -1,12 +1,14 @@
 package eventstream
 
 import (
+	"encoding/json"
 	"io"
 	"net"
 	"syscall"
 	"time"
 
 	"github.com/seventv/api/data/events"
+	"github.com/seventv/common/utils"
 	"github.com/seventv/eventapi/internal/global"
 	"go.uber.org/zap"
 )
@@ -15,9 +17,6 @@ func (es *EventStream) Read(gctx global.Context) {
 	conn := es.c.Conn().(*net.TCPConn)
 
 	heartbeat := time.NewTicker(time.Duration(es.heartbeatInterval) * time.Millisecond)
-
-	dispatch := es.Digest().Dispatch.Subscribe(es.ctx, es.sessionID, 128)
-	ack := es.Digest().Ack.Subscribe(es.ctx, es.sessionID, 5)
 
 	defer func() {
 		heartbeat.Stop()
@@ -29,6 +28,11 @@ func (es *EventStream) Read(gctx global.Context) {
 	}
 
 	es.SetReady()
+
+	var (
+		s   *string
+		err error
+	)
 
 	for {
 		if err := checkConn(conn); err != nil {
@@ -45,17 +49,21 @@ func (es *EventStream) Read(gctx global.Context) {
 			if err := es.SendHeartbeat(); err != nil {
 				return
 			}
-		case msg := <-dispatch:
-			_ = es.handler.OnDispatch(gctx, msg)
+		case s = <-es.evm.DispatchChannel():
+			if s == nil { // channel closed
+				return
+			}
 
-		// Listen for acks (i.e in response to a session mutation)
-		case msg := <-ack:
-			if err := es.Write(msg.ToRaw()); err != nil {
-				zap.S().Errorw("failed to write ack to connection",
-					"error", err,
-				)
+			var msg events.Message[events.DispatchPayload]
+
+			err = json.Unmarshal(utils.S2B(*s), &msg)
+			if err != nil {
+				zap.S().Errorw("dispatch unmarshal error", "error", err)
 				continue
 			}
+
+			// Dispatch the event to the client
+			es.handler.OnDispatch(gctx, msg)
 		}
 	}
 }

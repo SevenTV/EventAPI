@@ -11,7 +11,6 @@ import (
 
 	"github.com/seventv/api/data/events"
 	"github.com/seventv/common/structures/v3"
-	"github.com/seventv/common/sync_map"
 	"github.com/seventv/common/utils"
 	"github.com/seventv/eventapi/internal/global"
 )
@@ -48,8 +47,6 @@ type Connection interface {
 	OnClose() <-chan struct{}
 	// Close sends a close frame with the specified code and ends the connection
 	SendClose(code events.CloseCode, after time.Duration)
-	// Digest returns the message decoder channel utility
-	Digest() EventDigest
 	// SetWriter defines the connection's writable stream (SSE only)
 	SetWriter(w *bufio.Writer)
 }
@@ -79,33 +76,44 @@ func GenerateSessionID(n int) ([]byte, error) {
 	return b, nil
 }
 
-func NewEventMap(ch chan string) *EventMap {
+func NewEventMap(ch chan *string) *EventMap {
 	return &EventMap{
 		ch:    ch,
 		count: utils.PointerOf(int32(0)),
-		m:     sync_map.Map[events.EventType, EventChannel]{},
+		m:     map[events.EventType]EventChannel{},
 		mx:    sync.Mutex{},
 	}
 }
 
 type EventMap struct {
-	ch    chan string
+	ch    chan *string
+	wg    sync.WaitGroup
 	count *int32
-	m     sync_map.Map[events.EventType, EventChannel]
+	m     map[events.EventType]EventChannel
 	mx    sync.Mutex
 	once  sync.Once
 }
 
 // Subscribe sets up a subscription to dispatch events with the specified type
-func (e *EventMap) Subscribe(gctx global.Context, t events.EventType, cond events.EventCondition, props EventSubscriptionProperties) (EventChannel, uint32, error) {
+func (e *EventMap) Subscribe(
+	gctx global.Context,
+	ctx context.Context,
+	t events.EventType,
+	cond events.EventCondition,
+	props EventSubscriptionProperties,
+) (EventChannel, uint32, error) {
 	e.mx.Lock()
 	defer e.mx.Unlock()
 
 	id := rand.Uint32()
 
-	ec, exists := e.m.Load(t)
+	ec, exists := e.m[t]
 	if !exists {
+		lctx, cancel := context.WithCancel(ctx)
+
 		ec = EventChannel{
+			ctx:        lctx,
+			cancel:     cancel,
 			ID:         []uint32{},
 			Conditions: []events.EventCondition{},
 			Properties: []EventSubscriptionProperties{},
@@ -124,7 +132,6 @@ func (e *EventMap) Subscribe(gctx global.Context, t events.EventType, cond event
 
 			return ec, id, ErrAlreadySubscribed
 		}
-
 	}
 
 	ec.ID = append(ec.ID, id)
@@ -132,17 +139,20 @@ func (e *EventMap) Subscribe(gctx global.Context, t events.EventType, cond event
 	ec.Properties = append(ec.Properties, props)
 
 	// Create channel
-	e.m.Store(t, ec)
+	e.m[t] = ec
+
+	gctx.Inst().Redis.EventsSubscribe(ec.ctx, e.ch, &e.wg, events.CreateDispatchKey(t, cond, false))
 
 	return ec, id, nil
 }
 
-func (e *EventMap) Unsubscribe(t events.EventType, cond map[string]string) (uint32, error) {
+func (e *EventMap) Unsubscribe(gctx global.Context, t events.EventType, cond map[string]string) (uint32, error) {
 	e.mx.Lock()
 	defer e.mx.Unlock()
 
 	if len(cond) == 0 {
-		_, exists := e.m.LoadAndDelete(t)
+		_, exists := e.m[t]
+		delete(e.m, t)
 		if !exists {
 			return 0, ErrNotSubscribed
 		}
@@ -150,7 +160,7 @@ func (e *EventMap) Unsubscribe(t events.EventType, cond map[string]string) (uint
 		return 0, nil
 	}
 
-	ec, exists := e.m.Load(t)
+	ec, exists := e.m[t]
 	if !exists {
 		return 0, ErrNotSubscribed
 	}
@@ -176,15 +186,23 @@ func (e *EventMap) Unsubscribe(t events.EventType, cond map[string]string) (uint
 		return 0, ErrNotSubscribed
 	}
 
-	e.m.Store(t, ec)
+	if len(ec.ID) == 0 {
+		ec.cancel()
+		delete(e.m, t)
+	} else {
+		e.m[t] = ec
+	}
 
 	return id, nil
 }
 
 func (e *EventMap) UnsubscribeWithID(id ...uint32) error {
 	var found bool
+	e.mx.Lock()
+	defer e.mx.Unlock()
 
-	e.m.Range(func(key events.EventType, value EventChannel) bool {
+outer:
+	for _, value := range e.m {
 		for _, id := range id {
 			for i, v := range value.ID {
 				if v == id {
@@ -193,13 +211,11 @@ func (e *EventMap) UnsubscribeWithID(id ...uint32) error {
 					value.Properties = utils.SliceRemove(value.Properties, i)
 
 					found = true
-					break
+					break outer
 				}
 			}
 		}
-
-		return true
-	})
+	}
 
 	if !found {
 		return ErrNotSubscribed
@@ -213,14 +229,17 @@ func (e *EventMap) Count() int32 {
 }
 
 func (e *EventMap) Get(t events.EventType) (*EventChannel, bool) {
+	e.mx.Lock()
+	defer e.mx.Unlock()
+
 	var ec *EventChannel
 
-	if c, ok := e.m.Load(t); ok {
+	if c, ok := e.m[t]; ok {
 		ec = &c
 	}
 
 	tWilcard := events.EventType(fmt.Sprintf("%s.*", t.ObjectName()))
-	if c, ok := e.m.Load(tWilcard); ok {
+	if c, ok := e.m[tWilcard]; ok {
 		if ec == nil {
 			ec = &EventChannel{
 				ID:         []uint32{},
@@ -237,22 +256,28 @@ func (e *EventMap) Get(t events.EventType) (*EventChannel, bool) {
 	return ec, ec != nil
 }
 
-func (e *EventMap) DispatchChannel() chan string {
+func (e *EventMap) DispatchChannel() chan *string {
 	return e.ch
 }
 
 func (e *EventMap) Destroy() {
 	e.once.Do(func() {
-		e.m.Range(func(key events.EventType, value EventChannel) bool {
-			e.m.Delete(key)
-			return true
-		})
+		e.mx.Lock()
+		defer e.mx.Unlock()
 
+		for key, value := range e.m {
+			value.cancel()
+			delete(e.m, key)
+		}
+
+		e.wg.Wait()
 		close(e.ch)
 	})
 }
 
 type EventChannel struct {
+	ctx        context.Context
+	cancel     context.CancelFunc
 	ID         []uint32                      `json:"id"`
 	Conditions []events.EventCondition       `json:"conditions"`
 	Properties []EventSubscriptionProperties `json:"properties"`

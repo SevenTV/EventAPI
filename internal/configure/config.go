@@ -30,6 +30,8 @@ type Config struct {
 		Bind              string `mapstructure:"bind" json:"bind"`
 		HeartbeatInterval uint32 `mapstructure:"heartbeat_interval" json:"heartbeat_interval"`
 		SubscriptionLimit int32  `mapstructure:"subscription_limit" json:"subscription_limit"`
+		// Connection time limit in minutes
+		TTL int `mapstructure:"ttl" json:"ttl"`
 	} `mapstructure:"api" json:"api"`
 
 	Monitoring struct {

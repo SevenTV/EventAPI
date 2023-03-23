@@ -9,18 +9,14 @@ import (
 	"github.com/fasthttp/router"
 	"github.com/fasthttp/websocket"
 	"github.com/fsnotify/fsnotify"
-	"github.com/seventv/api/data/events"
 	"github.com/seventv/common/errors"
-	"github.com/seventv/common/redis"
 	"github.com/seventv/common/utils"
-	client "github.com/seventv/eventapi/internal/app/connection"
 	"github.com/seventv/eventapi/internal/global"
 	"github.com/valyala/fasthttp"
 	"go.uber.org/zap"
 )
 
 type Server struct {
-	digest   client.EventDigest
 	upgrader websocket.FastHTTPUpgrader
 	router   *router.Router
 
@@ -35,16 +31,9 @@ func New(gctx global.Context) (Server, <-chan struct{}) {
 		EnableCompression: true,
 	}
 
-	// Connection map (v3 only)
-	dig := client.EventDigest{
-		Dispatch: client.NewDigest[events.DispatchPayload](gctx, redis.Key(events.OpcodeDispatch.PublishKey())),
-		Ack:      client.NewDigest[events.AckPayload](gctx, redis.Key(events.OpcodeAck.PublishKey())),
-	}
-
 	r := router.New()
 	srv := Server{
 		upgrader: upgrader,
-		digest:   dig,
 		router:   r,
 
 		activeConns: new(int32),

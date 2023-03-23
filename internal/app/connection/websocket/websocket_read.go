@@ -6,6 +6,7 @@ import (
 
 	"github.com/fasthttp/websocket"
 	"github.com/seventv/api/data/events"
+	"github.com/seventv/common/utils"
 	client "github.com/seventv/eventapi/internal/app/connection"
 	"github.com/seventv/eventapi/internal/global"
 	"go.uber.org/zap"
@@ -17,18 +18,19 @@ var ResumableCloseCodes = []int{
 	websocket.CloseAbnormalClosure,
 	int(events.CloseCodeTimeout),
 	int(events.OpcodeReconnect),
-	int(events.CloseCodeRestart),
 }
 
 func (w *WebSocket) Read(gctx global.Context) {
 	heartbeat := time.NewTicker(time.Duration(w.heartbeatInterval) * time.Millisecond)
-	dispatch := w.Digest().Dispatch.Subscribe(w.ctx, w.sessionID, 1024)
+
+	ttl := time.NewTimer(time.Duration(gctx.Config().API.TTL) * time.Minute)
 
 	deferred := false
 
 	defer func() {
 		heartbeat.Stop()
 		w.Destroy()
+		ttl.Stop()
 	}()
 
 	go func() {
@@ -42,9 +44,8 @@ func (w *WebSocket) Read(gctx global.Context) {
 		defer func() {
 			deferred = true
 
-			if r := recover(); r != nil {
-				zap.S().Errorw("websocket read panic", "error", r)
-			}
+			// Ignore panics, they're caused by fasthttp
+			_ = recover()
 
 			buf := w.Buffer()
 			if buf != nil {
@@ -59,12 +60,7 @@ func (w *WebSocket) Read(gctx global.Context) {
 
 		// Listen for incoming messages sent by the client
 		for {
-			if w.c == nil {
-				break
-			}
-
 			err = w.c.ReadJSON(&msg)
-
 			if websocket.IsCloseError(err, ResumableCloseCodes...) {
 				w.evbuf = client.NewEventBuffer(w, w.SessionID(), time.Duration(w.heartbeatInterval)*time.Millisecond)
 				err := w.evbuf.Start(gctx)
@@ -123,12 +119,24 @@ func (w *WebSocket) Read(gctx global.Context) {
 
 	w.SetReady() // mark the connection as ready
 
+	var (
+		s   *string
+		err error
+	)
+
 	for {
 		select {
 		case <-w.OnClose():
 			return
 		case <-gctx.Done():
 			w.SendClose(events.CloseCodeRestart, time.Second*5)
+			return
+		case <-ttl.C:
+			_ = w.Write(events.NewMessage(events.OpcodeReconnect, events.ReconnectPayload{
+				Reason: "The server requested a reconnect",
+			}).ToRaw())
+			w.SendClose(events.CloseCodeReconnect, 0)
+
 			return
 		case <-heartbeat.C: // Send a heartbeat
 			if !deferred {
@@ -137,9 +145,24 @@ func (w *WebSocket) Read(gctx global.Context) {
 				}
 			}
 		// Listen for incoming dispatches
-		case msg := <-dispatch:
+		case s = <-w.Events().DispatchChannel():
+			if s == nil { // The channel is closed - stop listening
+				return
+			}
+
+			var msg events.Message[events.DispatchPayload]
+
+			err = json.Unmarshal(utils.S2B(*s), &msg)
+			if err != nil {
+				zap.S().Errorw("dispatch unmarshal error",
+					"error", err,
+					"data", s,
+				)
+				continue
+			}
+
 			// Dispatch the event to the client
-			_ = w.handler.OnDispatch(gctx, msg)
+			w.handler.OnDispatch(gctx, msg)
 		}
 	}
 }

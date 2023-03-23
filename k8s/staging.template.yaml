@@ -118,6 +118,7 @@ data:
       bind: 0.0.0.0:3000
       heartbeat_interval: 25000
       subscription_limit: 500
+      ttl: 60
 
     health:
       enabled: true
