@@ -116,7 +116,6 @@ func (w *WebSocket) SendClose(code events.CloseCode, after time.Duration) {
 	})
 
 	if err := w.Write(msg.ToRaw()); err != nil {
-		zap.S().Errorw("failed to close connection", "error", err)
 		return
 	}
 

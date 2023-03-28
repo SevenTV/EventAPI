@@ -71,11 +71,11 @@ func (w *WebSocket) Read(gctx global.Context) {
 		for {
 			err = w.c.ReadJSON(&msg)
 			if websocket.IsCloseError(err, ResumableCloseCodes...) {
-				w.evbuf = client.NewEventBuffer(w, w.SessionID(), time.Duration(w.heartbeatInterval)*time.Millisecond)
-				err := w.evbuf.Start(gctx)
-				if err != nil {
-					zap.S().Errorw("event buffer start error", "error", err)
-				}
+				// w.evbuf = client.NewEventBuffer(w, w.SessionID(), time.Duration(w.heartbeatInterval)*time.Millisecond)
+				// err := w.evbuf.Start(gctx)
+				// if err != nil {
+				// 	zap.S().Errorw("event buffer start error", "error", err)
+				// }
 
 				return
 			}
