@@ -30,17 +30,19 @@ func (es *EventStream) Read(gctx global.Context) {
 
 	es.SetReady()
 
-	// Subscribe to whispers
-	_, _, _ = es.evm.Subscribe(gctx, es.ctx, events.EventTypeWhisper, events.EventCondition{
-		"session_id": es.SessionID(),
-	}, client.EventSubscriptionProperties{
-		Auto: true,
-	})
-
 	var (
 		s   *string
 		err error
 	)
+
+	// Subscribe to whispers
+	if _, _, err = es.evm.Subscribe(gctx, es.ctx, events.EventTypeWhisper, events.EventCondition{
+		"session_id": es.SessionID(),
+	}, client.EventSubscriptionProperties{
+		Auto: true,
+	}); err != nil {
+		zap.S().Errorw("whisper subscription error", "error", err, "session_id", es.SessionID())
+	}
 
 	for {
 		if err := checkConn(conn); err != nil {
