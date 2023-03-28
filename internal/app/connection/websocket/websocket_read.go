@@ -119,6 +119,13 @@ func (w *WebSocket) Read(gctx global.Context) {
 
 	w.SetReady() // mark the connection as ready
 
+	// Subscribe to whispers
+	_, _, _ = w.evm.Subscribe(gctx, w.ctx, events.EventTypeWhisper, events.EventCondition{
+		"session_id": w.SessionID(),
+	}, client.EventSubscriptionProperties{
+		Auto: true,
+	})
+
 	var (
 		s   *string
 		err error

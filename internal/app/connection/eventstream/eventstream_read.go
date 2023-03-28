@@ -9,6 +9,7 @@ import (
 
 	"github.com/seventv/api/data/events"
 	"github.com/seventv/common/utils"
+	client "github.com/seventv/eventapi/internal/app/connection"
 	"github.com/seventv/eventapi/internal/global"
 	"go.uber.org/zap"
 )
@@ -28,6 +29,13 @@ func (es *EventStream) Read(gctx global.Context) {
 	}
 
 	es.SetReady()
+
+	// Subscribe to whispers
+	_, _, _ = es.evm.Subscribe(gctx, es.ctx, events.EventTypeWhisper, events.EventCondition{
+		"session_id": es.SessionID(),
+	}, client.EventSubscriptionProperties{
+		Auto: true,
+	})
 
 	var (
 		s   *string
