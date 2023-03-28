@@ -124,6 +124,15 @@ func (w *WebSocket) Read(gctx global.Context) {
 		err error
 	)
 
+	// Subscribe to whispers
+	if _, _, err = w.evm.Subscribe(gctx, w.ctx, events.EventTypeWhisper, events.EventCondition{
+		"session_id": w.SessionID(),
+	}, client.EventSubscriptionProperties{
+		Auto: true,
+	}); err != nil {
+		zap.S().Errorw("whisper subscription error", "error", err, "session_id", w.SessionID())
+	}
+
 	for {
 		select {
 		case <-w.OnClose():
