@@ -1,7 +1,6 @@
 package app
 
 import (
-	"fmt"
 	"net/http"
 	"strings"
 	"sync/atomic"
@@ -20,7 +19,6 @@ import (
 
 func (s Server) HandleConnect(gctx global.Context, shutdown <-chan struct{}) {
 	v3Fn := func(ctx *fasthttp.RequestCtx) {
-		fmt.Println("v3Fn", gctx.Config().API.V3)
 		if !gctx.Config().API.V3 {
 			ctx.SetStatusCode(http.StatusServiceUnavailable)
 			return
