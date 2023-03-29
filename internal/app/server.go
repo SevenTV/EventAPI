@@ -73,6 +73,12 @@ func New(gctx global.Context) (Server, <-chan struct{}) {
 				return
 			}
 
+			if atomic.LoadInt32(srv.activeConns) >= int32(gctx.Config().API.ConnectionLimit) {
+				ctx.SetStatusCode(fasthttp.StatusLocked)
+				ctx.SetBodyString("This server is full!")
+				return
+			}
+
 			r.Handler(ctx)
 		},
 		IdleTimeout:       time.Second * 30,
