@@ -57,10 +57,10 @@ spec:
           resources:
             limits:
               cpu: "1"
-              memory: 2Gi
+              memory: 1.25Gi
             requests:
               cpu: 100m
-              memory: 2Gi
+              memory: 1.25Gi
           volumeMounts:
             - name: config
               mountPath: /app/config.yaml
@@ -110,6 +110,7 @@ spec:
       targetPort: pprof
   selector:
     app: eventapi
+  clusterIP: None
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -151,6 +152,8 @@ metadata:
   annotations:
     external-dns.alpha.kubernetes.io/cloudflare-proxied: "true"
     external-dns.alpha.kubernetes.io/hostname: events.7tv.io
+    nginx.ingress.kubernetes.io/proxy-next-upstream: 'error timeout http_503'
+    nginx.ingress.kubernetes.io/proxy-next-upstream-tries: '10'
 spec:
   ingressClassName: nginx
   tls:
@@ -184,6 +187,8 @@ metadata:
   annotations:
     external-dns.alpha.kubernetes.io/cloudflare-proxied: "true"
     external-dns.alpha.kubernetes.io/hostname: events.7tv.app
+    nginx.ingress.kubernetes.io/proxy-next-upstream: 'error timeout http_503'
+    nginx.ingress.kubernetes.io/proxy-next-upstream-tries: '10'
 spec:
   ingressClassName: nginx
   tls:
