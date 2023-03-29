@@ -113,11 +113,11 @@ func (w *WebSocket) Read(gctx global.Context) {
 				if err = handler.Unsubscribe(gctx, msg); err != nil {
 					return
 				}
-			// Handle command - BRIDGE
-			case events.OpcodeBridge:
-				if err = handler.OnBridge(gctx, msg); err != nil {
-					return
-				}
+				// Handle command - BRIDGE
+				// case events.OpcodeBridge:
+				// 	if err = handler.OnBridge(gctx, msg); err != nil {
+				// 		return
+				// 	}
 			}
 		}
 	}()
