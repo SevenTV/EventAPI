@@ -64,6 +64,8 @@ func (w *WebSocket) Read(gctx global.Context) {
 			w.Destroy()
 		}()
 
+		throttle := utils.NewThrottle(time.Millisecond * 100)
+
 		var msg events.Message[json.RawMessage]
 		var err error
 
@@ -113,11 +115,13 @@ func (w *WebSocket) Read(gctx global.Context) {
 				if err = handler.Unsubscribe(gctx, msg); err != nil {
 					return
 				}
-				// Handle command - BRIDGE
-				// case events.OpcodeBridge:
-				// 	if err = handler.OnBridge(gctx, msg); err != nil {
-				// 		return
-				// 	}
+			// Handle command - BRIDGE
+			case events.OpcodeBridge:
+				throttle.Do(func() {
+					if err = handler.OnBridge(gctx, msg); err != nil {
+						return
+					}
+				})
 			}
 		}
 	}()
