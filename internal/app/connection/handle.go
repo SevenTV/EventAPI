@@ -278,42 +278,43 @@ func (h handler) Unsubscribe(gctx global.Context, m events.Message[json.RawMessa
 }
 
 func (h handler) OnResume(gctx global.Context, m events.Message[json.RawMessage]) error {
-	msg, err := events.ConvertMessage[events.ResumePayload](m)
-	if err != nil {
-		return err
-	}
+	/*
+		msg, err := events.ConvertMessage[events.ResumePayload](m)
+		if err != nil {
+			return err
+		}
 
-	// Set up a new event buffer with the specified session ID
-	buf := NewEventBuffer(h.conn, msg.Data.SessionID, time.Minute)
+			// Set up a new event buffer with the specified session ID
+			buf := NewEventBuffer(h.conn, msg.Data.SessionID, time.Minute)
 
-	messages, subs, err := buf.Recover(gctx)
-	subCount := 0
+			messages, subs, err := buf.Recover(gctx)
+			subCount := 0
 
-	if err == nil {
-		// Reinstate subscriptions
-		for _, s := range subs {
-			for i := range s.Channel.ID {
-				cond := s.Channel.Conditions[i]
-				props := s.Channel.Properties[i]
+			if err == nil {
+				// Reinstate subscriptions
+				for _, s := range subs {
+					for i := range s.Channel.ID {
+						cond := s.Channel.Conditions[i]
+						props := s.Channel.Properties[i]
 
-				_, _, err := h.conn.Events().Subscribe(gctx, h.conn.Context(), s.Type, cond, props)
-				if err != nil {
-					return err
+						_, _, err := h.conn.Events().Subscribe(gctx, h.conn.Context(), s.Type, cond, props)
+						if err != nil {
+							return err
+						}
+
+						subCount++
+					}
 				}
 
-				subCount++
-			}
-		}
-
-		// Replay dispatches
-		for _, m := range messages {
-			h.OnDispatch(gctx, m)
-		}
-	} else {
-		h.conn.SendError("Resume Failed", map[string]any{
-			"error": err.Error(),
-		})
-	}
+				// Replay dispatches
+				for _, m := range messages {
+					h.OnDispatch(gctx, m)
+				}
+			} else {
+				h.conn.SendError("Resume Failed", map[string]any{
+					"error": err.Error(),
+				})
+			}*/
 
 	// Send ACK
 	_ = h.conn.SendAck(events.OpcodeResume, utils.ToJSON(struct {
@@ -321,15 +322,17 @@ func (h handler) OnResume(gctx global.Context, m events.Message[json.RawMessage]
 		DispatchesReplayed    int  `json:"dispatches_replayed"`
 		SubscriptionsRestored int  `json:"subscriptions_restored"`
 	}{
-		Success:               err == nil,
-		DispatchesReplayed:    len(messages),
-		SubscriptionsRestored: subCount,
+		Success:               false,
+		DispatchesReplayed:    0,
+		SubscriptionsRestored: 0,
 	}))
 
-	// Cleanup the redis data
-	if err = buf.Cleanup(gctx); err != nil {
-		zap.S().Errorw("failed to cleanup event buffer", "error", err)
-	}
+	/*
+		// Cleanup the redis data
+		if err = buf.Cleanup(gctx); err != nil {
+			zap.S().Errorw("failed to cleanup event buffer", "error", err)
+		}
+	*/
 
 	return nil
 }

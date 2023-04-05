@@ -101,10 +101,10 @@ func (w *WebSocket) Read(gctx global.Context) {
 			handler := client.NewHandler(w)
 			switch msg.Op {
 			// Handle command - RESUME
-			// case events.OpcodeResume:
-			// 	if err = handler.OnResume(gctx, msg); err != nil {
-			// 		return
-			// 	}
+			case events.OpcodeResume:
+				if err = handler.OnResume(gctx, msg); err != nil {
+					return
+				}
 			// Handle command - SUBSCRIBE
 			case events.OpcodeSubscribe:
 				if err, _ = handler.Subscribe(gctx, msg); err != nil {
