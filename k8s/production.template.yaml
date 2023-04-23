@@ -130,6 +130,7 @@ data:
       ttl: 60
       v1: true
       v3: true
+      bridge_url: http://api:9700
 
     health:
       enabled: true

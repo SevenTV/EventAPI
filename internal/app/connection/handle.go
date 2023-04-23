@@ -1,8 +1,10 @@
 package client
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
+	"net/http"
 	"strings"
 	"time"
 
@@ -350,12 +352,10 @@ func (h handler) OnBridge(gctx global.Context, m events.Message[json.RawMessage]
 		return err
 	}
 
-	s := strings.Builder{}
-	s.WriteString(msg.Data.Command)
-	s.WriteString(":")
-	s.WriteString(utils.B2S(b))
+	_, err = http.DefaultClient.Post(gctx.Config().API.BridgeURL, "application/json", bytes.NewReader(b))
+	if err != nil {
+		zap.S().Errorw("failed to bridge event", "error", err)
 
-	if _, err := gctx.Inst().Redis.RawClient().Publish(gctx, "eventapi:bridge", s.String()).Result(); err != nil {
 		return err
 	}
 

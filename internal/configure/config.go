@@ -36,6 +36,9 @@ type Config struct {
 
 		V1 bool `mapstructure:"v1" json:"v1"`
 		V3 bool `mapstructure:"v3" json:"v3"`
+
+		// URL to the eventbridge api
+		BridgeURL string `mapstructure:"bridge_url" json:"bridge_url"`
 	} `mapstructure:"api" json:"api"`
 
 	Monitoring struct {
