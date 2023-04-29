@@ -352,11 +352,23 @@ func (h handler) OnBridge(gctx global.Context, m events.Message[json.RawMessage]
 		return err
 	}
 
-	_, err = http.DefaultClient.Post(gctx.Config().API.BridgeURL, "application/json", bytes.NewReader(b))
+	res, err := http.DefaultClient.Post(gctx.Config().API.BridgeURL, "application/json", bytes.NewReader(b))
 	if err != nil {
 		zap.S().Errorw("failed to bridge event", "error", err)
 
 		return err
+	}
+
+	var messages []events.Message[events.DispatchPayload]
+
+	if err = json.NewDecoder(res.Body).Decode(&messages); err != nil {
+		zap.S().Errorw("failed to decode bridged event", "error", err)
+
+		return err
+	}
+
+	for _, m := range messages {
+		h.OnDispatch(gctx, m)
 	}
 
 	return nil
