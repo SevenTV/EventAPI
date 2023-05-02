@@ -57,10 +57,10 @@ spec:
           resources:
             limits:
               cpu: "1"
-              memory: 2Gi
+              memory: 1.5Gi
             requests:
               cpu: 100m
-              memory: 2Gi
+              memory: 1.5Gi
           volumeMounts:
             - name: config
               mountPath: /app/config.yaml
@@ -110,6 +110,7 @@ spec:
       targetPort: pprof
   selector:
     app: eventapi
+  clusterIP: None
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -124,8 +125,12 @@ data:
       enabled: true
       bind: 0.0.0.0:3000
       heartbeat_interval: 25000
-      subscription_limit: 500
-      ttl: 60
+      subscription_limit: 100
+      connection_limit: 7500
+      ttl: 10
+      v1: false
+      v3: true
+      bridge_url: http://api:9700
 
     health:
       enabled: true

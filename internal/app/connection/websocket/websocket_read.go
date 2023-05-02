@@ -41,6 +41,15 @@ func (w *WebSocket) Read(gctx global.Context) {
 			return
 		}
 
+		// Subscribe to whispers
+		if _, _, err := w.evm.Subscribe(gctx, w.ctx, events.EventTypeWhisper, events.EventCondition{
+			"session_id": w.SessionID(),
+		}, client.EventSubscriptionProperties{
+			Auto: true,
+		}); err != nil {
+			zap.S().Errorw("whisper subscription error", "error", err, "session_id", w.SessionID())
+		}
+
 		defer func() {
 			deferred = true
 
@@ -55,6 +64,8 @@ func (w *WebSocket) Read(gctx global.Context) {
 			w.Destroy()
 		}()
 
+		throttle := utils.NewThrottle(time.Millisecond * 100)
+
 		var msg events.Message[json.RawMessage]
 		var err error
 
@@ -62,11 +73,11 @@ func (w *WebSocket) Read(gctx global.Context) {
 		for {
 			err = w.c.ReadJSON(&msg)
 			if websocket.IsCloseError(err, ResumableCloseCodes...) {
-				w.evbuf = client.NewEventBuffer(w, w.SessionID(), time.Duration(w.heartbeatInterval)*time.Millisecond)
-				err := w.evbuf.Start(gctx)
-				if err != nil {
-					zap.S().Errorw("event buffer start error", "error", err)
-				}
+				// w.evbuf = client.NewEventBuffer(w, w.SessionID(), time.Duration(w.heartbeatInterval)*time.Millisecond)
+				// err := w.evbuf.Start(gctx)
+				// if err != nil {
+				// 	zap.S().Errorw("event buffer start error", "error", err)
+				// }
 
 				return
 			}
@@ -106,9 +117,11 @@ func (w *WebSocket) Read(gctx global.Context) {
 				}
 			// Handle command - BRIDGE
 			case events.OpcodeBridge:
-				if err = handler.OnBridge(gctx, msg); err != nil {
-					return
-				}
+				throttle.Do(func() {
+					if err = handler.OnBridge(gctx, msg); err != nil {
+						return
+					}
+				})
 			}
 		}
 	}()
@@ -123,15 +136,6 @@ func (w *WebSocket) Read(gctx global.Context) {
 		s   *string
 		err error
 	)
-
-	// Subscribe to whispers
-	if _, _, err = w.evm.Subscribe(gctx, w.ctx, events.EventTypeWhisper, events.EventCondition{
-		"session_id": w.SessionID(),
-	}, client.EventSubscriptionProperties{
-		Auto: true,
-	}); err != nil {
-		zap.S().Errorw("whisper subscription error", "error", err, "session_id", w.SessionID())
-	}
 
 	for {
 		select {

@@ -1,6 +1,7 @@
 package app
 
 import (
+	"net/http"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -18,6 +19,11 @@ import (
 
 func (s Server) HandleConnect(gctx global.Context, shutdown <-chan struct{}) {
 	v3Fn := func(ctx *fasthttp.RequestCtx) {
+		if !gctx.Config().API.V3 {
+			ctx.SetStatusCode(http.StatusServiceUnavailable)
+			return
+		}
+
 		var (
 			con client.Connection
 			err error
@@ -69,6 +75,11 @@ func (s Server) HandleConnect(gctx global.Context, shutdown <-chan struct{}) {
 	s.router.GET("/v3", v3Fn)
 
 	s.router.GET("/v1/channel-emotes", func(ctx *fasthttp.RequestCtx) {
+		if !gctx.Config().API.V1 {
+			ctx.SetStatusCode(http.StatusServiceUnavailable)
+			return
+		}
+
 		if strings.ToLower(utils.B2S(ctx.Request.Header.Peek("upgrade"))) == "websocket" || strings.ToLower(utils.B2S(ctx.Request.Header.Peek("connection"))) == "upgrade" {
 			if err := s.upgrader.Upgrade(ctx, func(c *websocket.Conn) {
 				v1.ChannelEmotesWS(gctx, c)

@@ -10,7 +10,7 @@ require (
 	github.com/json-iterator/go v1.1.12
 	github.com/prometheus/client_golang v1.14.0
 	github.com/seventv/api v0.0.0-20230328043606-720366e31af1
-	github.com/seventv/common v0.0.0-20230321183435-350a6acc3175
+	github.com/seventv/common v0.0.0-20230402095344-527b0414019e
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.15.0
 	github.com/valyala/fasthttp v1.44.0
