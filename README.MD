@@ -270,7 +270,7 @@ Upon opening the connection, you will receive a [`[1] HELLO`](#hello-1) event.
 
 It is possible to add subscriptions directly in the connection string, by appending a `@` to the URL followed by a URL-encoded string with the following syntax,
 
-`{type}<{condition1}={value1},{condition2}={value2}>,...`
+`{type}<{condition1}={value1};{condition2}={value2}>;...`
 
 where `type` is a [subscription type](#subscription-types), then wrapped between brackets (`<...>`) are a list of conditions. 
 Separate each subscription by a comma. The same type can be subscribed to multiple times with different conditions.
@@ -284,7 +284,7 @@ Subscribe to updates on a specific emote set
 : GET https://events.7tv.io/v3@emote_set.update<object_id=62cdd34e72a832540de95857>
 
 Subscribe to all entitlement and cosmetic events on a specific channel
-: GET https://events.7tv.io/v3@entitlement.*<host_id=60867b015e01df61570ab900,connection_id=1234>,cosmetic.*<host_id=60867b015e01df61570ab900,connection_id=1234>
+: GET https://events.7tv.io/v3@entitlement.*<host_id=60867b015e01df61570ab900;connection_id=1234>,cosmetic.*<host_id=60867b015e01df61570ab900;connection_id=1234>
 ```
 
 At this time, it is possible to subscribe with no conditions and effectively turn the connection into a Firehose, however this may be restricted in the future.
