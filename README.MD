@@ -149,7 +149,7 @@ Close codes provide a reason for the closure of a connection to help clients und
 
 | Key   |  Type  |           Description           |
 | :---- | :----: | :-----------------------------: |
-| Count | uint64 | The amount of heartbeats so far |
+| count | uint64 | The amount of heartbeats so far |
 
 #### Ack (5)
 
