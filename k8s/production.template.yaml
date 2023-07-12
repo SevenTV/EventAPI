@@ -7,6 +7,11 @@ spec:
   selector:
     matchLabels:
       app: eventapi
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 5
+      maxUnavailable: 5
   template:
     metadata:
       labels:
@@ -57,10 +62,10 @@ spec:
           resources:
             limits:
               cpu: "1"
-              memory: 1.5Gi
+              memory: 3225Mi
             requests:
-              cpu: 100m
-              memory: 1.5Gi
+              cpu: 350m
+              memory: 3000Mi
           volumeMounts:
             - name: config
               mountPath: /app/config.yaml
@@ -124,10 +129,10 @@ data:
     api:
       enabled: true
       bind: 0.0.0.0:3000
-      heartbeat_interval: 25000
+      heartbeat_interval: 28000
       subscription_limit: 100
-      connection_limit: 7500
-      ttl: 10
+      connection_limit: 10000
+      ttl: 30
       v1: false
       v3: true
       bridge_url: http://api:9700
