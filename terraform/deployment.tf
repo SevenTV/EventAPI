@@ -13,6 +13,7 @@ resource "kubernetes_secret" "app" {
   data = {
     "config.yaml" = templatefile("${path.module}/config.template.yaml", {
       redis_address      = local.infra.redis_host,
+      redis_username     = "default",
       redis_password     = local.infra.redis_password,
       bind               = "0.0.0.0:3000",
       heartbeat_interval = tostring(var.heartbeat_interval),

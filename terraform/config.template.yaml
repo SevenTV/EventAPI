@@ -4,6 +4,8 @@ redis:
     - ${redis_address}
   sentinel: true
   master_name: "mymaster"
+  username: ${redis_username}
+  password: ${redis_password}
 
 api:
   enabled: true
