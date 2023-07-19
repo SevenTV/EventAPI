@@ -168,7 +168,7 @@ jobs:
       - name: Terraform Validate
         id: validate
         run: terraform validate -no-color
-      
+
       - name: "Terraform Plan"
         id: plan
         run: terraform plan
@@ -191,7 +191,7 @@ jobs:
             const botComment = comments.find(comment => {
               return comment.user.type === 'Bot' && comment.body.includes('Terraform Format and Style')
             })
-      
+
             // 2. Prepare format of the comment
             const output = `#### Terraform Format and Style 🖌\`${{ steps.fmt.outcome }}\`
             #### Terraform Initialization ⚙️\`${{ steps.init.outcome }}\`
@@ -201,21 +201,21 @@ jobs:
             \`\`\`\n
             ${{ steps.validate.outputs.stdout }}
             \`\`\`
-      
+
             </details>
-      
+
             #### Terraform Plan 📖\`${{ steps.plan.outcome }}\`
-      
+
             <details><summary>Show Plan</summary>
-      
+
             \`\`\`\n
             ${process.env.PLAN}
             \`\`\`
-      
+
             </details>
-      
+
             *Pusher: @${{ github.actor }}, Action: \`${{ github.event_name }}\`, Working Directory: \`${{ env.tf_actions_working_dir }}\`, Workflow: \`${{ github.workflow }}\`*`;
-      
+
             // 3. If we have a comment, update it, otherwise create a new one
             if (botComment) {
               github.rest.issues.updateComment({
