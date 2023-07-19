@@ -140,6 +140,9 @@ jobs:
         working-directory: ./terraform
 
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
       - name: "Setup Terraform"
         uses: hashicorp/setup-terraform@v1
         if: ${{ env.DEPLOY != 'none' }}
