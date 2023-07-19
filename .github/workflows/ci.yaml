@@ -19,7 +19,7 @@ on:
         default: "none"
         type: choice
         options:
-          - production
+          - prod
           - test
           - none
 
@@ -28,7 +28,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  DEPLOY: ${{ (inputs.deploy != 'none' && inputs.deploy) || ((github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'production') || (github.event_name == 'push' && github.ref_type == 'branch' && github.ref_name == 'master') && 'production') || ((github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'test') || (github.event_name == 'push' && github.ref_type == 'branch' && github.ref_name == 'dev') || (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'staged')) && 'test') || 'none' }}
+  DEPLOY: ${{ (inputs.deploy != 'none' && inputs.deploy) || ((github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'prod') || (github.event_name == 'push' && github.ref_type == 'branch' && github.ref_name == 'master') && 'prod') || ((github.event_name == 'workflow_dispatch' && github.event.inputs.deploy == 'test') || (github.event_name == 'push' && github.ref_type == 'branch' && github.ref_name == 'dev') || (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'staged')) && 'test') || 'none' }}
 
 jobs:
   ci:
@@ -99,19 +99,6 @@ jobs:
       - name: Build App
         run: make build
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v1
-        if: ${{ env.DEPLOY != 'none' }}
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
-
-      - name: Login to Amazon ECR
-        id: login-ecr
-        if: ${{ env.DEPLOY != 'none' }}
-        uses: aws-actions/amazon-ecr-login@v1
-
       - name: Make build context
         if: ${{ env.DEPLOY != 'none' }}
         run: |
@@ -124,6 +111,13 @@ jobs:
           install: true
           endpoint: builders
 
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
       - name: Build docker image
         uses: docker/build-push-action@v3
         if: inputs.deploy != 'none'
@@ -131,8 +125,7 @@ jobs:
           context: .
           file: docker/partial.Dockerfile
           tags: |
-            ${{ steps.login-ecr.outputs.registry }}/${{ format('seventv-{0}', env.DEPLOY) }}/eventapi:latest
-            ${{ steps.login-ecr.outputs.registry }}/${{ format('seventv-{0}', env.DEPLOY) }}/eventapi:${{ github.sha }}
+            ghcr.io/seventv/eventapi:${{ env.DEPLOY }}-${{ github.sha }}
           push: true
 
   deploy:
@@ -171,7 +164,7 @@ jobs:
 
       - name: "Terraform Plan"
         id: plan
-        run: terraform plan
+        run: terraform plan -var "image=ghcr.io/seventv/eventapi:${{ env.DEPLOY }}-${{ github.sha }}"
         continue-on-error: true
 
       - name: "Update"

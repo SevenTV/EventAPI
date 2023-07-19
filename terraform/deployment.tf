@@ -55,7 +55,7 @@ resource "kubernetes_deployment" "app" {
       spec {
         container {
           name  = "eventapi"
-          image = var.app_docker_image
+          image = var.image_url
 
           port "http" {
             name           = "http"

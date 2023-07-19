@@ -25,9 +25,8 @@ variable "namespace" {
   default = "eventapi"
 }
 
-variable "app_docker_image" {
+variable "image_url" {
   type = string
-  default = "ghcr.io/seventv/eventapi:latest"
 }
 
 variable "heartbeat_interval" {
