@@ -1,0 +1,29 @@
+level: info
+redis:
+  addresses:
+    - ${redis_address}
+  sentinel: true
+  master_name: "mymaster"
+
+api:
+  enabled: true
+  bind: ${bind}
+  bridge_url: ${bridge_url}
+  heartbeat_interval: ${heartbeat_interval}
+  subscription_limit: ${subscription_limit}
+  connection_limit: ${connection_limit}
+  ttl: ${ttl}
+  v1: false
+  v3: true
+
+health:
+  enabled: true
+  bind: 0.0.0.0:9200
+
+monitoring:
+  enabled: true
+  bind: 0.0.0.0:9100
+
+pprof:
+  enabled: false
+  bind: 0.0.0.0:9300
