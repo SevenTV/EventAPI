@@ -131,8 +131,8 @@ jobs:
           context: .
           file: docker/partial.Dockerfile
           tags: |
-            ${{ steps.login-ecr.outputs.registry }}/${{ format('seventv-{0}', inputs.deploy) }}/eventapi:latest
-            ${{ steps.login-ecr.outputs.registry }}/${{ format('seventv-{0}', inputs.deploy) }}/eventapi:${{ github.sha }}
+            ${{ steps.login-ecr.outputs.registry }}/${{ format('seventv-{0}', env.DEPLOY) }}/eventapi:latest
+            ${{ steps.login-ecr.outputs.registry }}/${{ format('seventv-{0}', env.DEPLOY) }}/eventapi:${{ github.sha }}
           push: true
 
   deploy:
