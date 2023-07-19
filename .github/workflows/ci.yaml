@@ -137,7 +137,7 @@ jobs:
       pull-requests: write
     defaults:
       run:
-        working-directory: terraform
+        working-directory: ./terraform
 
     steps:
       - name: "Setup Terraform"
@@ -146,6 +146,11 @@ jobs:
         with:
           cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
 
+      - name: "Terraform Init"
+        id: init
+        run: terraform init
+        continue-on-error: true
+
       - name: "Terraform Workspace"
         run: terraform workspace select -or-create=true ${{ env.DEPLOY }}
 
@@ -153,10 +158,6 @@ jobs:
         id: fmt
         run: terraform fmt -check
         continue-on-error: true
-
-      - name: "Terraform Init"
-        id: init
-        run: terraform init -upgrade
 
       - name: Terraform Validate
         id: validate
