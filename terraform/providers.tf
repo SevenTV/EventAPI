@@ -32,7 +32,7 @@ provider "cloudflare" {
 }
 
 data "aws_eks_cluster" "cluster" {
-  name = infra_workspace_name
+  name = local.infra_workspace_name
 }
 
 data "aws_eks_cluster_auth" "cluster" {

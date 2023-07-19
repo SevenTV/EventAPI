@@ -11,14 +11,15 @@ resource "kubernetes_secret" "app" {
   }
 
   data = {
-    "config.yaml" = templatefile("${path.module}/config.yaml", {
-      redis_address      = var.infra.redis_host,
-      redis_password     = var.infra.redis_password,
+    "config.yaml" = templatefile("${path.module}/config.template.yaml", {
+      redis_address      = local.infra.redis_host,
+      redis_password     = local.infra.redis_password,
       bind               = "0.0.0.0:3000",
-      heartbeat_interval = var.heartbeat_interval,
-      subscription_limit = var.subscription_limit,
-      connection_limit   = var.connection_limit,
-      ttl                = var.ttl,
+      heartbeat_interval = tostring(var.heartbeat_interval),
+      subscription_limit = tostring(var.subscription_limit),
+      connection_limit   = tostring(var.connection_limit),
+      ttl                = tostring(var.ttl),
+      bridge_url         = "",
     })
   }
 }
@@ -57,25 +58,25 @@ resource "kubernetes_deployment" "app" {
           name  = "eventapi"
           image = var.image_url
 
-          port "http" {
+          port {
             name           = "http"
             container_port = 3000
             protocol       = "TCP"
           }
 
-          port "metrics" {
+          port {
             name           = "metrics"
             container_port = 9100
             protocol       = "TCP"
           }
 
-          port "health" {
+          port {
             name           = "health"
             container_port = 9200
             protocol       = "TCP"
           }
 
-          port "pprof" {
+          port {
             name           = "pprof"
             container_port = 9300
             protocol       = "TCP"
@@ -239,7 +240,8 @@ resource "kubernetes_horizontal_pod_autoscaler_v2" "eventapil" {
     min_replicas = 1
     max_replicas = 100
 
-    metrics {
+    metric {
+      type = "External"
       resource {
         name = "events_v3_current_connections"
         target {

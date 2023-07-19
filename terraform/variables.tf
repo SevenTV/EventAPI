@@ -1,4 +1,4 @@
-resource "terraform_remote_state" "infra" {
+data "terraform_remote_state" "infra" {
     backend = "remote"
 
     config = {
