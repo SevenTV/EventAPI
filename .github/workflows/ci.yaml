@@ -131,7 +131,7 @@ jobs:
   deploy:
     name: EventAPI Deploy
     needs: ci
-    runs-on: aws-runner
+    runs-on: ubuntu-latest
     if: ${{ inputs.deploy != 'none' }}
     permissions:
       pull-requests: write
