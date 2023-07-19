@@ -168,13 +168,14 @@ jobs:
 
       - name: Terraform Variables
         run: |
-          echo "image_url = ghcr.io/seventv/eventapi:${{ env.DEPLOY }}-${{ github.sha }}" \
-            " " \
-            >> terraform/eventapi.auto.tfvars
+          cat <<EOF > *.auto.tfvars
+            image_url="ghcr.io/seventv/eventapi:${{ env.DEPLOY }}-${{ github.sha }}"
+
+          EOF
 
       - name: "Terraform Apply"
         id: apply
-        run: terraform apply -var-file=eventapi.auto.tfvars
+        run: terraform apply
 
       - name: "Update"
         uses: actions/github-script@v6

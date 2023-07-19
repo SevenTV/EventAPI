@@ -1,23 +1,18 @@
 data "terraform_remote_state" "infra" {
-    backend = "remote"
+  backend = "remote"
 
-    config = {
-        organization = "7tv"
-        workspaces = {
-            name = "seventv-infra-${trimprefix(terraform.workspace, "eventapi")}"
-        }
+  config = {
+    organization = "7tv"
+    workspaces = {
+      name = local.infra_workspace_name
     }
+  }
 }
 
 variable "region" {
   description = "AWS region"
   type        = string
   default     = "us-east-2"
-}
-
-variable "cloudflare_api_token" {
-  description = "Cloudflare API Token"
-  sensitive   = true
 }
 
 variable "namespace" {
