@@ -166,10 +166,15 @@ jobs:
         id: validate
         run: terraform validate -no-color
 
-      - name: "Terraform Plan"
-        id: plan
-        run: terraform plan -var "image=ghcr.io/seventv/eventapi:${{ env.DEPLOY }}-${{ github.sha }}"
-        continue-on-error: true
+      - name: Terraform Variables
+        run: |
+          echo "image_url = ghcr.io/seventv/eventapi:${{ env.DEPLOY }}-${{ github.sha }}" \
+            " " \
+            >> terraform/eventapi.auto.tfvars
+
+      - name: "Terraform Apply"
+        id: apply
+        run: terraform apply -var-file=eventapi.auto.tfvars
 
       - name: "Update"
         uses: actions/github-script@v6
@@ -177,7 +182,6 @@ jobs:
         env:
           PLAN: "terraform"
         with:
-          github-token: ${{ secrets.PAT }}
           script: |
             // 1. Retrieve existing bot comments for the PR
             const { data: comments } = await github.rest.issues.listComments({
@@ -201,7 +205,7 @@ jobs:
 
             </details>
 
-            #### Terraform Plan 📖\`${{ steps.plan.outcome }}\`
+            #### Terraform Plan 📖\`${{ steps.apply.outcome }}\`
 
             <details><summary>Show Plan</summary>
 
