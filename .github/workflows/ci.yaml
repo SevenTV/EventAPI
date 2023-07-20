@@ -126,10 +126,11 @@ jobs:
           file: docker/partial.Dockerfile
           tags: |
             ghcr.io/seventv/eventapi:${{ env.DEPLOY }}-${{ github.sha }}
+            ghcr.io/seventv/eventapi:${{ env.DEPLOY }}-latest
           push: true
 
-  deploy:
-    name: EventAPI Deploy
+  validate:
+    name: EventAPI Deploy Validation
     needs: ci
     runs-on: ubuntu-latest
     if: ${{ inputs.deploy != 'none' }}
@@ -176,6 +177,7 @@ jobs:
       - name: "Terraform Plan"
         id: plan
         run: terraform plan -no-color
+
       - uses: actions/github-script@v6
         if: github.event_name == 'pull_request'
         env:
@@ -233,3 +235,8 @@ jobs:
                 body: output
               })
             }
+
+      - name: "Terraform Apply"
+        id: apply
+        run: terraform apply -no-color
+        continue-on-error: true

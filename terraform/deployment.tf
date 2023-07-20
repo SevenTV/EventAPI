@@ -206,7 +206,7 @@ resource "kubernetes_ingress_v1" "app" {
 
   spec {
     rule {
-      host = local.infra.secondary_zone
+      host = join(".", ["events", local.infra.secondary_zone])
       http {
         path {
           path      = "/"
