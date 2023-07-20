@@ -175,8 +175,7 @@ jobs:
 
       - name: "Terraform Plan"
         id: plan
-        run: terraform plan
-
+        run: terraform plan -no-color
       - uses: actions/github-script@v6
         if: github.event_name == 'pull_request'
         env:
@@ -216,7 +215,7 @@ jobs:
 
             </details>
 
-            *Pusher: @${{ github.actor }}, Action: \`${{ github.event_name }}\`, Working Directory: \`${{ env.tf_actions_working_dir }}\`, Workflow: \`${{ github.workflow }}\`*`;
+            *Actor: @${{ github.actor }}, Action: \`${{ github.event_name }}\`, Workflow: \`${{ github.workflow }}\`*`;
 
             // 3. If we have a comment, update it, otherwise create a new one
             if (botComment) {
