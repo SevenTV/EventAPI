@@ -11,5 +11,5 @@ terraform {
 
 locals {
   infra_workspace_name = replace(terraform.workspace, "eventapi", "infra")
-  infra = data.terraform_remote_state.infra.outputs
+  infra                = data.terraform_remote_state.infra.outputs
 }
