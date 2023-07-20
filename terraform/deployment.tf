@@ -141,8 +141,7 @@ resource "kubernetes_deployment" "app" {
             failure_threshold     = 6
           }
 
-          // TODO: This should be "IfNotPresent", but first requires the image url to use hashes
-          image_pull_policy = "Always"
+          image_pull_policy = var.image_pull_policy
         }
 
         volume {

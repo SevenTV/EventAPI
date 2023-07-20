@@ -171,6 +171,7 @@ jobs:
         run: |
           cat <<EOF > *.auto.tfvars
             image_url="ghcr.io/seventv/eventapi:${{ env.DEPLOY }}-${{ github.sha }}"
+            image_pull_policy="IfNotPresent"
 
           EOF
 

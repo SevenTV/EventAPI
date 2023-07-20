@@ -24,6 +24,11 @@ variable "image_url" {
   type = string
 }
 
+variable "image_pull_policy" {
+  type    = string
+  default = "Always"
+}
+
 variable "heartbeat_interval" {
   type    = number
   default = 28000
