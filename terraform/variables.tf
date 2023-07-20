@@ -26,7 +26,7 @@ variable "image_url" {
 
 variable "heartbeat_interval" {
   type    = number
-  default = 28
+  default = 28000
 }
 
 variable "subscription_limit" {

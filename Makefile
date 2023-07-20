@@ -43,3 +43,6 @@ work:
 
 dev:
 	go run cmd/main.go
+
+deploy:
+	terraform -chdir=./terraform apply
