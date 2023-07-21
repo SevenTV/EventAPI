@@ -152,6 +152,8 @@ jobs:
 
       - name: "Terraform Init"
         id: init
+        env:
+          TF_WORKSPACE: ${{ env.DEPLOY }}
         run: terraform init
         continue-on-error: true
 

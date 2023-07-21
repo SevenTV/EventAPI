@@ -198,7 +198,7 @@ resource "kubernetes_ingress_v1" "app" {
     namespace = kubernetes_namespace.app.metadata[0].name
     annotations = {
       "kubernetes.io/ingress.class"                         = "nginx"
-      "external-dns.alpha.kubernetes.io/hostname"           = local.infra.cloudflare_tunnel_hostname
+      "external-dns.alpha.kubernetes.io/target"             = local.infra.cloudflare_tunnel_hostname
       "external-dns.alpha.kubernetes.io/cloudflare-proxied" = "true"
     }
   }

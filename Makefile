@@ -46,3 +46,6 @@ dev:
 
 terraform:
 	terraform -chdir=./terraform init
+
+deploy:
+	terraform -chdir=./terraform apply -auto-approve
