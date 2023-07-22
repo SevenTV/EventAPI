@@ -241,12 +241,15 @@ resource "kubernetes_horizontal_pod_autoscaler_v2" "eventapil" {
     max_replicas = 100
 
     metric {
-      type = "External"
-      resource {
-        name = "events_v3_current_connections"
+      type = "Pods"
+      pods {
+        metric {
+          name = "events_v3_current_connections"
+        }
+
         target {
-          type  = "Value"
-          value = var.connection_limit
+          type          = "Value"
+          average_value = "10000"
         }
       }
     }
