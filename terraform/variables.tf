@@ -21,7 +21,9 @@ variable "namespace" {
 }
 
 variable "image_url" {
-  type = string
+  type     = string
+  nullable = true
+  default  = null
 }
 
 variable "image_pull_policy" {

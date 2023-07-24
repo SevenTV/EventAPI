@@ -55,9 +55,20 @@ resource "kubernetes_deployment" "app" {
       }
 
       spec {
+        node_selector = {
+          "node-group" = "events"
+        }
+
+        toleration {
+          key      = "seventv-pool"
+          operator = "Equal"
+          value    = "events"
+          effect   = "NoSchedule"
+        }
+
         container {
           name  = "eventapi"
-          image = var.image_url
+          image = local.image_url
 
           port {
             name           = "http"
@@ -159,6 +170,9 @@ resource "kubernetes_service" "app" {
   metadata {
     name      = "eventapi"
     namespace = kubernetes_namespace.app.metadata[0].name
+    labels = {
+      app = "eventapi"
+    }
   }
 
   spec {
@@ -190,6 +204,28 @@ resource "kubernetes_service" "app" {
       target_port = "pprof"
     }
   }
+}
+
+resource "kubectl_manifest" "app_monitor" {
+  depends_on = [kubernetes_deployment.app]
+
+  yaml_body = <<YAML
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: eventapi
+  namespace: ${kubernetes_namespace.app.metadata[0].name}
+  labels:
+    app: eventapi
+spec:
+  selector:
+    matchLabels:
+      app: eventapi
+  endpoints:
+    - port: metrics
+      interval: 10s
+      scrapeTimeout: 10s
+YAML
 }
 
 resource "kubernetes_ingress_v1" "app" {
@@ -224,7 +260,7 @@ resource "kubernetes_ingress_v1" "app" {
   }
 }
 
-resource "kubernetes_horizontal_pod_autoscaler_v2" "eventapil" {
+resource "kubernetes_horizontal_pod_autoscaler_v2" "app" {
   metadata {
     name      = "eventapi"
     namespace = kubernetes_namespace.app.metadata[0].name
@@ -248,8 +284,8 @@ resource "kubernetes_horizontal_pod_autoscaler_v2" "eventapil" {
         }
 
         target {
-          type          = "Value"
-          average_value = "10000"
+          type          = "AverageValue"
+          average_value = var.connection_limit * 0.75
         }
       }
     }
