@@ -56,11 +56,11 @@ resource "kubernetes_deployment" "app" {
 
       spec {
         node_selector = {
-          "node-group" = "events"
+          "7tv.io/node-pool" = "events"
         }
 
         toleration {
-          key      = "seventv-pool"
+          key      = "7tv.io/node-pool"
           operator = "Equal"
           value    = "events"
           effect   = "NoSchedule"
