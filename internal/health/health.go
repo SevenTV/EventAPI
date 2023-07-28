@@ -41,7 +41,7 @@ func New(gctx global.Context, srv *app.Server) <-chan struct{} {
 			}
 
 			// check if path is /concurrency
-			if !ctx.IsGet() || utils.B2S(ctx.URI().Path()) == "/concurrency" && srv != nil && srv.GetConcurrentConnections() >= (gctx.Config().API.ConnectionLimit) {
+			if !ctx.IsGet() || utils.B2S(ctx.URI().Path()) == "/concurrency" && srv != nil && srv.GetConcurrentConnections() >= (gctx.Config().API.ConnectionLimit-1) {
 				zap.S().Warnw("connection limit reached")
 
 				ctx.SetBodyString("Maximum Concurrency")

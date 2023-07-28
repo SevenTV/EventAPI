@@ -150,7 +150,7 @@ resource "kubernetes_deployment" "app" {
             initial_delay_seconds = 3
             timeout_seconds       = 5
             period_seconds        = 1
-            success_threshold     = 1
+            success_threshold     = 3
             failure_threshold     = 1
           }
 
@@ -225,8 +225,8 @@ spec:
       app: eventapi
   endpoints:
     - port: metrics
-      interval: 10s
-      scrapeTimeout: 10s
+      interval: 3s
+      scrapeTimeout: 2s
 YAML
 }
 
@@ -287,7 +287,38 @@ resource "kubernetes_horizontal_pod_autoscaler_v2" "app" {
 
         target {
           type          = "AverageValue"
-          average_value = var.connection_limit * 0.75
+          average_value = var.connection_limit * 0.85
+        }
+      }
+    }
+
+    behavior {
+      scale_up {
+        stabilization_window_seconds = 10
+        select_policy = "Min"
+        policy {
+          period_seconds = 5
+          type = "Percent"
+          value = 25
+        }
+        policy {
+          period_seconds = 5
+          type = "Pods"
+          value = 6
+        }
+      }
+      scale_down {
+        stabilization_window_seconds = 60
+        select_policy = "Min"
+        policy {
+          period_seconds = 15
+          type = "Percent"
+          value = 10
+        }
+        policy {
+          period_seconds = 15
+          type = "Pods"
+          value = 2
         }
       }
     }
