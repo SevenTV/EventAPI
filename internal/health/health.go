@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/seventv/common/utils"
 	"github.com/seventv/eventapi/internal/app"
 	"github.com/seventv/eventapi/internal/global"
 	"github.com/valyala/fasthttp"
@@ -39,11 +40,12 @@ func New(gctx global.Context, srv *app.Server) <-chan struct{} {
 				ctx.SetStatusCode(503)
 			}
 
-			if srv != nil && srv.GetConcurrentCinnections() >= (gctx.Config().API.ConnectionLimit) {
+			// check if path is /concurrency
+			if !ctx.IsGet() || utils.B2S(ctx.URI().Path()) == "/concurrency" && srv != nil && srv.GetConcurrentConnections() >= (gctx.Config().API.ConnectionLimit) {
 				zap.S().Warnw("connection limit reached")
 
 				ctx.SetBodyString("Maximum Concurrency")
-				ctx.SetStatusCode(503)
+				ctx.SetStatusCode(410)
 			}
 		},
 		GetOnly:          true,

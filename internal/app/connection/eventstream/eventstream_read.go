@@ -23,7 +23,7 @@ func (es *EventStream) Read(gctx global.Context) {
 		es.Destroy()
 	}()
 
-	if err := es.Greet(); err != nil {
+	if err := es.Greet(gctx); err != nil {
 		return
 	}
 

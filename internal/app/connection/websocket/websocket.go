@@ -74,7 +74,7 @@ func (w *WebSocket) SessionID() string {
 	return hex.EncodeToString(w.sessionID)
 }
 
-func (w *WebSocket) Greet() error {
+func (w *WebSocket) Greet(gctx global.Context) error {
 	msg := events.NewMessage(events.OpcodeHello, events.HelloPayload{
 		HeartbeatInterval: uint32(w.heartbeatInterval),
 		SessionID:         hex.EncodeToString(w.sessionID),

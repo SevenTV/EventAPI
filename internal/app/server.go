@@ -140,10 +140,28 @@ func New(gctx global.Context) (*Server, <-chan struct{}) {
 		close(done)
 	}()
 
+	go func() {
+		ticker := time.NewTicker(time.Second * 10)
+
+		for {
+			select {
+			case <-gctx.Done():
+				ticker.Stop()
+				return
+			case <-ticker.C:
+				v := atomic.LoadInt32(srv.activeConns)
+
+				gctx.Inst().ConcurrencyValue = v
+
+				zap.S().Infof("concurrency: %d", v)
+			}
+		}
+	}()
+
 	return &srv, done
 }
 
-func (s Server) GetConcurrentCinnections() int32 {
+func (s Server) GetConcurrentConnections() int32 {
 	return atomic.LoadInt32(s.activeConns)
 }
 

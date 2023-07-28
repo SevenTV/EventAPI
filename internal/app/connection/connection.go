@@ -20,7 +20,7 @@ type Connection interface {
 	// Retrieve the hex-encoded ID of this session
 	SessionID() string
 	// Greet sends an Hello message to the client
-	Greet() error
+	Greet(gctx global.Context) error
 	// Listen for incoming and outgoing events
 	Read(gctx global.Context)
 	// SendHeartbeat lets the client know that the connection is healthy

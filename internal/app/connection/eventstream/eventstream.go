@@ -127,11 +127,15 @@ func (es *EventStream) Buffer() client.EventBuffer {
 	return es.evbuf
 }
 
-func (es *EventStream) Greet() error {
+func (es *EventStream) Greet(gctx global.Context) error {
 	msg := events.NewMessage(events.OpcodeHello, events.HelloPayload{
 		HeartbeatInterval: uint32(es.heartbeatInterval),
 		SessionID:         hex.EncodeToString(es.sessionID),
 		SubscriptionLimit: es.subscriptionLimit,
+		Instance: events.HelloPayloadInstanceInfo{
+			Name:       gctx.Config().Pod.Name,
+			Population: gctx.Inst().ConcurrencyValue,
+		},
 	})
 
 	return es.Write(msg.ToRaw())

@@ -126,7 +126,7 @@ func (w *WebSocket) Read(gctx global.Context) {
 		}
 	}()
 
-	if err := w.Greet(); err != nil {
+	if err := w.Greet(gctx); err != nil {
 		return
 	}
 

@@ -131,24 +131,26 @@ resource "kubernetes_deployment" "app" {
           }
 
           liveness_probe {
-            tcp_socket {
+            http_get {
+              path = "/"
               port = "health"
             }
             initial_delay_seconds = 3
             timeout_seconds       = 5
             period_seconds        = 5
             success_threshold     = 1
-            failure_threshold     = 6
+            failure_threshold     = 3
           }
 
           readiness_probe {
-            tcp_socket {
+            http_get {
+              path = "/concurrency"
               port = "health"
             }
             initial_delay_seconds = 3
             timeout_seconds       = 5
             period_seconds        = 1
-            success_threshold     = 3
+            success_threshold     = 1
             failure_threshold     = 1
           }
 
