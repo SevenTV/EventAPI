@@ -23,7 +23,7 @@ type Server struct {
 	activeConns *int32
 }
 
-func New(gctx global.Context) (Server, <-chan struct{}) {
+func New(gctx global.Context) (*Server, <-chan struct{}) {
 	upgrader := websocket.FastHTTPUpgrader{
 		CheckOrigin: func(ctx *fasthttp.RequestCtx) bool {
 			return true
@@ -140,7 +140,11 @@ func New(gctx global.Context) (Server, <-chan struct{}) {
 		close(done)
 	}()
 
-	return srv, done
+	return &srv, done
+}
+
+func (s Server) GetConcurrentCinnections() int32 {
+	return atomic.LoadInt32(s.activeConns)
 }
 
 type ErrorResponse struct {

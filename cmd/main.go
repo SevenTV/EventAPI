@@ -86,16 +86,19 @@ func main() {
 
 	dones := []<-chan struct{}{}
 
+	var srv *app.Server
+
 	if gctx.Config().API.Enabled {
-		_, done := app.New(gctx)
+		var done <-chan struct{}
+
+		srv, done = app.New(gctx)
 		dones = append(dones, done)
 	}
 	if gctx.Config().PProf.Enabled {
-		done := pprof.New(gctx)
-		dones = append(dones, done)
+		dones = append(dones, pprof.New(gctx))
 	}
 	if gctx.Config().Health.Enabled {
-		dones = append(dones, health.New(gctx))
+		dones = append(dones, health.New(gctx, srv))
 	}
 	if gctx.Config().Monitoring.Enabled {
 		dones = append(dones, monitoring.New(gctx))

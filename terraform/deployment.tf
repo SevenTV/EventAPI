@@ -35,7 +35,7 @@ resource "kubernetes_deployment" "app" {
   }
 
   timeouts {
-    create = "2m"
+    create = "4m"
     update = "2m"
     delete = "2m"
   }
@@ -147,9 +147,9 @@ resource "kubernetes_deployment" "app" {
             }
             initial_delay_seconds = 3
             timeout_seconds       = 5
-            period_seconds        = 5
-            success_threshold     = 1
-            failure_threshold     = 6
+            period_seconds        = 1
+            success_threshold     = 3
+            failure_threshold     = 1
           }
 
           image_pull_policy = var.image_pull_policy
