@@ -18,9 +18,12 @@ func (es *EventStream) Read(gctx global.Context) {
 
 	heartbeat := time.NewTicker(time.Duration(es.heartbeatInterval) * time.Millisecond)
 
+	liveness := time.NewTicker(time.Second * 1)
+
 	defer func() {
 		heartbeat.Stop()
 		es.Destroy()
+		liveness.Stop()
 	}()
 
 	if err := es.Greet(gctx); err != nil {
@@ -49,6 +52,7 @@ func (es *EventStream) Read(gctx global.Context) {
 			if err := es.SendHeartbeat(); err != nil {
 				return
 			}
+		case <-liveness.C: // Connection liveness check
 		case s = <-es.evm.DispatchChannel():
 			if s == nil { // channel closed
 				return
