@@ -20,6 +20,12 @@ variable "namespace" {
   default = "eventapi"
 }
 
+variable "production" {
+  description = "Whether or not to scale resources to a production state"
+  type        = bool
+  default     = false
+}
+
 variable "image_url" {
   type     = string
   nullable = true

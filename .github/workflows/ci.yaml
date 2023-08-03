@@ -100,13 +100,13 @@ jobs:
         run: make build
 
       - name: Make build context
-        if: ${{ env.DEPLOY != 'none' }}
+        if: env.DEPLOY != 'none'
         run: |
           docker context create builders
 
       - name: Setup buildx
         uses: docker/setup-buildx-action@v2
-        if: ${{ env.DEPLOY != 'none' }}
+        if: env.DEPLOY != 'none'
         with:
           install: true
           endpoint: builders
@@ -120,7 +120,7 @@ jobs:
 
       - name: Build docker image
         uses: docker/build-push-action@v3
-        if: inputs.deploy != 'none'
+        if: env.DEPLOY != 'none'
         with:
           context: .
           file: docker/partial.Dockerfile
@@ -133,7 +133,6 @@ jobs:
     name: EventAPI Deploy Validation
     needs: ci
     runs-on: ubuntu-latest
-    if: ${{ inputs.deploy != 'none' }}
     permissions:
       pull-requests: write
     defaults:
@@ -146,7 +145,6 @@ jobs:
 
       - name: "Setup Terraform"
         uses: hashicorp/setup-terraform@v1
-        if: ${{ env.DEPLOY != 'none' }}
         with:
           cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
 
@@ -240,6 +238,7 @@ jobs:
             }
 
       - name: "Terraform Apply"
+        if: env.deploy != 'none'
         id: apply
         run: terraform apply -no-color -auto-approve
         continue-on-error: true

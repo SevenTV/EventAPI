@@ -115,12 +115,12 @@ resource "kubernetes_deployment" "app" {
 
           resources {
             requests = {
-              cpu    = "350m"
-              memory = "3000Mi"
+              cpu    = var.production ? "350m" : "100m"
+              memory = var.production ? "3Gi" : "500Mi"
             }
             limits = {
-              cpu    = "1000m"
-              memory = "3225Mi"
+              cpu    = var.production ? "500m" : "150m"
+              memory = var.production ? "3.25Gi" : "550Mi"
             }
           }
 
@@ -235,7 +235,6 @@ resource "kubernetes_ingress_v1" "app" {
     name      = "eventapi"
     namespace = kubernetes_namespace.app.metadata[0].name
     annotations = {
-      "kubernetes.io/ingress.class"                         = "nginx"
       "external-dns.alpha.kubernetes.io/target"             = local.infra.cloudflare_tunnel_hostname
       "external-dns.alpha.kubernetes.io/cloudflare-proxied" = "true"
     }
