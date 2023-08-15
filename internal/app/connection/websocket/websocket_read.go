@@ -53,9 +53,6 @@ func (w *WebSocket) Read(gctx global.Context) {
 		defer func() {
 			deferred = true
 
-			// Ignore panics, they're caused by fasthttp
-			_ = recover()
-
 			buf := w.Buffer()
 			if buf != nil {
 				<-buf.Context().Done()

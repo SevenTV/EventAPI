@@ -28,11 +28,6 @@ func WrapRedis(r redis.Instance) Redis {
 		subs:     map[string][]*redisSub{},
 	}
 	go func() {
-		defer func() {
-			if err := recover(); err != nil {
-				zap.S().Fatalw("panic in subs", "error", err)
-			}
-		}()
 		ch := inst.sub.Channel()
 		var msg *goRedis.Message
 		for {

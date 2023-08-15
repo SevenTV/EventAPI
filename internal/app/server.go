@@ -59,11 +59,8 @@ func New(gctx global.Context) (*Server, <-chan struct{}) {
 					"method", utils.B2S(ctx.Method()),
 					"entrypoint", "api",
 				)
-				if err := recover(); err != nil {
-					l.Error("panic in handler: ", err)
-				} else {
-					l.Debug("")
-				}
+
+				l.Debug("")
 			}()
 			ctx.Response.Header.Set("X-Pod-Name", gctx.Config().Pod.Name)
 

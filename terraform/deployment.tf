@@ -115,12 +115,12 @@ resource "kubernetes_deployment" "app" {
 
           resources {
             requests = {
-              cpu    = var.production ? "350m" : "100m"
-              memory = var.production ? "3Gi" : "500Mi"
+              cpu    = local.infra.production ? "250m" : "150m"
+              memory = local.infra.production ? "3Gi" : "500Mi"
             }
             limits = {
-              cpu    = var.production ? "500m" : "150m"
-              memory = var.production ? "3.25Gi" : "550Mi"
+              cpu    = local.infra.production ? "250m" : "150m"
+              memory = local.infra.production ? "3Gi" : "500Mi"
             }
           }
 
@@ -150,7 +150,7 @@ resource "kubernetes_deployment" "app" {
             initial_delay_seconds = 3
             timeout_seconds       = 5
             period_seconds        = 1
-            success_threshold     = 3
+            success_threshold     = 10
             failure_threshold     = 1
           }
 
