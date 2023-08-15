@@ -6,7 +6,7 @@ import (
 
 // TODO: Update this, as the global connection store was removed
 
-func (s Server) HandleSessionMutation(gctx global.Context) { /*
+func (s *Server) HandleSessionMutation(gctx global.Context) { /*
 		s.router.PUT("/v3/sessions/{sid}/events/{event}", func(ctx *fasthttp.RequestCtx) {
 			sid := ctx.UserValue("sid").(string)
 			evt := ctx.UserValue("event").(string)

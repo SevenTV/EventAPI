@@ -8,12 +8,13 @@ import (
 	"sync"
 	"time"
 
-	websocket "github.com/fasthttp/websocket"
+	"github.com/gorilla/websocket"
 	"github.com/seventv/api/data/events"
 	"github.com/seventv/common/structures/v3"
+	"go.uber.org/zap"
+
 	client "github.com/seventv/eventapi/internal/app/connection"
 	"github.com/seventv/eventapi/internal/global"
-	"go.uber.org/zap"
 )
 
 type WebSocket struct {

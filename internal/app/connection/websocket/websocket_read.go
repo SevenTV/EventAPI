@@ -4,12 +4,13 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/fasthttp/websocket"
+	"github.com/gorilla/websocket"
 	"github.com/seventv/api/data/events"
 	"github.com/seventv/common/utils"
+	"go.uber.org/zap"
+
 	client "github.com/seventv/eventapi/internal/app/connection"
 	"github.com/seventv/eventapi/internal/global"
-	"go.uber.org/zap"
 )
 
 var ResumableCloseCodes = []int{
@@ -129,11 +130,6 @@ func (w *WebSocket) Read(gctx global.Context) {
 
 	w.SetReady() // mark the connection as ready
 
-	var (
-		s   *string
-		err error
-	)
-
 	for {
 		select {
 		case <-w.OnClose():
@@ -155,14 +151,14 @@ func (w *WebSocket) Read(gctx global.Context) {
 				}
 			}
 		// Listen for incoming dispatches
-		case s = <-w.Events().DispatchChannel():
+		case s := <-w.Events().DispatchChannel():
 			if s == nil { // The channel is closed - stop listening
 				return
 			}
 
 			var msg events.Message[events.DispatchPayload]
 
-			err = json.Unmarshal(utils.S2B(*s), &msg)
+			err := json.Unmarshal([]byte(*s), &msg)
 			if err != nil {
 				zap.S().Errorw("dispatch unmarshal error",
 					"error", err,

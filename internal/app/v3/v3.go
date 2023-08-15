@@ -7,13 +7,14 @@ import (
 	"strings"
 
 	"github.com/fasthttp/router"
-	"github.com/fasthttp/websocket"
+	"github.com/gorilla/websocket"
 	"github.com/seventv/api/data/events"
+	"github.com/valyala/fasthttp"
+
 	client "github.com/seventv/eventapi/internal/app/connection"
 	client_eventstream "github.com/seventv/eventapi/internal/app/connection/eventstream"
 	client_websocket "github.com/seventv/eventapi/internal/app/connection/websocket"
 	"github.com/seventv/eventapi/internal/global"
-	"github.com/valyala/fasthttp"
 )
 
 func WebSocket(gctx global.Context, conn *websocket.Conn) (client.Connection, error) {

@@ -1,18 +1,16 @@
 package app
 
 import (
-	"github.com/seventv/eventapi/internal/global"
-	"github.com/valyala/fasthttp"
+	"context"
+	"net/http"
+	"time"
 )
 
-func (s Server) HandleHealth(gctx global.Context) {
-	s.router.GET("/health", func(ctx *fasthttp.RequestCtx) {
-		if err := gctx.Inst().Redis.Ping(ctx); err != nil {
-			ctx.SetBodyString("redis down")
-			ctx.SetStatusCode(fasthttp.StatusServiceUnavailable)
-		} else {
-			ctx.SetBodyString("OK")
-			ctx.SetStatusCode(fasthttp.StatusOK)
-		}
-	})
+func (s *Server) HandleHealth(w http.ResponseWriter, r *http.Request) {
+	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	if err := s.gctx.Inst().Redis.Ping(ctx); err != nil {
+		writeBytesResponse(http.StatusServiceUnavailable, []byte("redis down"), w)
+		return
+	}
+	writeBytesResponse(http.StatusOK, []byte("OK"), w)
 }

@@ -12,13 +12,14 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/fasthttp/websocket"
+	"github.com/gorilla/websocket"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/seventv/common/utils"
-	"github.com/seventv/eventapi/internal/events"
-	"github.com/seventv/eventapi/internal/global"
 	"github.com/valyala/fasthttp"
 	"go.uber.org/zap"
+
+	"github.com/seventv/eventapi/internal/events"
+	"github.com/seventv/eventapi/internal/global"
 )
 
 var json = jsoniter.ConfigCompatibleWithStandardLibrary
