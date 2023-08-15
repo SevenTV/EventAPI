@@ -286,7 +286,18 @@ resource "kubernetes_horizontal_pod_autoscaler_v2" "app" {
 
         target {
           type          = "AverageValue"
-          average_value = var.connection_limit * 0.85
+          average_value = var.connection_limit * 0.5
+        }
+      }
+    }
+
+    metric {
+      type = "Resource"
+      resource {
+        name = "memory"
+        target {
+          type                = "Utilization"
+          average_utilization = 60
         }
       }
     }
@@ -294,30 +305,31 @@ resource "kubernetes_horizontal_pod_autoscaler_v2" "app" {
     behavior {
       scale_up {
         stabilization_window_seconds = 10
-        select_policy = "Min"
+        select_policy                = "Max"
         policy {
           period_seconds = 5
-          type = "Percent"
-          value = 25
+          type           = "Percent"
+          value          = 25
         }
         policy {
           period_seconds = 5
-          type = "Pods"
-          value = 6
+          type           = "Pods"
+          value          = 4
         }
       }
+
       scale_down {
         stabilization_window_seconds = 60
-        select_policy = "Min"
+        select_policy                = "Max"
         policy {
           period_seconds = 15
-          type = "Percent"
-          value = 10
+          type           = "Percent"
+          value          = 5
         }
         policy {
           period_seconds = 15
-          type = "Pods"
-          value = 2
+          type           = "Pods"
+          value          = 2
         }
       }
     }
