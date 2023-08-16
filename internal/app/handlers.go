@@ -4,20 +4,27 @@ import (
 	"net/http"
 	"strings"
 
+	"go.uber.org/zap"
+
 	client "github.com/seventv/eventapi/internal/app/connection"
 	v1 "github.com/seventv/eventapi/internal/app/v1"
 	v3 "github.com/seventv/eventapi/internal/app/v3"
 )
 
-func writeBytesResponse(code int, res []byte, w http.ResponseWriter) error {
+func writeBytesResponse(code int, res []byte, w http.ResponseWriter) {
 	w.WriteHeader(code)
 	_, err := w.Write(res)
-	return err
+	if err != nil {
+		zap.S().Errorw("failed to write http response", "error", err)
+	}
 }
 
 func writeError(code int, e error, w http.ResponseWriter) {
 	w.WriteHeader(code)
-	w.Write([]byte(e.Error()))
+	_, err := w.Write([]byte(e.Error()))
+	if err != nil {
+		zap.S().Errorw("failed to write http response", "error", err)
+	}
 }
 
 func (s *Server) handleV3(w http.ResponseWriter, r *http.Request) {
