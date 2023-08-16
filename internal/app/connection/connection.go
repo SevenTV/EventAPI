@@ -79,10 +79,11 @@ func GenerateSessionID(n int) ([]byte, error) {
 
 func NewEventMap(ch chan *string) *EventMap {
 	return &EventMap{
-		ch:    ch,
-		count: utils.PointerOf(int32(0)),
-		m:     map[events.EventType]EventChannel{},
-		mx:    sync.Mutex{},
+		ch:         ch,
+		eventClose: make(chan struct{}),
+		count:      utils.PointerOf(int32(0)),
+		m:          map[events.EventType]EventChannel{},
+		mx:         sync.Mutex{},
 	}
 }
 
@@ -142,7 +143,7 @@ func (e *EventMap) Subscribe(
 	// Create channel
 	e.m[t] = ec
 
-	e.eventClose = gctx.Inst().Redis.EventsSubscribe(ec.ctx, e.ch, events.CreateDispatchKey(t, cond, false))
+	gctx.Inst().Redis.EventsSubscribe(ec.ctx, e.ch, e.eventClose, events.CreateDispatchKey(t, cond, false))
 
 	return ec, id, nil
 }

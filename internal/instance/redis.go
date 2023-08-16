@@ -11,7 +11,7 @@ import (
 
 type Redis interface {
 	redis.Instance
-	EventsSubscribe(ctx context.Context, ch chan *string, subscribeTo ...string) chan struct{}
+	EventsSubscribe(ctx context.Context, ch chan *string, close chan struct{}, subscribeTo ...string)
 	Unsubscribe(ch chan *string, subscribeTo ...string)
 	RemoveChannel(ch chan *string)
 }
@@ -79,17 +79,15 @@ type redisSub struct {
 }
 
 // Subscribe to a channel on Redis
-func (r *RedisInst) EventsSubscribe(ctx context.Context, ch chan *string, subscribeTo ...string) chan struct{} {
+func (r *RedisInst) EventsSubscribe(ctx context.Context, ch chan *string, close chan struct{}, subscribeTo ...string) {
 	r.subsMtx.Lock()
 	defer r.subsMtx.Unlock()
-	sub := &redisSub{ch: ch, close: make(chan struct{})}
 	for _, e := range subscribeTo {
 		if _, ok := r.subs[e]; !ok {
 			_ = r.sub.Subscribe(ctx, e)
 		}
-		r.subs[e] = append(r.subs[e], sub)
+		r.subs[e] = append(r.subs[e], &redisSub{ch: ch, close: close})
 	}
-	return sub.close
 }
 
 // Unsubscribe from a channel on Redis
