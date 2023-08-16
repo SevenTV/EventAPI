@@ -19,7 +19,7 @@ type Redis interface {
 type RedisInst struct {
 	redis.Instance
 	sub     *goRedis.PubSub
-	subsMtx sync.Mutex
+	subsMtx *sync.Mutex
 	subs    map[string][]*redisSub
 }
 
@@ -28,6 +28,7 @@ func WrapRedis(r redis.Instance) Redis {
 		Instance: r,
 		sub:      r.RawClient().Subscribe(context.Background()),
 		subs:     map[string][]*redisSub{},
+		subsMtx:  &sync.Mutex{},
 	}
 	go func() {
 		ch := inst.sub.Channel()
