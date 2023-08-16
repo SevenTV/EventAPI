@@ -46,14 +46,10 @@ func WrapRedis(r redis.Instance) Redis {
 					inst.eventsUnsubscribe(sub, msg.Channel)
 					// check if the string channel is closed
 					select {
-					case _, ok := <-sub.ch:
-						if !ok {
-							// channel is already closed
-							continue
-						}
+					case <-sub.ch:
 					default:
+						close(sub.ch)
 					}
-					close(sub.ch)
 					continue
 				default:
 				}
