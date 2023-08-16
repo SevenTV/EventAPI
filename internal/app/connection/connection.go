@@ -87,11 +87,12 @@ func NewEventMap(ch chan *string) *EventMap {
 }
 
 type EventMap struct {
-	ch    chan *string
-	count *int32
-	m     map[events.EventType]EventChannel
-	mx    sync.Mutex
-	once  sync.Once
+	ch         chan *string
+	eventClose chan struct{}
+	count      *int32
+	m          map[events.EventType]EventChannel
+	mx         sync.Mutex
+	once       sync.Once
 }
 
 // Subscribe sets up a subscription to dispatch events with the specified type
@@ -141,7 +142,7 @@ func (e *EventMap) Subscribe(
 	// Create channel
 	e.m[t] = ec
 
-	gctx.Inst().Redis.EventsSubscribe(ec.ctx, e.ch, events.CreateDispatchKey(t, cond, false))
+	e.eventClose = gctx.Inst().Redis.EventsSubscribe(ec.ctx, e.ch, events.CreateDispatchKey(t, cond, false))
 
 	return ec, id, nil
 }
@@ -260,7 +261,7 @@ func (e *EventMap) DispatchChannel() chan *string {
 	return e.ch
 }
 
-func (e *EventMap) Destroy(gctx global.Context, subscribeTo ...string) {
+func (e *EventMap) Destroy(gctx global.Context) {
 	e.once.Do(func() {
 		e.mx.Lock()
 		defer e.mx.Unlock()
@@ -270,10 +271,8 @@ func (e *EventMap) Destroy(gctx global.Context, subscribeTo ...string) {
 			delete(e.m, key)
 		}
 
-		//gctx.Inst().Redis.Unsubscribe(e.ch, subscribeTo...)
 		gctx.Inst().Redis.RemoveChannel(e.ch)
-		// TODO: verify it is safe to close here
-		close(e.ch)
+		close(e.eventClose)
 	})
 }
 
