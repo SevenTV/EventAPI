@@ -209,8 +209,8 @@ func (w *WebSocket) SetReady() {
 	})
 }
 
-func (w *WebSocket) Destroy() {
+func (w *WebSocket) Destroy(gctx global.Context) {
 	w.ForceClose()
 	w.SetReady()
-	w.evm.Destroy()
+	w.evm.Destroy(gctx, events.CreateDispatchKey(events.EventTypeWhisper, events.EventCondition{"session_id": w.SessionID()}, false))
 }

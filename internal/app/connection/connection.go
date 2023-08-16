@@ -12,6 +12,7 @@ import (
 	"github.com/seventv/api/data/events"
 	"github.com/seventv/common/structures/v3"
 	"github.com/seventv/common/utils"
+
 	"github.com/seventv/eventapi/internal/global"
 )
 
@@ -87,7 +88,6 @@ func NewEventMap(ch chan *string) *EventMap {
 
 type EventMap struct {
 	ch    chan *string
-	wg    sync.WaitGroup
 	count *int32
 	m     map[events.EventType]EventChannel
 	mx    sync.Mutex
@@ -141,7 +141,7 @@ func (e *EventMap) Subscribe(
 	// Create channel
 	e.m[t] = ec
 
-	gctx.Inst().Redis.EventsSubscribe(ec.ctx, e.ch, &e.wg, events.CreateDispatchKey(t, cond, false))
+	gctx.Inst().Redis.EventsSubscribe(ec.ctx, e.ch, events.CreateDispatchKey(t, cond, false))
 
 	return ec, id, nil
 }
@@ -260,7 +260,7 @@ func (e *EventMap) DispatchChannel() chan *string {
 	return e.ch
 }
 
-func (e *EventMap) Destroy() {
+func (e *EventMap) Destroy(gctx global.Context, subscribeTo ...string) {
 	e.once.Do(func() {
 		e.mx.Lock()
 		defer e.mx.Unlock()
@@ -270,7 +270,8 @@ func (e *EventMap) Destroy() {
 			delete(e.m, key)
 		}
 
-		e.wg.Wait()
+		gctx.Inst().Redis.Unsubscribe(e.ch, subscribeTo...)
+		// TODO: verify it is safe to close here
 		close(e.ch)
 	})
 }

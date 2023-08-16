@@ -15,10 +15,11 @@ import (
 	"github.com/seventv/api/data/events"
 	"github.com/seventv/common/structures/v3"
 	"github.com/seventv/common/utils"
-	client "github.com/seventv/eventapi/internal/app/connection"
-	"github.com/seventv/eventapi/internal/global"
 	"github.com/valyala/fasthttp"
 	"go.uber.org/zap"
+
+	client "github.com/seventv/eventapi/internal/app/connection"
+	"github.com/seventv/eventapi/internal/global"
 )
 
 type EventStream struct {
@@ -227,7 +228,8 @@ func (es *EventStream) SetReady() {
 func (es *EventStream) Destroy() {
 	es.cancel()
 	es.SetReady()
-	es.evm.Destroy()
+	// TODO: pass subscribeTo strings
+	//es.evm.Destroy()
 }
 
 func SetupEventStream(ctx *fasthttp.RequestCtx, writer fasthttp.StreamWriter) {

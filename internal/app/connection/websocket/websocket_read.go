@@ -30,7 +30,7 @@ func (w *WebSocket) Read(gctx global.Context) {
 
 	defer func() {
 		heartbeat.Stop()
-		w.Destroy()
+		w.Destroy(gctx)
 		ttl.Stop()
 	}()
 
@@ -59,7 +59,7 @@ func (w *WebSocket) Read(gctx global.Context) {
 				<-buf.Context().Done()
 			}
 
-			w.Destroy()
+			w.Destroy(gctx)
 		}()
 
 		throttle := utils.NewThrottle(time.Millisecond * 100)
