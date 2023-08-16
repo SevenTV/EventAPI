@@ -56,13 +56,13 @@ resource "kubernetes_deployment" "app" {
 
       spec {
         node_selector = {
-          "7tv.io/node-pool" = "events"
+          "7tv.io/node-pool" = "traffic"
         }
 
         toleration {
           key      = "7tv.io/node-pool"
           operator = "Equal"
-          value    = "events"
+          value    = "traffic"
           effect   = "NoSchedule"
         }
 
@@ -142,18 +142,6 @@ resource "kubernetes_deployment" "app" {
             failure_threshold     = 3
           }
 
-          readiness_probe {
-            http_get {
-              path = "/concurrency"
-              port = "health"
-            }
-            initial_delay_seconds = 3
-            timeout_seconds       = 5
-            period_seconds        = 1
-            success_threshold     = 10
-            failure_threshold     = 1
-          }
-
           image_pull_policy = var.image_pull_policy
         }
 
@@ -180,6 +168,7 @@ resource "kubernetes_service" "app" {
   spec {
     selector = {
       app = "eventapi"
+      // "eventapi.k8s.7tv.io/available" = "true"
     }
 
     port {
@@ -235,7 +224,7 @@ resource "kubernetes_ingress_v1" "app" {
     name      = "eventapi"
     namespace = kubernetes_namespace.app.metadata[0].name
     annotations = {
-      "external-dns.alpha.kubernetes.io/target"             = local.infra.cloudflare_tunnel_hostname
+      "external-dns.alpha.kubernetes.io/target"             = local.infra.cloudflare_tunnel_hostname.longlived
       "external-dns.alpha.kubernetes.io/cloudflare-proxied" = "true"
     }
   }
@@ -274,7 +263,7 @@ resource "kubernetes_horizontal_pod_autoscaler_v2" "app" {
       name        = kubernetes_deployment.app.metadata[0].name
     }
 
-    min_replicas = 1
+    min_replicas = local.infra.production ? 4 : 1
     max_replicas = 100
 
     metric {
@@ -319,15 +308,15 @@ resource "kubernetes_horizontal_pod_autoscaler_v2" "app" {
       }
 
       scale_down {
-        stabilization_window_seconds = 60
+        stabilization_window_seconds = 300
         select_policy                = "Max"
         policy {
-          period_seconds = 15
+          period_seconds = 60
           type           = "Percent"
           value          = 5
         }
         policy {
-          period_seconds = 15
+          period_seconds = 60
           type           = "Pods"
           value          = 2
         }
