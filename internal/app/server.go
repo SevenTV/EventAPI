@@ -42,6 +42,8 @@ func New(gctx global.Context) (*Server, <-chan struct{}) {
 		upgrader: upgrader,
 		router:   chi.NewRouter(),
 
+		gctx: gctx,
+
 		shutdown: make(chan struct{}),
 
 		activeConns: new(int32),
