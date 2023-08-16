@@ -114,8 +114,6 @@ func (r *RedisInst) RemoveChannel(ch chan *string) {
 }
 
 func removeRedisSub(slice []*redisSub, i int) []*redisSub {
-	if i != len(slice)-1 {
-		slice[i] = slice[len(slice)-1]
-	}
+	slice[i] = slice[len(slice)-1]
 	return slice[:len(slice)-1]
 }
