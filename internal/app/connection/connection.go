@@ -270,7 +270,8 @@ func (e *EventMap) Destroy(gctx global.Context, subscribeTo ...string) {
 			delete(e.m, key)
 		}
 
-		gctx.Inst().Redis.Unsubscribe(e.ch, subscribeTo...)
+		//gctx.Inst().Redis.Unsubscribe(e.ch, subscribeTo...)
+		gctx.Inst().Redis.RemoveChannel(e.ch)
 		// TODO: verify it is safe to close here
 		close(e.ch)
 	})
