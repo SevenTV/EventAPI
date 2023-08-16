@@ -4,8 +4,9 @@ go 1.19
 
 require (
 	github.com/bugsnag/panicwrap v1.3.4
-	github.com/fasthttp/websocket v1.5.1
+	github.com/go-chi/chi/v5 v5.0.10
 	github.com/go-redis/redis/v8 v8.11.5
+	github.com/gorilla/websocket v1.5.0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/json-iterator/go v1.1.12
 	github.com/prometheus/client_golang v1.14.0
