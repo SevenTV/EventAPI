@@ -2,14 +2,14 @@ package v3
 
 import (
 	"bufio"
+	"net/http"
 	"net/url"
 	"regexp"
 	"strings"
 
-	"github.com/fasthttp/router"
+	"github.com/go-chi/chi/v5"
 	"github.com/gorilla/websocket"
 	"github.com/seventv/api/data/events"
-	"github.com/valyala/fasthttp"
 
 	client "github.com/seventv/eventapi/internal/app/connection"
 	client_eventstream "github.com/seventv/eventapi/internal/app/connection/eventstream"
@@ -33,16 +33,16 @@ var (
 	SSE_SUBSCRIPTION_ITEM_I_CND = SSE_SUBSCRIPTION_ITEM.SubexpIndex("CND")
 )
 
-func SSE(gctx global.Context, ctx *fasthttp.RequestCtx, r *router.Router) (client.Connection, error) {
-	es, err := client_eventstream.NewEventStream(gctx, ctx, r)
+func SSE(gctx global.Context, w http.ResponseWriter, r *http.Request) (client.Connection, error) {
+	es, err := client_eventstream.NewEventStream(gctx, r)
 	if err != nil {
 		return nil, err
 	}
 
-	client_eventstream.SetupEventStream(ctx, func(w *bufio.Writer) {
-		es.SetWriter(w)
-		es.Read(gctx)
-	})
+	client_eventstream.SetEventStreamHeaders(w)
+
+	es.SetWriter(bufio.NewWriter(w))
+	es.Read(gctx)
 
 	go func() {
 		<-es.OnReady() // wait for the connection to be ready
@@ -51,43 +51,41 @@ func SSE(gctx global.Context, ctx *fasthttp.RequestCtx, r *router.Router) (clien
 		}
 
 		// Parse subscriptions
-		sub := ctx.UserValue("sub")
-		switch s := sub.(type) {
-		case string:
-			s, _ = url.QueryUnescape(s)
-			if s == "" || !strings.HasPrefix(s, "@") {
-				break
+		sub := chi.URLParam(r, "sub")
+
+		s, _ := url.QueryUnescape(sub)
+		if s == "" || !strings.HasPrefix(s, "@") {
+			return
+		}
+
+		subStrs := strings.Split(s[1:], ",")
+
+		for _, subStr := range subStrs {
+			matches := SSE_SUBSCRIPTION_ITEM.FindStringSubmatch(subStr)
+			if len(matches) == 0 {
+				continue
 			}
 
-			subStrs := strings.Split(s[1:], ",")
+			evt := matches[SSE_SUBSCRIPTION_ITEM_I_EVT]
+			cnd := matches[SSE_SUBSCRIPTION_ITEM_I_CND]
 
-			for _, subStr := range subStrs {
-				matches := SSE_SUBSCRIPTION_ITEM.FindStringSubmatch(subStr)
-				if len(matches) == 0 {
+			conds := strings.Split(cnd, ";")
+			cm := make(map[string]string)
+
+			for _, cond := range conds {
+				kv := strings.Split(cond, "=")
+				if len(kv) != 2 {
 					continue
 				}
 
-				evt := matches[SSE_SUBSCRIPTION_ITEM_I_EVT]
-				cnd := matches[SSE_SUBSCRIPTION_ITEM_I_CND]
+				cm[kv[0]] = kv[1]
+			}
 
-				conds := strings.Split(cnd, ";")
-				cm := make(map[string]string)
-
-				for _, cond := range conds {
-					kv := strings.Split(cond, "=")
-					if len(kv) != 2 {
-						continue
-					}
-
-					cm[kv[0]] = kv[1]
-				}
-
-				if err, ok := es.Handler().Subscribe(gctx, events.NewMessage(events.OpcodeSubscribe, events.SubscribePayload{
-					Type:      events.EventType(evt),
-					Condition: cm,
-				}).ToRaw()); err != nil || !ok {
-					return
-				}
+			if err, ok := es.Handler().Subscribe(gctx, events.NewMessage(events.OpcodeSubscribe, events.SubscribePayload{
+				Type:      events.EventType(evt),
+				Condition: cm,
+			}).ToRaw()); err != nil || !ok {
+				return
 			}
 		}
 	}()

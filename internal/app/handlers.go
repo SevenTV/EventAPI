@@ -52,16 +52,14 @@ func (s *Server) handleV3(w http.ResponseWriter, r *http.Request) {
 		}
 		connected = true
 	} else { // New EventStream connection
-		// TODO: re-enable SSE & rewrite without fasthttp
-		writeBytesResponse(http.StatusServiceUnavailable, []byte("Service unavailable"), w)
-		return
-		//con, err = v3.SSE(s.gctx, r.Context(), s.router)
-		//if err != nil {
-		//	writeError(http.StatusBadRequest, err, w)
-		//	return
-		//}
-		//
-		//connected <- true
+		var err error
+		con, err = v3.SSE(s.gctx, w, r)
+		if err != nil {
+			writeError(http.StatusBadRequest, err, w)
+			return
+		}
+
+		connected = true
 	}
 
 	go func() {
@@ -87,7 +85,7 @@ func (s *Server) handleV1(w http.ResponseWriter, r *http.Request) {
 		}
 		v1.ChannelEmotesWS(s.gctx, c)
 	} else {
-		// TODO: re-enable SSE & rewrite without fasthttp
+		// DISABLED
 		writeBytesResponse(http.StatusServiceUnavailable, []byte("Service unavailable"), w)
 
 		//v1.ChannelEmotesSSE(gctx, ctx)

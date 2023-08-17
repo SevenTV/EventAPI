@@ -16,6 +16,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/seventv/eventapi/internal/global"
+	"github.com/seventv/eventapi/internal/util"
 )
 
 type Server struct {
@@ -57,6 +58,7 @@ func New(gctx global.Context) (*Server, <-chan struct{}) {
 		Addr:        srv.gctx.Config().API.Bind,
 		IdleTimeout: 30 * time.Second,
 		Handler:     srv.router,
+		ConnContext: util.SaveConnInContext,
 	}
 
 	done := make(chan struct{})

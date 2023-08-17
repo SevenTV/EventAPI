@@ -6,16 +6,15 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/fasthttp/router"
 	"github.com/hashicorp/go-multierror"
 	"github.com/seventv/api/data/events"
 	"github.com/seventv/common/structures/v3"
 	"github.com/seventv/common/utils"
-	"github.com/valyala/fasthttp"
 	"go.uber.org/zap"
 
 	client "github.com/seventv/eventapi/internal/app/connection"
@@ -23,8 +22,9 @@ import (
 )
 
 type EventStream struct {
-	c                 *fasthttp.RequestCtx
+	r                 *http.Request
 	ctx               context.Context
+	gctx              global.Context
 	cancel            context.CancelFunc
 	seq               int64
 	handler           client.Handler
@@ -41,7 +41,7 @@ type EventStream struct {
 	subscriptionLimit int32
 }
 
-func NewEventStream(gctx global.Context, c *fasthttp.RequestCtx, r *router.Router) (client.Connection, error) {
+func NewEventStream(gctx global.Context, r *http.Request) (client.Connection, error) {
 	hbi := gctx.Config().API.HeartbeatInterval
 	if hbi == 0 {
 		hbi = 45000
@@ -54,8 +54,9 @@ func NewEventStream(gctx global.Context, c *fasthttp.RequestCtx, r *router.Route
 
 	lctx, cancel := context.WithCancel(context.Background())
 	es := &EventStream{
-		c:                 c,
+		r:                 r,
 		ctx:               lctx,
+		gctx:              gctx,
 		cancel:            cancel,
 		seq:               0,
 		evm:               client.NewEventMap(make(chan *string, 128)),
@@ -228,23 +229,19 @@ func (es *EventStream) SetReady() {
 func (es *EventStream) Destroy() {
 	es.cancel()
 	es.SetReady()
-	// TODO: pass subscribeTo strings
-	//es.evm.Destroy()
+	es.evm.Destroy(es.gctx)
 }
 
-func SetupEventStream(ctx *fasthttp.RequestCtx, writer fasthttp.StreamWriter) {
-	ctx.SetStatusCode(200)
+func SetEventStreamHeaders(w http.ResponseWriter) {
+	w.Header().Set("Connection", "close")
 
-	ctx.Response.ImmediateHeaderFlush = true
-	ctx.Response.SetConnectionClose()
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Transfer-Encoding", "chunked")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "Cache-Control")
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
+	w.Header().Set("X-Accel-Buffering", "no")
 
-	ctx.Response.Header.Set("Content-Type", "text/event-stream")
-	ctx.Response.Header.Set("Cache-Control", "no-cache")
-	ctx.Response.Header.Set("Transfer-Encoding", "chunked")
-	ctx.Response.Header.Set("Access-Control-Allow-Origin", "*")
-	ctx.Response.Header.Set("Access-Control-Allow-Headers", "Cache-Control")
-	ctx.Response.Header.Set("Access-Control-Allow-Credentials", "true")
-	ctx.Response.Header.Set("X-Accel-Buffering", "no")
-
-	ctx.SetBodyStreamWriter(writer)
+	w.WriteHeader(http.StatusOK)
 }

@@ -127,7 +127,7 @@ func (r *RedisInst) Unsubscribe(ch chan *string, subscribeTo ...string) {
 	}
 }
 
-// RemoveChannel removes all subscriptions with the given channel, it is used only for v1 backwards compatibility
+// RemoveChannel removes all subscriptions with the given channel
 func (r *RedisInst) RemoveChannel(ch chan *string) {
 	r.subsMtx.Lock()
 	defer r.subsMtx.Unlock()
