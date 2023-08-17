@@ -36,7 +36,7 @@ resource "kubernetes_deployment" "app" {
 
   timeouts {
     create = "4m"
-    update = "2m"
+    update = "8m"
     delete = "2m"
   }
 
@@ -45,6 +45,14 @@ resource "kubernetes_deployment" "app" {
       match_labels = {
         app = "eventapi"
       }
+    }
+
+    strategy {
+      rolling_update {
+        max_surge       = "5%"
+        max_unavailable = "10%"
+      }
+      type = "RollingUpdate"
     }
 
     template {
@@ -116,10 +124,10 @@ resource "kubernetes_deployment" "app" {
           resources {
             requests = {
               cpu    = local.infra.production ? "250m" : "150m"
-              memory = local.infra.production ? "3Gi" : "500Mi"
+              memory = local.infra.production ? "1.5Gi" : "500Mi"
             }
             limits = {
-              cpu    = local.infra.production ? "250m" : "150m"
+              cpu    = local.infra.production ? "350m" : "150m"
               memory = local.infra.production ? "3Gi" : "500Mi"
             }
           }
@@ -135,10 +143,22 @@ resource "kubernetes_deployment" "app" {
               path = "/"
               port = "health"
             }
-            initial_delay_seconds = 3
+            initial_delay_seconds = 10
             timeout_seconds       = 5
             period_seconds        = 5
             success_threshold     = 1
+            failure_threshold     = 3
+          }
+
+          readiness_probe {
+            http_get {
+              path = "/"
+              port = "health"
+            }
+            initial_delay_seconds = 3
+            timeout_seconds       = 5
+            period_seconds        = 5
+            success_threshold     = 4
             failure_threshold     = 3
           }
 
@@ -214,8 +234,6 @@ spec:
       app: eventapi
   endpoints:
     - port: metrics
-      interval: 3s
-      scrapeTimeout: 2s
 YAML
 }
 
@@ -224,8 +242,9 @@ resource "kubernetes_ingress_v1" "app" {
     name      = "eventapi"
     namespace = kubernetes_namespace.app.metadata[0].name
     annotations = {
-      "external-dns.alpha.kubernetes.io/target"             = local.infra.cloudflare_tunnel_hostname.longlived
+      // "external-dns.alpha.kubernetes.io/target"             = local.infra.cloudflare_tunnel_hostname.longlived
       "external-dns.alpha.kubernetes.io/cloudflare-proxied" = "true"
+      "kubernetes.io/ingress.class"                         = "nginx"
     }
   }
 
@@ -275,7 +294,7 @@ resource "kubernetes_horizontal_pod_autoscaler_v2" "app" {
 
         target {
           type          = "AverageValue"
-          average_value = var.connection_limit * 0.5
+          average_value = var.connection_limit * 0.75
         }
       }
     }
@@ -286,29 +305,31 @@ resource "kubernetes_horizontal_pod_autoscaler_v2" "app" {
         name = "memory"
         target {
           type                = "Utilization"
-          average_utilization = 60
+          average_utilization = 75
         }
       }
     }
 
     behavior {
       scale_up {
-        stabilization_window_seconds = 10
+        stabilization_window_seconds = 30
         select_policy                = "Max"
+
         policy {
-          period_seconds = 5
+          period_seconds = 20
           type           = "Percent"
           value          = 25
         }
+
         policy {
-          period_seconds = 5
+          period_seconds = 20
           type           = "Pods"
           value          = 4
         }
       }
 
       scale_down {
-        stabilization_window_seconds = 300
+        stabilization_window_seconds = 600
         select_policy                = "Max"
         policy {
           period_seconds = 60
