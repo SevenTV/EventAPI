@@ -24,6 +24,9 @@ func (s *Subscription) Subscribe(subscribeTo ...string) {
 	mx.Lock()
 	defer mx.Unlock()
 	for _, join := range subscribeTo {
+		if isSubscribed(s.sessionID, join) {
+			continue
+		}
 		subjects[join] = append(subjects[join], s)
 		sessions[s.sessionID] = append(sessions[s.sessionID], join)
 	}
@@ -107,4 +110,13 @@ func removeSubject(subs []string, i int) []string {
 func removeSubscription(subs []*Subscription, i int) []*Subscription {
 	subs[i] = subs[len(subs)-1]
 	return subs[:len(subs)-1]
+}
+
+func isSubscribed(sessionID, subject string) bool {
+	for _, session := range subjects[subject] {
+		if session.sessionID == sessionID {
+			return true
+		}
+	}
+	return false
 }
