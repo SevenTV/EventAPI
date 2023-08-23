@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/nats-io/nats.go"
+	"go.uber.org/zap"
 )
 
 func Init(url string, subject string) error {
@@ -24,8 +25,14 @@ func Init(url string, subject string) error {
 }
 
 func Close() {
-	subscription.Unsubscribe()
-	conn.Flush()
+	err := subscription.Unsubscribe()
+	if err != nil {
+		zap.S().Errorw("closing NATS", "error", err)
+	}
+	err = conn.Flush()
+	if err != nil {
+		zap.S().Errorw("closing NATS", "error", err)
+	}
 	conn.Close()
 }
 
