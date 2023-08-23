@@ -14,6 +14,7 @@ import (
 	"github.com/seventv/common/utils"
 
 	"github.com/seventv/eventapi/internal/global"
+	"github.com/seventv/eventapi/internal/nats"
 )
 
 type Connection interface {
@@ -77,23 +78,21 @@ func GenerateSessionID(n int) ([]byte, error) {
 	return b, nil
 }
 
-func NewEventMap(ch chan *string) *EventMap {
+func NewEventMap(sessionID string) *EventMap {
 	return &EventMap{
-		ch:         ch,
-		eventClose: make(chan struct{}),
-		count:      utils.PointerOf(int32(0)),
-		m:          map[events.EventType]EventChannel{},
-		mx:         sync.Mutex{},
+		subscription: nats.NewSub(sessionID),
+		count:        utils.PointerOf(int32(0)),
+		m:            map[events.EventType]EventChannel{},
+		mx:           sync.Mutex{},
 	}
 }
 
 type EventMap struct {
-	ch         chan *string
-	eventClose chan struct{}
-	count      *int32
-	m          map[events.EventType]EventChannel
-	mx         sync.Mutex
-	once       sync.Once
+	subscription *nats.Subscription
+	count        *int32
+	m            map[events.EventType]EventChannel
+	mx           sync.Mutex
+	once         sync.Once
 }
 
 // Subscribe sets up a subscription to dispatch events with the specified type
@@ -143,7 +142,7 @@ func (e *EventMap) Subscribe(
 	// Create channel
 	e.m[t] = ec
 
-	gctx.Inst().Redis.EventsSubscribe(ec.ctx, e.ch, e.eventClose, events.CreateDispatchKey(t, cond, false))
+	e.subscription.Subscribe(events.CreateDispatchKey(t, cond, false))
 
 	return ec, id, nil
 }
@@ -179,6 +178,8 @@ func (e *EventMap) Unsubscribe(gctx global.Context, t events.EventType, cond map
 			ec.Conditions = utils.SliceRemove(ec.Conditions, i)
 			ec.Properties = utils.SliceRemove(ec.Properties, i)
 
+			e.subscription.Unsubscribe(events.CreateDispatchKey(t, c, false))
+
 			matched = true
 			break
 		}
@@ -204,10 +205,12 @@ func (e *EventMap) UnsubscribeWithID(id ...uint32) error {
 	defer e.mx.Unlock()
 
 outer:
-	for _, value := range e.m {
+	for t, value := range e.m {
 		for _, id := range id {
 			for i, v := range value.ID {
 				if v == id {
+					e.subscription.Unsubscribe(events.CreateDispatchKey(t, value.Conditions[i], false))
+
 					value.ID = utils.SliceRemove(value.ID, i)
 					value.Conditions = utils.SliceRemove(value.Conditions, i)
 					value.Properties = utils.SliceRemove(value.Properties, i)
@@ -258,8 +261,8 @@ func (e *EventMap) Get(t events.EventType) (*EventChannel, bool) {
 	return ec, ec != nil
 }
 
-func (e *EventMap) DispatchChannel() chan *string {
-	return e.ch
+func (e *EventMap) DispatchChannel() chan []byte {
+	return e.subscription.Ch
 }
 
 func (e *EventMap) Destroy(gctx global.Context) {
@@ -272,8 +275,7 @@ func (e *EventMap) Destroy(gctx global.Context) {
 			delete(e.m, key)
 		}
 
-		gctx.Inst().Redis.RemoveChannel(e.ch)
-		close(e.eventClose)
+		e.subscription.Close()
 	})
 }
 
