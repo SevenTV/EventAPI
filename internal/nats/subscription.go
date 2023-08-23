@@ -32,12 +32,12 @@ func (s *Subscription) Subscribe(subscribeTo ...string) {
 	}
 }
 
-func (s *Subscription) Unsubscribe(unsubscribeFrom ...string) error {
+func (s *Subscription) Unsubscribe(unsubscribeFrom ...string) {
 	mx.Lock()
 	defer mx.Unlock()
 	subs, ok := sessions[s.sessionID]
 	if !ok {
-		return ErrSubNotFound
+		return
 	}
 
 	for _, unsub := range unsubscribeFrom {
@@ -69,15 +69,14 @@ func (s *Subscription) Unsubscribe(unsubscribeFrom ...string) error {
 			break
 		}
 	}
-	return nil
 }
 
-func (s *Subscription) Close() error {
+func (s *Subscription) Close() {
 	mx.Lock()
 	defer mx.Unlock()
 	subs, ok := sessions[s.sessionID]
 	if !ok {
-		return ErrSubNotFound
+		return
 	}
 
 	for _, subject := range subs {
@@ -98,8 +97,6 @@ func (s *Subscription) Close() error {
 	}
 
 	delete(sessions, s.sessionID)
-
-	return nil
 }
 
 func removeSubject(subs []string, i int) []string {
