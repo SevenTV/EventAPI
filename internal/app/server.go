@@ -16,6 +16,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/seventv/eventapi/internal/global"
+	"github.com/seventv/eventapi/internal/nats"
 	"github.com/seventv/eventapi/internal/util"
 )
 
@@ -109,6 +110,7 @@ func New(gctx global.Context) (*Server, <-chan struct{}) {
 
 	shutdown:
 		_ = server.Shutdown(context.Background())
+		nats.Close()
 
 		watcher.Close()
 		close(done)
