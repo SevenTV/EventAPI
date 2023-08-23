@@ -7,6 +7,10 @@ redis:
   username: ${redis_username}
   password: ${redis_password}
 
+nats:
+  url: ${nats_url}
+  subject: ${nats_subject}
+
 api:
   enabled: true
   bind: ${bind}
