@@ -25,6 +25,11 @@ type Config struct {
 		MasterName string   `mapstructure:"master_name" json:"master_name"`
 	} `mapstructure:"redis" json:"redis"`
 
+	Nats struct {
+		Url     string `mapstructure:"url" json:"url"`
+		Subject string `mapstructure:"subject" json:"subject"`
+	} `mapstructure:"nats" json:"nats"`
+
 	API struct {
 		Enabled           bool   `mapstructure:"enabled" json:"enabled"`
 		Bind              string `mapstructure:"bind" json:"bind"`
