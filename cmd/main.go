@@ -11,14 +11,16 @@ import (
 
 	"github.com/bugsnag/panicwrap"
 	"github.com/seventv/common/redis"
+	"go.uber.org/zap"
+
 	"github.com/seventv/eventapi/internal/app"
 	"github.com/seventv/eventapi/internal/configure"
 	"github.com/seventv/eventapi/internal/global"
 	"github.com/seventv/eventapi/internal/health"
 	"github.com/seventv/eventapi/internal/instance"
 	"github.com/seventv/eventapi/internal/monitoring"
+	"github.com/seventv/eventapi/internal/nats"
 	"github.com/seventv/eventapi/internal/pprof"
-	"go.uber.org/zap"
 )
 
 var (
@@ -82,6 +84,11 @@ func main() {
 
 		gctx.Inst().Redis = instance.WrapRedis(redisInst)
 		gctx.Inst().Monitoring = monitoring.NewPrometheus(gctx)
+	}
+
+	err = nats.Init(config.Nats.Url, config.Nats.Subject)
+	if err != nil {
+		zap.S().Fatalw("failed to connect to nats", "error", err)
 	}
 
 	dones := []<-chan struct{}{}
