@@ -59,7 +59,7 @@ func NewEventStream(gctx global.Context, r *http.Request) (client.Connection, er
 		gctx:              gctx,
 		cancel:            cancel,
 		seq:               0,
-		evm:               client.NewEventMap(make(chan *string, 128)),
+		evm:               client.NewEventMap(string(sessionID)),
 		cache:             client.NewCache(),
 		writeMtx:          &sync.Mutex{},
 		writer:            nil,

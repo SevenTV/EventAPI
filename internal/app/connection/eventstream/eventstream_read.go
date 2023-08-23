@@ -55,7 +55,7 @@ func (es *EventStream) Read(gctx global.Context) {
 
 			var msg events.Message[events.DispatchPayload]
 
-			err := json.Unmarshal([]byte(*s), &msg)
+			err := json.Unmarshal(s, &msg)
 			if err != nil {
 				zap.S().Errorw("dispatch unmarshal error", "error", err)
 				continue
