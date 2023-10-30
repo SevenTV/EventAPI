@@ -56,3 +56,8 @@ variable "ttl" {
   type    = number
   default = 60
 }
+
+variable "nats_events_subject" {
+  type    = string
+  default = ""
+}

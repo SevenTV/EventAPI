@@ -15,6 +15,8 @@ resource "kubernetes_secret" "app" {
       redis_address      = local.infra.redis_host,
       redis_username     = "default",
       redis_password     = local.infra.redis_password,
+      nats_url           = "nats.database.svc.cluster.local:4222"
+      nats_subject       = var.nats_events_subject
       bind               = "0.0.0.0:3000",
       heartbeat_interval = tostring(var.heartbeat_interval),
       subscription_limit = tostring(var.subscription_limit),
@@ -29,7 +31,7 @@ resource "kubernetes_deployment" "app" {
   metadata {
     name      = "eventapi"
     namespace = kubernetes_namespace.app.metadata[0].name
-    labels = {
+    labels    = {
       app = "eventapi"
     }
   }
@@ -180,7 +182,7 @@ resource "kubernetes_service" "app" {
   metadata {
     name      = "eventapi"
     namespace = kubernetes_namespace.app.metadata[0].name
-    labels = {
+    labels    = {
       app = "eventapi"
     }
   }
@@ -239,8 +241,8 @@ YAML
 
 resource "kubernetes_ingress_v1" "app" {
   metadata {
-    name      = "eventapi"
-    namespace = kubernetes_namespace.app.metadata[0].name
+    name        = "eventapi"
+    namespace   = kubernetes_namespace.app.metadata[0].name
     annotations = {
       // "external-dns.alpha.kubernetes.io/target"             = local.infra.cloudflare_tunnel_hostname.longlived
       "external-dns.alpha.kubernetes.io/cloudflare-proxied" = "true"
