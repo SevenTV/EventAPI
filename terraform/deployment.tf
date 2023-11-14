@@ -66,13 +66,13 @@ resource "kubernetes_deployment" "app" {
 
       spec {
         node_selector = {
-          "7tv.io/node-pool" = "traffic"
+          "7tv.io/node-pool" = "arm"
         }
 
         toleration {
           key      = "7tv.io/node-pool"
           operator = "Equal"
-          value    = "traffic"
+          value    = "arm"
           effect   = "NoSchedule"
         }
 
