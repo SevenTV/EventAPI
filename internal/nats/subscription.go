@@ -3,7 +3,7 @@ package nats
 import "sync"
 
 var (
-	mx       sync.Mutex
+	mx       *sync.Mutex
 	subjects map[string][]*Subscription // subject as key, list of subscriptions as value
 	sessions map[string][]string        // sessionID as key, list of subscribed subjects as value
 )

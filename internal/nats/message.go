@@ -9,6 +9,8 @@ import (
 
 func handleMessage(msg *nats.Msg) {
 	subject := strings.TrimLeft(msg.Subject, baseSubject+".")
+	mx.Lock()
+	defer mx.Unlock()
 	subs := subjects[subject]
 	for _, sub := range subs {
 		select {

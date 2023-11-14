@@ -2,12 +2,14 @@ package nats
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/nats-io/nats.go"
 	"go.uber.org/zap"
 )
 
 func Init(url string, subject string) error {
+	mx = &sync.Mutex{}
 	var err error
 	conn, err = nats.Connect(url)
 	if err != nil {
