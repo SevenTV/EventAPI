@@ -125,11 +125,11 @@ resource "kubernetes_deployment" "app" {
 
           resources {
             requests = {
-              cpu    = local.infra.production ? "250m" : "150m"
+              cpu    = local.infra.production ? "350m" : "150m"
               memory = local.infra.production ? "1.5Gi" : "500Mi"
             }
             limits = {
-              cpu    = local.infra.production ? "350m" : "150m"
+              cpu    = local.infra.production ? "500m" : "150m"
               memory = local.infra.production ? "3Gi" : "500Mi"
             }
           }
