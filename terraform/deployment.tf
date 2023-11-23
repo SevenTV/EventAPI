@@ -74,19 +74,11 @@ resource "kubernetes_deployment" "app" {
                   match_expressions {
                   key      = "7tv.io/node-pool"
                   operator = "In"
-                  values   = ["medium"]
+                  values   = ["small"]
                   }
               }
             }
           }
-        }
-
-        // tolerate traffic nodes since, but don't prefer them
-        toleration {
-          key      = "7tv.io/node-pool"
-          operator = "Equal"
-          value    = "traffic"
-          effect   = "NoSchedule"
         }
 
         container {
