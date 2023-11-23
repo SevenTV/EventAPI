@@ -65,20 +65,15 @@ resource "kubernetes_deployment" "app" {
       }
 
       spec {
-        // set node affinity preference, prefer medium nodes other nodes are allowed as fallback
-        affinity {
-          node_affinity {
-            preferred_during_scheduling_ignored_during_execution {
-              weight = 1
-              preference {
-                  match_expressions {
-                  key      = "7tv.io/node-pool"
-                  operator = "In"
-                  values   = ["small"]
-                  }
-              }
-            }
-          }
+        node_selector = {
+          "7tv.io/node-pool" = "arm"
+        }
+
+        toleration {
+          key      = "7tv.io/node-pool"
+          operator = "Equal"
+          value    = "arm"
+          effect   = "NoSchedule"
         }
 
         container {
