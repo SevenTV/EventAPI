@@ -65,11 +65,11 @@ resource "kubernetes_deployment" "app" {
       }
 
       spec {
-        // set node affinity preference, prefer medium nodes, then small or traffic nodes as fallback
+        // set node affinity preference, prefer medium nodes other nodes are allowed as fallback
         affinity {
           node_affinity {
             preferred_during_scheduling_ignored_during_execution {
-              weight = 50
+              weight = 1
               preference {
                   match_expressions {
                   key      = "7tv.io/node-pool"
@@ -77,26 +77,6 @@ resource "kubernetes_deployment" "app" {
                   values   = ["medium"]
                   }
               }
-            },
-            preferred_during_scheduling_ignored_during_execution {
-              weight = 1
-              preference {
-                  match_expressions {
-                  key      = "7tv.io/node-pool"
-                  operator = "In"
-                  values   = ["small"]
-                  }
-              }
-            },
-            preferred_during_scheduling_ignored_during_execution{
-              weight = 1
-                preference {
-                    match_expressions {
-                    key      = "7tv.io/node-pool"
-                    operator = "In"
-                    values   = ["traffic"]
-                    }
-                }
             }
           }
         }
