@@ -1,6 +1,6 @@
 ARG BASE_IMG=ubuntu:22.04
 
-FROM --platform=linux/arm64 $BASE_IMG
+FROM $BASE_IMG
     WORKDIR /app
 
     RUN apt-get update && \
