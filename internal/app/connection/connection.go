@@ -142,7 +142,7 @@ func (e *EventMap) Subscribe(
 	// Create channel
 	e.m[t] = ec
 
-	e.subscription.Subscribe(events.CreateDispatchKey(t, cond, false))
+	e.subscription.Subscribe(gctx.Config().Nats.Subject + "." + events.CreateDispatchKey(t, cond, false))
 
 	return ec, id, nil
 }
