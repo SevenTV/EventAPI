@@ -1,14 +1,14 @@
 package health
 
 import (
-	"context"
 	"time"
 
 	"github.com/seventv/common/utils"
-	"github.com/seventv/eventapi/internal/app"
-	"github.com/seventv/eventapi/internal/global"
 	"github.com/valyala/fasthttp"
 	"go.uber.org/zap"
+
+	"github.com/seventv/eventapi/internal/app"
+	"github.com/seventv/eventapi/internal/global"
 )
 
 func New(gctx global.Context, srv *app.Server) <-chan struct{} {
@@ -30,15 +30,6 @@ func New(gctx global.Context, srv *app.Server) <-chan struct{} {
 
 			ctx.Response.Header.Set("Cache-Control", "no-cache, no-store, must-revalidate")
 			ctx.SetStatusCode(200)
-			redisCtx, cancel := context.WithTimeout(ctx, time.Second*10)
-			defer cancel()
-
-			if err := gctx.Inst().Redis.Ping(redisCtx); err != nil {
-				zap.S().Error("redis down: ", err)
-
-				ctx.SetBodyString("Redis Down")
-				ctx.SetStatusCode(503)
-			}
 
 			// check if path is /concurrency
 			if !ctx.IsGet() || utils.B2S(ctx.URI().Path()) == "/concurrency" && srv != nil && srv.GetConcurrentConnections() >= (gctx.Config().API.ConnectionLimit-1) {

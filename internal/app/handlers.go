@@ -7,7 +7,6 @@ import (
 	"go.uber.org/zap"
 
 	client "github.com/seventv/eventapi/internal/app/connection"
-	v1 "github.com/seventv/eventapi/internal/app/v1"
 	v3 "github.com/seventv/eventapi/internal/app/v3"
 )
 
@@ -69,26 +68,4 @@ func (s *Server) handleV3(w http.ResponseWriter, r *http.Request) {
 
 		s.TrackConnection(s.gctx, r, con)
 	}()
-}
-
-func (s *Server) handleV1(w http.ResponseWriter, r *http.Request) {
-	if !s.gctx.Config().API.V1 {
-		writeBytesResponse(http.StatusServiceUnavailable, []byte("Service unavailable"), w)
-		return
-	}
-
-	if strings.ToLower(r.Header.Get("upgrade")) == "websocket" || strings.ToLower(r.Header.Get("connection")) == "upgrade" {
-		c, err := s.upgrader.Upgrade(w, r, nil)
-		if err != nil {
-			writeError(http.StatusBadRequest, err, w)
-			return
-		}
-		v1.ChannelEmotesWS(s.gctx, c)
-	} else {
-		// DISABLED
-		writeBytesResponse(http.StatusServiceUnavailable, []byte("Service unavailable"), w)
-
-		//v1.ChannelEmotesSSE(gctx, ctx)
-	}
-
 }

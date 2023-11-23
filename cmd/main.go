@@ -10,14 +10,12 @@ import (
 	"time"
 
 	"github.com/bugsnag/panicwrap"
-	"github.com/seventv/common/redis"
 	"go.uber.org/zap"
 
 	"github.com/seventv/eventapi/internal/app"
 	"github.com/seventv/eventapi/internal/configure"
 	"github.com/seventv/eventapi/internal/global"
 	"github.com/seventv/eventapi/internal/health"
-	"github.com/seventv/eventapi/internal/instance"
 	"github.com/seventv/eventapi/internal/monitoring"
 	"github.com/seventv/eventapi/internal/nats"
 	"github.com/seventv/eventapi/internal/pprof"
@@ -68,21 +66,23 @@ func main() {
 	gctx := global.New(c, config)
 
 	{
-		ctx, cancel := context.WithTimeout(gctx, time.Second*15)
-		redisInst, err := redis.Setup(ctx, redis.SetupOptions{
-			Username:   gctx.Config().Redis.Username,
-			Password:   gctx.Config().Redis.Password,
-			Database:   gctx.Config().Redis.Database,
-			Addresses:  gctx.Config().Redis.Addresses,
-			Sentinel:   gctx.Config().Redis.Sentinel,
-			MasterName: gctx.Config().Redis.MasterName,
-		})
-		cancel()
-		if err != nil {
-			zap.S().Fatalw("failed to connect to redis", "error", err)
-		}
+		// redis is disabled
 
-		gctx.Inst().Redis = instance.WrapRedis(redisInst)
+		//ctx, cancel := context.WithTimeout(gctx, time.Second*15)
+		//redisInst, err := redis.Setup(ctx, redis.SetupOptions{
+		//	Username:   gctx.Config().Redis.Username,
+		//	Password:   gctx.Config().Redis.Password,
+		//	Database:   gctx.Config().Redis.Database,
+		//	Addresses:  gctx.Config().Redis.Addresses,
+		//	Sentinel:   gctx.Config().Redis.Sentinel,
+		//	MasterName: gctx.Config().Redis.MasterName,
+		//})
+		//cancel()
+		//if err != nil {
+		//	zap.S().Fatalw("failed to connect to redis", "error", err)
+		//}
+
+		//gctx.Inst().Redis = instance.WrapRedis(redisInst)
 		gctx.Inst().Monitoring = monitoring.NewPrometheus(gctx)
 	}
 

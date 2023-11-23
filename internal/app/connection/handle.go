@@ -10,8 +10,9 @@ import (
 
 	"github.com/seventv/api/data/events"
 	"github.com/seventv/common/utils"
-	"github.com/seventv/eventapi/internal/global"
 	"go.uber.org/zap"
+
+	"github.com/seventv/eventapi/internal/global"
 )
 
 func NewHandler(conn Connection) Handler {
@@ -120,8 +121,6 @@ func (h handler) OnDispatch(gctx global.Context, msg events.Message[events.Dispa
 			zap.S().Errorw("failed to push dispatch to buffer",
 				"error", err,
 			)
-
-			return
 		}
 
 		return
