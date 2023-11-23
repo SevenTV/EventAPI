@@ -8,7 +8,7 @@ import (
 )
 
 func handleMessage(msg *nats.Msg) {
-	subject := strings.TrimLeft(msg.Subject, baseSubject+".")
+	subject := strings.TrimPrefix(msg.Subject, baseSubject+".")
 	mx.Lock()
 	defer mx.Unlock()
 	subs := subjects[subject]
