@@ -91,6 +91,8 @@ func main() {
 		zap.S().Fatalw("failed to connect to nats", "error", err)
 	}
 
+	zap.S().Info("nats, ok")
+
 	dones := []<-chan struct{}{}
 
 	var srv *app.Server

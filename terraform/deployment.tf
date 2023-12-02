@@ -22,7 +22,7 @@ resource "kubernetes_secret" "app" {
       subscription_limit = tostring(var.subscription_limit),
       connection_limit   = tostring(var.connection_limit),
       ttl                = tostring(var.ttl),
-      bridge_url         = "",
+      bridge_url         = "http://api.app.svc.cluster.local:9700",
     })
   }
 }
@@ -51,8 +51,8 @@ resource "kubernetes_deployment" "app" {
 
     strategy {
       rolling_update {
-        max_surge       = "5%"
-        max_unavailable = "10%"
+        max_surge       = "2"
+        max_unavailable = "2"
       }
       type = "RollingUpdate"
     }
@@ -126,11 +126,11 @@ resource "kubernetes_deployment" "app" {
           resources {
             requests = {
               cpu    = local.infra.production ? "350m" : "150m"
-              memory = local.infra.production ? "750Mi" : "500Mi"
+              memory = local.infra.production ? "1Gi" : "500Mi"
             }
             limits = {
               cpu    = local.infra.production ? "0.5" : "150m"
-              memory = local.infra.production ? "1.5Gi" : "500Mi"
+              memory = local.infra.production ? "1Gi" : "500Mi"
             }
           }
 
@@ -267,6 +267,10 @@ resource "kubernetes_ingress_v1" "app" {
           }
         }
       }
+    }
+
+    tls {
+      hosts = [ join(".", ["events", local.infra.secondary_zone]) ]
     }
   }
 }
