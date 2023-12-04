@@ -7,6 +7,8 @@ import (
 	"go.uber.org/zap"
 
 	client "github.com/seventv/eventapi/internal/app/connection"
+	client_eventstream "github.com/seventv/eventapi/internal/app/connection/eventstream"
+	client_websocket "github.com/seventv/eventapi/internal/app/connection/websocket"
 	v3 "github.com/seventv/eventapi/internal/app/v3"
 )
 
@@ -36,36 +38,42 @@ func (s *Server) handleV3(w http.ResponseWriter, r *http.Request) {
 		con client.Connection
 	)
 
-	connected := false
-
 	if strings.ToLower(r.Header.Get("upgrade")) == "websocket" || strings.ToLower(r.Header.Get("connection")) == "upgrade" {
 		c, err := s.upgrader.Upgrade(w, r, nil)
 		if err != nil {
 			writeError(http.StatusBadRequest, err, w)
 			return
 		}
-		con, err = v3.WebSocket(s.gctx, c)
+
+		con, err = client_websocket.NewWebSocket(s.gctx, c)
 		if err != nil {
 			writeError(http.StatusBadRequest, err, w)
 			return
 		}
-		connected = true
+
+		err = v3.WebSocket(s.gctx, con)
+		if err != nil {
+			writeError(http.StatusBadRequest, err, w)
+			return
+		}
+
+		go s.TrackConnection(s.gctx, r, con)
 	} else { // New EventStream connection
 		var err error
-		con, err = v3.SSE(s.gctx, w, r)
+
+		con, err := client_eventstream.NewEventStream(s.gctx, r)
+		if err != nil {
+			return
+		}
+
+		client_eventstream.SetEventStreamHeaders(w)
+
+		go s.TrackConnection(s.gctx, r, con)
+
+		err = v3.SSE(s.gctx, con, w, r)
 		if err != nil {
 			writeError(http.StatusBadRequest, err, w)
 			return
 		}
-
-		connected = true
 	}
-
-	go func() {
-		if !connected {
-			return
-		}
-
-		s.TrackConnection(s.gctx, r, con)
-	}()
 }

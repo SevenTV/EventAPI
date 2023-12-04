@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
+	"net/http"
 	"sync"
 	"time"
 
@@ -199,7 +200,7 @@ func (w *WebSocket) OnClose() <-chan struct{} {
 	return w.ctx.Done()
 }
 
-func (*WebSocket) SetWriter(w *bufio.Writer) {
+func (*WebSocket) SetWriter(w *bufio.Writer, f http.Flusher) {
 	zap.S().Fatalw("called SetWriter() on a WebSocket connection")
 }
 

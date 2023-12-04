@@ -130,7 +130,7 @@ resource "kubernetes_deployment" "app" {
             }
             limits = {
               cpu    = local.infra.production ? "0.5" : "150m"
-              memory = local.infra.production ? "1Gi" : "500Mi"
+              memory = local.infra.production ? "1.5Gi" : "500Mi"
             }
           }
 
@@ -289,7 +289,7 @@ resource "kubernetes_horizontal_pod_autoscaler_v2" "app" {
     }
 
     min_replicas = local.infra.production ? 4 : 1
-    max_replicas = 100
+    max_replicas = 200
 
     metric {
       type = "Pods"

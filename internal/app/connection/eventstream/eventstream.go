@@ -23,6 +23,7 @@ import (
 
 type EventStream struct {
 	r                 *http.Request
+	f                 http.Flusher
 	ctx               context.Context
 	gctx              global.Context
 	cancel            context.CancelFunc
@@ -197,17 +198,21 @@ func (es *EventStream) Write(msg events.Message[json.RawMessage]) error {
 	if _, err = es.writer.Write(utils.S2B(sb.String())); err != nil {
 		zap.S().Errorw("failed to write to event stream connection", "error", err)
 	}
+
 	if err = es.writer.Flush(); err != nil {
 		return err
 	}
+
+	es.f.Flush()
 
 	es.seq++
 	return nil
 }
 
 // SetWriter implements Connection
-func (es *EventStream) SetWriter(w *bufio.Writer) {
+func (es *EventStream) SetWriter(w *bufio.Writer, f http.Flusher) {
 	es.writer = w
+	es.f = f
 }
 
 // Ready implements client.Connection
