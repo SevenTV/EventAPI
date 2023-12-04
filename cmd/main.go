@@ -10,15 +10,15 @@ import (
 	"time"
 
 	"github.com/bugsnag/panicwrap"
-	"github.com/seventv/common/redis"
+	"go.uber.org/zap"
+
 	"github.com/seventv/eventapi/internal/app"
 	"github.com/seventv/eventapi/internal/configure"
 	"github.com/seventv/eventapi/internal/global"
 	"github.com/seventv/eventapi/internal/health"
-	"github.com/seventv/eventapi/internal/instance"
 	"github.com/seventv/eventapi/internal/monitoring"
+	"github.com/seventv/eventapi/internal/nats"
 	"github.com/seventv/eventapi/internal/pprof"
-	"go.uber.org/zap"
 )
 
 var (
@@ -66,36 +66,48 @@ func main() {
 	gctx := global.New(c, config)
 
 	{
-		ctx, cancel := context.WithTimeout(gctx, time.Second*15)
-		redisInst, err := redis.Setup(ctx, redis.SetupOptions{
-			Username:   gctx.Config().Redis.Username,
-			Password:   gctx.Config().Redis.Password,
-			Database:   gctx.Config().Redis.Database,
-			Addresses:  gctx.Config().Redis.Addresses,
-			Sentinel:   gctx.Config().Redis.Sentinel,
-			MasterName: gctx.Config().Redis.MasterName,
-		})
-		cancel()
-		if err != nil {
-			zap.S().Fatalw("failed to connect to redis", "error", err)
-		}
+		// redis is disabled
 
-		gctx.Inst().Redis = instance.WrapRedis(redisInst)
+		//ctx, cancel := context.WithTimeout(gctx, time.Second*15)
+		//redisInst, err := redis.Setup(ctx, redis.SetupOptions{
+		//	Username:   gctx.Config().Redis.Username,
+		//	Password:   gctx.Config().Redis.Password,
+		//	Database:   gctx.Config().Redis.Database,
+		//	Addresses:  gctx.Config().Redis.Addresses,
+		//	Sentinel:   gctx.Config().Redis.Sentinel,
+		//	MasterName: gctx.Config().Redis.MasterName,
+		//})
+		//cancel()
+		//if err != nil {
+		//	zap.S().Fatalw("failed to connect to redis", "error", err)
+		//}
+
+		//gctx.Inst().Redis = instance.WrapRedis(redisInst)
 		gctx.Inst().Monitoring = monitoring.NewPrometheus(gctx)
 	}
 
+	err = nats.Init(config.Nats.Url, config.Nats.Subject)
+	if err != nil {
+		zap.S().Fatalw("failed to connect to nats", "error", err)
+	}
+
+	zap.S().Info("nats, ok")
+
 	dones := []<-chan struct{}{}
 
+	var srv *app.Server
+
 	if gctx.Config().API.Enabled {
-		_, done := app.New(gctx)
+		var done <-chan struct{}
+
+		srv, done = app.New(gctx)
 		dones = append(dones, done)
 	}
 	if gctx.Config().PProf.Enabled {
-		done := pprof.New(gctx)
-		dones = append(dones, done)
+		dones = append(dones, pprof.New(gctx))
 	}
 	if gctx.Config().Health.Enabled {
-		dones = append(dones, health.New(gctx))
+		dones = append(dones, health.New(gctx, srv))
 	}
 	if gctx.Config().Monitoring.Enabled {
 		dones = append(dones, monitoring.New(gctx))

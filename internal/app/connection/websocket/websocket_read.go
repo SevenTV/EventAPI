@@ -4,12 +4,13 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/fasthttp/websocket"
+	"github.com/gorilla/websocket"
 	"github.com/seventv/api/data/events"
 	"github.com/seventv/common/utils"
+	"go.uber.org/zap"
+
 	client "github.com/seventv/eventapi/internal/app/connection"
 	"github.com/seventv/eventapi/internal/global"
-	"go.uber.org/zap"
 )
 
 var ResumableCloseCodes = []int{
@@ -29,7 +30,7 @@ func (w *WebSocket) Read(gctx global.Context) {
 
 	defer func() {
 		heartbeat.Stop()
-		w.Destroy()
+		w.Destroy(gctx)
 		ttl.Stop()
 	}()
 
@@ -53,15 +54,12 @@ func (w *WebSocket) Read(gctx global.Context) {
 		defer func() {
 			deferred = true
 
-			// Ignore panics, they're caused by fasthttp
-			_ = recover()
-
 			buf := w.Buffer()
 			if buf != nil {
 				<-buf.Context().Done()
 			}
 
-			w.Destroy()
+			w.Destroy(gctx)
 		}()
 
 		throttle := utils.NewThrottle(time.Millisecond * 100)
@@ -126,16 +124,11 @@ func (w *WebSocket) Read(gctx global.Context) {
 		}
 	}()
 
-	if err := w.Greet(); err != nil {
+	if err := w.Greet(gctx); err != nil {
 		return
 	}
 
 	w.SetReady() // mark the connection as ready
-
-	var (
-		s   *string
-		err error
-	)
 
 	for {
 		select {
@@ -158,14 +151,14 @@ func (w *WebSocket) Read(gctx global.Context) {
 				}
 			}
 		// Listen for incoming dispatches
-		case s = <-w.Events().DispatchChannel():
+		case s := <-w.Events().DispatchChannel():
 			if s == nil { // The channel is closed - stop listening
 				return
 			}
 
 			var msg events.Message[events.DispatchPayload]
 
-			err = json.Unmarshal(utils.S2B(*s), &msg)
+			err := json.Unmarshal(s, &msg)
 			if err != nil {
 				zap.S().Errorw("dispatch unmarshal error",
 					"error", err,

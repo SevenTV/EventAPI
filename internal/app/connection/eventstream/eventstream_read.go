@@ -8,31 +8,29 @@ import (
 	"time"
 
 	"github.com/seventv/api/data/events"
-	"github.com/seventv/common/utils"
-	"github.com/seventv/eventapi/internal/global"
 	"go.uber.org/zap"
+
+	"github.com/seventv/eventapi/internal/global"
+	"github.com/seventv/eventapi/internal/util"
 )
 
 func (es *EventStream) Read(gctx global.Context) {
-	conn := es.c.Conn().(*net.TCPConn)
-
+	conn := util.GetConn(es.r).(*net.TCPConn)
 	heartbeat := time.NewTicker(time.Duration(es.heartbeatInterval) * time.Millisecond)
+
+	liveness := time.NewTicker(time.Second * 1)
 
 	defer func() {
 		heartbeat.Stop()
 		es.Destroy()
+		liveness.Stop()
 	}()
 
-	if err := es.Greet(); err != nil {
+	if err := es.Greet(gctx); err != nil {
 		return
 	}
 
 	es.SetReady()
-
-	var (
-		s   *string
-		err error
-	)
 
 	for {
 		if err := checkConn(conn); err != nil {
@@ -49,14 +47,15 @@ func (es *EventStream) Read(gctx global.Context) {
 			if err := es.SendHeartbeat(); err != nil {
 				return
 			}
-		case s = <-es.evm.DispatchChannel():
+		case <-liveness.C: // Connection liveness check
+		case s := <-es.evm.DispatchChannel():
 			if s == nil { // channel closed
 				return
 			}
 
 			var msg events.Message[events.DispatchPayload]
 
-			err = json.Unmarshal(utils.S2B(*s), &msg)
+			err := json.Unmarshal(s, &msg)
 			if err != nil {
 				zap.S().Errorw("dispatch unmarshal error", "error", err)
 				continue

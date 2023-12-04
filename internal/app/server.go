@@ -1,94 +1,70 @@
 package app
 
 import (
+	"context"
 	"encoding/json"
+	"net/http"
 	"os"
 	"sync/atomic"
 	"time"
 
-	"github.com/fasthttp/router"
-	"github.com/fasthttp/websocket"
 	"github.com/fsnotify/fsnotify"
+	"github.com/go-chi/chi/v5"
+	"github.com/gorilla/websocket"
 	"github.com/seventv/common/errors"
-	"github.com/seventv/common/utils"
-	"github.com/seventv/eventapi/internal/global"
 	"github.com/valyala/fasthttp"
 	"go.uber.org/zap"
+
+	"github.com/seventv/eventapi/internal/global"
+	"github.com/seventv/eventapi/internal/nats"
+	"github.com/seventv/eventapi/internal/util"
 )
 
 type Server struct {
-	upgrader websocket.FastHTTPUpgrader
-	router   *router.Router
+	upgrader websocket.Upgrader
+	router   *chi.Mux
+
+	gctx global.Context
+
+	locked   bool
+	shutdown chan struct{}
 
 	activeConns *int32
 }
 
-func New(gctx global.Context) (Server, <-chan struct{}) {
-	upgrader := websocket.FastHTTPUpgrader{
-		CheckOrigin: func(ctx *fasthttp.RequestCtx) bool {
+func New(gctx global.Context) (*Server, <-chan struct{}) {
+	upgrader := websocket.Upgrader{
+		CheckOrigin: func(r *http.Request) bool {
 			return true
 		},
 		EnableCompression: true,
 	}
 
-	r := router.New()
 	srv := Server{
 		upgrader: upgrader,
-		router:   r,
+		router:   chi.NewRouter(),
+
+		gctx: gctx,
+
+		shutdown: make(chan struct{}),
 
 		activeConns: new(int32),
 	}
 
-	shutdown := make(chan struct{})
+	srv.setRoutes()
 
-	srv.HandleConnect(gctx, shutdown)
-	srv.HandleHealth(gctx)
 	srv.HandleSessionMutation(gctx)
 
-	locked := false
-
-	server := fasthttp.Server{
-		Handler: func(ctx *fasthttp.RequestCtx) {
-			start := time.Now()
-			defer func() {
-				l := zap.S().With(
-					"status", ctx.Response.StatusCode(),
-					"path", utils.B2S(ctx.Request.RequestURI()),
-					"duration", time.Since(start)/time.Millisecond,
-					"ip", utils.B2S(ctx.Request.Header.Peek("cf-connecting-ip")),
-					"method", utils.B2S(ctx.Method()),
-					"entrypoint", "api",
-				)
-				if err := recover(); err != nil {
-					l.Error("panic in handler: ", err)
-				} else {
-					l.Debug("")
-				}
-			}()
-			ctx.Response.Header.Set("X-Pod-Name", gctx.Config().Pod.Name)
-
-			if locked {
-				ctx.SetStatusCode(fasthttp.StatusLocked)
-				ctx.SetBodyString("This server is going down for restart!")
-				return
-			}
-
-			if atomic.LoadInt32(srv.activeConns) >= int32(gctx.Config().API.ConnectionLimit) {
-				ctx.SetStatusCode(fasthttp.StatusServiceUnavailable)
-				ctx.SetBodyString("This server is full!")
-				return
-			}
-
-			r.Handler(ctx)
-		},
-		IdleTimeout:       time.Second * 30,
-		ReduceMemoryUsage: false,
-		CloseOnShutdown:   true,
+	server := http.Server{
+		Addr:        srv.gctx.Config().API.Bind,
+		IdleTimeout: 30 * time.Second,
+		Handler:     srv.router,
+		ConnContext: util.SaveConnInContext,
 	}
 
 	done := make(chan struct{})
 	go func() {
-		if err := server.ListenAndServe(gctx.Config().API.Bind); err != nil {
+		if err := server.ListenAndServe(); err != nil {
 			zap.S().Fatal("failed to start server: ", err)
 		}
 	}()
@@ -114,9 +90,8 @@ func New(gctx global.Context) (Server, <-chan struct{}) {
 			zap.S().Infof("received api shutdown signal via file system. closing %d connections and shuttering", atomic.LoadInt32(srv.activeConns))
 		}
 
-		close(shutdown)
-
-		locked = true
+		close(srv.shutdown)
+		srv.locked = true
 
 		timeout := time.After(time.Second * 30)
 		ticker := time.NewTicker(time.Millisecond * 100)
@@ -134,13 +109,70 @@ func New(gctx global.Context) (Server, <-chan struct{}) {
 		}
 
 	shutdown:
-		_ = server.Shutdown()
+		_ = server.Shutdown(context.Background())
+		nats.Close()
 
 		watcher.Close()
 		close(done)
 	}()
 
-	return srv, done
+	go func() {
+		ticker := time.NewTicker(time.Second * 10)
+
+		for {
+			select {
+			case <-gctx.Done():
+				ticker.Stop()
+				return
+			case <-ticker.C:
+				v := atomic.LoadInt32(srv.activeConns)
+
+				gctx.Inst().ConcurrencyValue = v
+
+				zap.S().Infof("concurrency: %d", v)
+			}
+		}
+	}()
+
+	return &srv, done
+}
+
+func (s *Server) Middleware() func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		fn := func(w http.ResponseWriter, r *http.Request) {
+			start := time.Now()
+			defer func() {
+				l := zap.S().With(
+					"status", r.Response.StatusCode,
+					"path", r.RequestURI,
+					"duration", time.Since(start)/time.Millisecond,
+					"ip", r.Header.Get("cf-connecting-ip"),
+					"method", r.Method,
+					"entrypoint", "api",
+				)
+
+				l.Debug("")
+			}()
+			w.Header().Set("X-Pod-Name", s.gctx.Config().Pod.Name)
+
+			if s.locked {
+				writeBytesResponse(http.StatusLocked, []byte("This server is going down for restart!"), w)
+				return
+			}
+
+			if atomic.LoadInt32(s.activeConns) >= int32(s.gctx.Config().API.ConnectionLimit) {
+				writeBytesResponse(http.StatusServiceUnavailable, []byte("This server is full!"), w)
+				return
+			}
+
+			next.ServeHTTP(w, r)
+		}
+		return http.HandlerFunc(fn)
+	}
+}
+
+func (s Server) GetConcurrentConnections() int32 {
+	return atomic.LoadInt32(s.activeConns)
 }
 
 type ErrorResponse struct {

@@ -16,7 +16,7 @@ else
 endif
 
 build:
-	GOOS=linux GOARCH=amd64 go build -v -ldflags "-X 'main.Version=${VERSION}' -X 'main.Unix=$(shell date +%s)' -X 'main.User=${BUILDER}'" -o out/eventapi cmd/*.go
+	GOOS=linux GOARCH=arm64 go build -v -ldflags "-X 'main.Version=${VERSION}' -X 'main.Unix=$(shell date +%s)' -X 'main.User=${BUILDER}'" -o out/eventapi cmd/*.go
 
 lint:
 	go vet ./...
@@ -43,3 +43,9 @@ work:
 
 dev:
 	go run cmd/main.go
+
+terraform:
+	terraform -chdir=./terraform init
+
+deploy:
+	terraform -chdir=./terraform apply -auto-approve

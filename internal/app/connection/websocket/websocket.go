@@ -8,12 +8,13 @@ import (
 	"sync"
 	"time"
 
-	websocket "github.com/fasthttp/websocket"
+	"github.com/gorilla/websocket"
 	"github.com/seventv/api/data/events"
 	"github.com/seventv/common/structures/v3"
+	"go.uber.org/zap"
+
 	client "github.com/seventv/eventapi/internal/app/connection"
 	"github.com/seventv/eventapi/internal/global"
-	"go.uber.org/zap"
 )
 
 type WebSocket struct {
@@ -51,7 +52,7 @@ func NewWebSocket(gctx global.Context, conn *websocket.Conn) (client.Connection,
 		ctx:               lctx,
 		cancel:            cancel,
 		seq:               0,
-		evm:               client.NewEventMap(make(chan *string, 16)),
+		evm:               client.NewEventMap(string(sessionID)),
 		cache:             client.NewCache(),
 		writeMtx:          &sync.Mutex{},
 		ready:             make(chan struct{}),
@@ -74,7 +75,7 @@ func (w *WebSocket) SessionID() string {
 	return hex.EncodeToString(w.sessionID)
 }
 
-func (w *WebSocket) Greet() error {
+func (w *WebSocket) Greet(gctx global.Context) error {
 	msg := events.NewMessage(events.OpcodeHello, events.HelloPayload{
 		HeartbeatInterval: uint32(w.heartbeatInterval),
 		SessionID:         hex.EncodeToString(w.sessionID),
@@ -208,8 +209,8 @@ func (w *WebSocket) SetReady() {
 	})
 }
 
-func (w *WebSocket) Destroy() {
+func (w *WebSocket) Destroy(gctx global.Context) {
 	w.ForceClose()
 	w.SetReady()
-	w.evm.Destroy()
+	w.evm.Destroy(gctx)
 }

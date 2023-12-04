@@ -2,15 +2,13 @@ package client
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
 
 	"github.com/seventv/api/data/events"
-	"github.com/seventv/common/utils"
+
 	"github.com/seventv/eventapi/internal/global"
-	"go.uber.org/zap"
 )
 
 // EventBuffer handles the buffering of events
@@ -64,114 +62,128 @@ func (b *eventBuffer) Context() context.Context {
 }
 
 func (b *eventBuffer) Start(gctx global.Context) error {
-	// Define session as recoverable
-	pipe := gctx.Inst().Redis.RawClient().Pipeline()
+	// redis is disabled
 
-	pipe.Set(b.ctx, b.stateKey, "1", time.Until(b.ttl))
-
-	// Store session's subscriptions
-	events := b.conn.Events()
-	events.mx.Lock()
-	defer events.mx.Unlock()
-
-	for key, value := range events.m {
-		sub, err := json.Marshal(StoredSubscription{
-			Type:    key,
-			Channel: value,
-		})
-		if err != nil {
-			zap.S().Errorw("failed to marshal subscription for buffered storage", "error", err)
-			continue
-		}
-
-		pipe.LPush(b.ctx, b.subStoreKey, utils.B2S(sub))
-	}
-
-	pipe.ExpireAt(b.ctx, b.subStoreKey, b.ttl)
-
-	if _, err := pipe.Exec(b.ctx); err != nil {
-		return err
-	}
+	//// Define session as recoverable
+	//pipe := gctx.Inst().Redis.RawClient().Pipeline()
+	//
+	//pipe.Set(b.ctx, b.stateKey, "1", time.Until(b.ttl))
+	//
+	//// Store session's subscriptions
+	//events := b.conn.Events()
+	//events.mx.Lock()
+	//defer events.mx.Unlock()
+	//
+	//for key, value := range events.m {
+	//	sub, err := json.Marshal(StoredSubscription{
+	//		Type:    key,
+	//		Channel: value,
+	//	})
+	//	if err != nil {
+	//		zap.S().Errorw("failed to marshal subscription for buffered storage", "error", err)
+	//		continue
+	//	}
+	//
+	//	pipe.LPush(b.ctx, b.subStoreKey, utils.B2S(sub))
+	//}
+	//
+	//pipe.ExpireAt(b.ctx, b.subStoreKey, b.ttl)
+	//
+	//if _, err := pipe.Exec(b.ctx); err != nil {
+	//	return err
+	//}
 
 	return nil
 }
 
 func (b *eventBuffer) Recover(gctx global.Context) (eventList []events.Message[events.DispatchPayload], subList []StoredSubscription, err error) {
-	// check if session is recoverable
-	if _, err = gctx.Inst().Redis.RawClient().Get(b.ctx, b.stateKey).Result(); err != nil {
-		return nil, nil, ErrNotRecoverable
-	}
+	// redis is disabled
 
-	// recover events
-	for {
-		s, _ := gctx.Inst().Redis.RawClient().LPopCount(b.ctx, b.eventStoreKey, 100).Result()
-		if len(s) == 0 {
-			break
-		}
+	//// check if session is recoverable
+	//if _, err = gctx.Inst().Redis.RawClient().Get(b.ctx, b.stateKey).Result(); err != nil {
+	//	return nil, nil, ErrNotRecoverable
+	//}
+	//
+	//// recover events
+	//for {
+	//	s, _ := gctx.Inst().Redis.RawClient().LPopCount(b.ctx, b.eventStoreKey, 100).Result()
+	//	if len(s) == 0 {
+	//		break
+	//	}
+	//
+	//	for _, v := range s {
+	//		var msg events.Message[events.DispatchPayload]
+	//		if err = json.Unmarshal(utils.S2B(v), &msg); err != nil {
+	//			break
+	//		}
+	//
+	//		eventList = append(eventList, msg)
+	//	}
+	//}
+	//
+	//// recover subscriptions
+	//for {
+	//	s, _ := gctx.Inst().Redis.RawClient().LPopCount(b.ctx, b.subStoreKey, 100).Result()
+	//	if len(s) == 0 {
+	//		break
+	//	}
+	//
+	//	for _, v := range s {
+	//		var sub StoredSubscription
+	//		if err = json.Unmarshal(utils.S2B(v), &sub); err != nil {
+	//			break
+	//		}
+	//
+	//		subList = append(subList, sub)
+	//	}
+	////}
+	//
+	//return eventList, subList, err
 
-		for _, v := range s {
-			var msg events.Message[events.DispatchPayload]
-			if err = json.Unmarshal(utils.S2B(v), &msg); err != nil {
-				break
-			}
-
-			eventList = append(eventList, msg)
-		}
-	}
-
-	// recover subscriptions
-	for {
-		s, _ := gctx.Inst().Redis.RawClient().LPopCount(b.ctx, b.subStoreKey, 100).Result()
-		if len(s) == 0 {
-			break
-		}
-
-		for _, v := range s {
-			var sub StoredSubscription
-			if err = json.Unmarshal(utils.S2B(v), &sub); err != nil {
-				break
-			}
-
-			subList = append(subList, sub)
-		}
-	}
-
-	return eventList, subList, err
+	return nil, nil, ErrNotRecoverable
 }
 
 func (b *eventBuffer) Push(gctx global.Context, msg events.Message[events.DispatchPayload]) error {
-	if b.ctx.Err() != nil {
-		return ErrBufferClosed
-	}
+	// redis is disabled
 
-	s, err := json.Marshal(msg)
-	if err != nil {
-		return err
-	}
+	//if b.ctx.Err() != nil {
+	//	return ErrBufferClosed
+	//}
+	//
+	//s, err := json.Marshal(msg)
+	//if err != nil {
+	//	return err
+	//}
+	//
+	//pipe := gctx.Inst().Redis.RawClient().Pipeline()
+	//
+	//// push the event to the redis list
+	//pipe.LPush(b.ctx, b.eventStoreKey, utils.B2S(s))
+	//
+	//// set the TTL on the key to expire at the buffer's expire
+	//pipe.ExpireAt(b.ctx, b.eventStoreKey, b.ttl)
+	//
+	//_, err = pipe.Exec(b.ctx)
+	//
+	//return err
 
-	pipe := gctx.Inst().Redis.RawClient().Pipeline()
-
-	// push the event to the redis list
-	pipe.LPush(b.ctx, b.eventStoreKey, utils.B2S(s))
-
-	// set the TTL on the key to expire at the buffer's expire
-	pipe.ExpireAt(b.ctx, b.eventStoreKey, b.ttl)
-
-	_, err = pipe.Exec(b.ctx)
-
-	return err
+	return nil
 }
 
 func (b *eventBuffer) Cleanup(gctx global.Context) error {
-	pipe := gctx.Inst().Redis.RawClient().Pipeline()
+	// redis is disabled
 
-	for _, key := range []string{b.stateKey, b.eventStoreKey, b.subStoreKey} {
-		pipe.Del(b.ctx, key)
-	}
+	//pipe := gctx.Inst().Redis.RawClient().Pipeline()
+	//
+	//for _, key := range []string{b.stateKey, b.eventStoreKey, b.subStoreKey} {
+	//	pipe.Del(b.ctx, key)
+	//}
+	//
+	//_, err := pipe.Exec(b.ctx)
+	//
+	//return err
 
-	_, err := pipe.Exec(b.ctx)
-
-	return err
+	return nil
 }
 
 type StoredSubscription struct {

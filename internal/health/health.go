@@ -1,15 +1,17 @@
 package health
 
 import (
-	"context"
 	"time"
 
-	"github.com/seventv/eventapi/internal/global"
+	"github.com/seventv/common/utils"
 	"github.com/valyala/fasthttp"
 	"go.uber.org/zap"
+
+	"github.com/seventv/eventapi/internal/app"
+	"github.com/seventv/eventapi/internal/global"
 )
 
-func New(gCtx global.Context) <-chan struct{} {
+func New(gctx global.Context, srv *app.Server) <-chan struct{} {
 	server := fasthttp.Server{
 		Handler: func(ctx *fasthttp.RequestCtx) {
 			start := time.Now()
@@ -26,13 +28,15 @@ func New(gCtx global.Context) <-chan struct{} {
 				}
 			}()
 
+			ctx.Response.Header.Set("Cache-Control", "no-cache, no-store, must-revalidate")
 			ctx.SetStatusCode(200)
-			redisCtx, cancel := context.WithTimeout(ctx, time.Second*10)
-			defer cancel()
 
-			if err := gCtx.Inst().Redis.Ping(redisCtx); err != nil {
-				zap.S().Error("redis down: ", err)
-				ctx.SetStatusCode(503)
+			// check if path is /concurrency
+			if !ctx.IsGet() || utils.B2S(ctx.URI().Path()) == "/concurrency" && srv != nil && srv.GetConcurrentConnections() >= (gctx.Config().API.ConnectionLimit-1) {
+				zap.S().Warnw("connection limit reached")
+
+				ctx.SetBodyString("Maximum Concurrency")
+				ctx.SetStatusCode(410)
 			}
 		},
 		GetOnly:          true,
@@ -40,14 +44,14 @@ func New(gCtx global.Context) <-chan struct{} {
 	}
 
 	go func() {
-		if err := server.ListenAndServe(gCtx.Config().Health.Bind); err != nil {
+		if err := server.ListenAndServe(gctx.Config().Health.Bind); err != nil {
 			zap.S().Fatal("failed to start health bind: ", err)
 		}
 	}()
 
 	done := make(chan struct{})
 	go func() {
-		<-gCtx.Done()
+		<-gctx.Done()
 		_ = server.Shutdown()
 		close(done)
 	}()
