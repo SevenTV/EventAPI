@@ -2,11 +2,7 @@ package eventstream
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
-	"io"
-	"net"
-	"syscall"
 	"time"
 
 	"github.com/seventv/api/data/events"
@@ -63,17 +59,5 @@ func (es *EventStream) Read(gctx global.Context) {
 			// Dispatch the event to the client
 			es.handler.OnDispatch(gctx, msg)
 		}
-	}
-}
-
-func isNetConnClosedErr(err error) bool {
-	switch {
-	case
-		errors.Is(err, net.ErrClosed),
-		errors.Is(err, io.EOF),
-		errors.Is(err, syscall.EPIPE):
-		return true
-	default:
-		return false
 	}
 }
