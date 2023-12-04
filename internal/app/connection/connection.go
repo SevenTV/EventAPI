@@ -52,6 +52,8 @@ type Connection interface {
 	SendClose(code events.CloseCode, after time.Duration)
 	// SetWriter defines the connection's writable stream (SSE only)
 	SetWriter(w *bufio.Writer, f http.Flusher)
+	// Return the name of the transport used by this connection
+	Transport() Transport
 }
 
 func IsClientSentOp(op events.Opcode) bool {
@@ -314,4 +316,11 @@ func (ec EventChannel) Match(cond []events.EventCondition) []uint32 {
 var (
 	ErrAlreadySubscribed = fmt.Errorf("already subscribed")
 	ErrNotSubscribed     = fmt.Errorf("not subscribed")
+)
+
+type Transport string
+
+const (
+	TransportWebSocket   Transport = "WebSocket"
+	TransportEventStream Transport = "EventStream"
 )

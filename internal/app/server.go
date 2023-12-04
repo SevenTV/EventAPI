@@ -29,7 +29,9 @@ type Server struct {
 	locked   bool
 	shutdown chan struct{}
 
-	activeConns *int32
+	activeConns        *int32
+	activeEventStreams *int32
+	activeWebSockets   *int32
 }
 
 func New(gctx global.Context) (*Server, <-chan struct{}) {
@@ -48,7 +50,9 @@ func New(gctx global.Context) (*Server, <-chan struct{}) {
 
 		shutdown: make(chan struct{}),
 
-		activeConns: new(int32),
+		activeConns:        new(int32),
+		activeEventStreams: new(int32),
+		activeWebSockets:   new(int32),
 	}
 
 	srv.setRoutes()
@@ -125,11 +129,17 @@ func New(gctx global.Context) (*Server, <-chan struct{}) {
 				ticker.Stop()
 				return
 			case <-ticker.C:
-				v := atomic.LoadInt32(srv.activeConns)
+				a := atomic.LoadInt32(srv.activeConns)
+				es := atomic.LoadInt32(srv.activeEventStreams)
+				ws := atomic.LoadInt32(srv.activeWebSockets)
 
-				gctx.Inst().ConcurrencyValue = v
+				gctx.Inst().ConcurrencyValue = a
 
-				zap.S().Infof("concurrency: %d", v)
+				zap.S().Infow("stats",
+					"concurrency", a,
+					"eventstreams", es,
+					"websockets", ws,
+				)
 			}
 		}
 	}()

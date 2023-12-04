@@ -37,6 +37,8 @@ func (es *EventStream) Read(gctx global.Context) {
 			es.SendClose(events.CloseCodeRestart, time.Second*5)
 			return
 		case <-heartbeat.C:
+			gctx.Inst().Monitoring.EventV3().Heartbeats.Observe(1)
+
 			if err := es.SendHeartbeat(); err != nil {
 				return
 			}
@@ -56,6 +58,8 @@ func (es *EventStream) Read(gctx global.Context) {
 
 			// Dispatch the event to the client
 			es.handler.OnDispatch(gctx, msg)
+
+			gctx.Inst().Monitoring.EventV3().Dispatches.Observe(1)
 		}
 	}
 }
