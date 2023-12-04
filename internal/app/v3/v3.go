@@ -2,29 +2,23 @@ package v3
 
 import (
 	"bufio"
+	"fmt"
 	"net/http"
 	"net/url"
 	"regexp"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/gorilla/websocket"
 	"github.com/seventv/api/data/events"
 
 	client "github.com/seventv/eventapi/internal/app/connection"
-	client_eventstream "github.com/seventv/eventapi/internal/app/connection/eventstream"
-	client_websocket "github.com/seventv/eventapi/internal/app/connection/websocket"
 	"github.com/seventv/eventapi/internal/global"
 )
 
-func WebSocket(gctx global.Context, conn *websocket.Conn) (client.Connection, error) {
-	w, err := client_websocket.NewWebSocket(gctx, conn)
-	if err != nil {
-		return nil, err
-	}
+func WebSocket(gctx global.Context, con client.Connection) error {
+	go con.Read(gctx)
 
-	go w.Read(gctx)
-	return w, nil
+	return nil
 }
 
 var (
@@ -33,20 +27,19 @@ var (
 	SSE_SUBSCRIPTION_ITEM_I_CND = SSE_SUBSCRIPTION_ITEM.SubexpIndex("CND")
 )
 
-func SSE(gctx global.Context, w http.ResponseWriter, r *http.Request) (client.Connection, error) {
-	es, err := client_eventstream.NewEventStream(gctx, r)
-	if err != nil {
-		return nil, err
+func SSE(gctx global.Context, conn client.Connection, w http.ResponseWriter, r *http.Request) error {
+	f, ok := w.(http.Flusher)
+	if !ok {
+		return fmt.Errorf("EventStream Not Supported")
 	}
 
-	client_eventstream.SetEventStreamHeaders(w)
+	conn.SetWriter(bufio.NewWriter(w), f)
 
-	es.SetWriter(bufio.NewWriter(w))
-	es.Read(gctx)
+	conn.Read(gctx)
 
 	go func() {
-		<-es.OnReady() // wait for the connection to be ready
-		if es.Context().Err() != nil {
+		<-conn.OnReady() // wait for the connection to be ready
+		if conn.Context().Err() != nil {
 			return
 		}
 
@@ -81,7 +74,7 @@ func SSE(gctx global.Context, w http.ResponseWriter, r *http.Request) (client.Co
 				cm[kv[0]] = kv[1]
 			}
 
-			if err, ok := es.Handler().Subscribe(gctx, events.NewMessage(events.OpcodeSubscribe, events.SubscribePayload{
+			if err, ok := conn.Handler().Subscribe(gctx, events.NewMessage(events.OpcodeSubscribe, events.SubscribePayload{
 				Type:      events.EventType(evt),
 				Condition: cm,
 			}).ToRaw()); err != nil || !ok {
@@ -90,5 +83,5 @@ func SSE(gctx global.Context, w http.ResponseWriter, r *http.Request) (client.Co
 		}
 	}()
 
-	return es, nil
+	return nil
 }

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/rand"
+	"net/http"
 	"sync"
 	"time"
 
@@ -50,7 +51,7 @@ type Connection interface {
 	// Close sends a close frame with the specified code and ends the connection
 	SendClose(code events.CloseCode, after time.Duration)
 	// SetWriter defines the connection's writable stream (SSE only)
-	SetWriter(w *bufio.Writer)
+	SetWriter(w *bufio.Writer, f http.Flusher)
 }
 
 func IsClientSentOp(op events.Opcode) bool {
