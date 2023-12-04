@@ -35,8 +35,6 @@ func SSE(gctx global.Context, conn client.Connection, w http.ResponseWriter, r *
 
 	conn.SetWriter(bufio.NewWriter(w), f)
 
-	conn.Read(gctx)
-
 	go func() {
 		<-conn.OnReady() // wait for the connection to be ready
 		if conn.Context().Err() != nil {
@@ -82,6 +80,8 @@ func SSE(gctx global.Context, conn client.Connection, w http.ResponseWriter, r *
 			}
 		}
 	}()
+
+	conn.Read(gctx)
 
 	return nil
 }

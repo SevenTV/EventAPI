@@ -39,7 +39,7 @@ variable "image_pull_policy" {
 
 variable "heartbeat_interval" {
   type    = number
-  default = 28000
+  default = 45000
 }
 
 variable "subscription_limit" {
