@@ -33,7 +33,7 @@ env:
 jobs:
   ci:
     name: EventAPI Lint & Build
-    runs-on: aws-runner
+    runs-on: seventv
     env:
       GOLANGCI_LINT_CACHE: /home/runner/.cache/golangci-lint
     concurrency:

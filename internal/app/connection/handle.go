@@ -16,7 +16,10 @@ import (
 )
 
 func NewHandler(conn Connection) Handler {
-	return handler{conn}
+	return handler{
+		conn:       conn,
+		httpClient: http.Client{},
+	}
 }
 
 type Handler interface {
@@ -28,7 +31,8 @@ type Handler interface {
 }
 
 type handler struct {
-	conn Connection
+	conn       Connection
+	httpClient http.Client
 }
 
 const (
@@ -351,7 +355,7 @@ func (h handler) OnBridge(gctx global.Context, m events.Message[json.RawMessage]
 		return err
 	}
 
-	res, err := http.DefaultClient.Post(gctx.Config().API.BridgeURL, "application/json", bytes.NewReader(b))
+	res, err := h.httpClient.Post(gctx.Config().API.BridgeURL, "application/json", bytes.NewReader(b))
 	if err != nil {
 		zap.S().Errorw("failed to bridge event", "error", err)
 

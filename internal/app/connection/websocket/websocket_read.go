@@ -6,7 +6,6 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/seventv/api/data/events"
-	"github.com/seventv/common/utils"
 	"go.uber.org/zap"
 
 	client "github.com/seventv/eventapi/internal/app/connection"
@@ -62,8 +61,6 @@ func (w *WebSocket) Read(gctx global.Context) {
 			w.Destroy(gctx)
 		}()
 
-		throttle := utils.NewThrottle(time.Millisecond * 100)
-
 		var msg events.Message[json.RawMessage]
 		var err error
 
@@ -115,11 +112,11 @@ func (w *WebSocket) Read(gctx global.Context) {
 				}
 			// Handle command - BRIDGE
 			case events.OpcodeBridge:
-				throttle.Do(func() {
+				go func() {
 					if err = handler.OnBridge(gctx, msg); err != nil {
 						return
 					}
-				})
+				}()
 			}
 		}
 	}()
