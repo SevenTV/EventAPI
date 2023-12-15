@@ -81,6 +81,10 @@ func (w *WebSocket) Greet(gctx global.Context) error {
 		HeartbeatInterval: uint32(w.heartbeatInterval),
 		SessionID:         hex.EncodeToString(w.sessionID),
 		SubscriptionLimit: w.subscriptionLimit,
+		Instance: events.HelloPayloadInstanceInfo{
+			Name:       gctx.Config().Pod.Name,
+			Population: gctx.Inst().ConcurrencyValue,
+		},
 	})
 
 	return w.Write(msg.ToRaw())
@@ -214,4 +218,8 @@ func (w *WebSocket) Destroy(gctx global.Context) {
 	w.ForceClose()
 	w.SetReady()
 	w.evm.Destroy(gctx)
+}
+
+func (w *WebSocket) Transport() client.Transport {
+	return client.TransportWebSocket
 }

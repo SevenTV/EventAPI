@@ -250,3 +250,7 @@ func SetEventStreamHeaders(w http.ResponseWriter) {
 
 	w.WriteHeader(http.StatusOK)
 }
+
+func (es *EventStream) Transport() client.Transport {
+	return client.TransportEventStream
+}

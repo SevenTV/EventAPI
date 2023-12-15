@@ -24,6 +24,25 @@ func (s *Server) TrackConnection(gctx global.Context, r *http.Request, con clien
 	// Increment counters
 	atomic.AddInt32(s.activeConns, 1)
 
+	switch con.Transport() {
+	case client.TransportEventStream:
+		atomic.AddInt32(s.activeEventStreams, 1)
+		gctx.Inst().Monitoring.EventV3().CurrentEventStreams.Inc()
+
+		defer func() {
+			atomic.AddInt32(s.activeEventStreams, -1)
+			gctx.Inst().Monitoring.EventV3().CurrentEventStreams.Dec()
+		}()
+	case client.TransportWebSocket:
+		atomic.AddInt32(s.activeWebSockets, 1)
+		gctx.Inst().Monitoring.EventV3().CurrentWebSockets.Inc()
+
+		defer func() {
+			atomic.AddInt32(s.activeWebSockets, -1)
+			gctx.Inst().Monitoring.EventV3().CurrentWebSockets.Dec()
+		}()
+	}
+
 	gctx.Inst().Monitoring.EventV3().CurrentConnections.Inc()
 	gctx.Inst().Monitoring.EventV3().TotalConnections.Observe(1)
 
@@ -51,6 +70,7 @@ func (s *Server) TrackConnection(gctx global.Context, r *http.Request, con clien
 
 	gctx.Inst().Monitoring.EventV3().CurrentConnections.Dec()
 	gctx.Inst().Monitoring.EventV3().TotalConnections.Observe(float64(time.Since(start)/time.Millisecond) / 1000)
+	gctx.Inst().Monitoring.EventV3().TotalConnectionDurationSeconds.Observe(float64(time.Since(start).Seconds()))
 
 	zap.S().Debugw("connection ended",
 		"client_addr", clientAddr,

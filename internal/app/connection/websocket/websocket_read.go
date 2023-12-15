@@ -146,6 +146,8 @@ func (w *WebSocket) Read(gctx global.Context) {
 			return
 		case <-heartbeat.C: // Send a heartbeat
 			if !deferred {
+				gctx.Inst().Monitoring.EventV3().Heartbeats.Observe(1)
+
 				if err := w.SendHeartbeat(); err != nil {
 					return
 				}
@@ -169,6 +171,8 @@ func (w *WebSocket) Read(gctx global.Context) {
 
 			// Dispatch the event to the client
 			w.handler.OnDispatch(gctx, msg)
+
+			gctx.Inst().Monitoring.EventV3().Dispatches.Observe(1)
 		}
 	}
 }
