@@ -1,3 +1,9 @@
+THIS REPO IS ARCHIVED PLEASE SEE
+
+https://github.com/seventv/seventv
+
+for more info
+
 # 7TV EventAPI
 
 <!-- ![Logo](https://cdn.discordapp.com/attachments/817075418640678964/871969835087704124/icon-512x512.png) -->
